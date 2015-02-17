@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <memory>
 #include <boost/scoped_ptr.hpp>
-#include <boost/optional/optional_io.hpp>
+#include <boost/optional.hpp>
 
 #include "include/rados/rados_types.hpp"
 
@@ -40,7 +40,7 @@
 #include "Watch.h"
 #include "OpRequest.h"
 #include "include/cmp.h"
-#include "librados/ListObjectImpl.h"
+//#include "../librados/ListObjectImpl.h"
 
 #define CEPH_OSD_ONDISK_MAGIC "ceph osd volume v026"
 
@@ -241,7 +241,6 @@ enum {
   CEPH_OSD_RMW_FLAG_CLASS_WRITE = (1 << 4),
   CEPH_OSD_RMW_FLAG_PGOP        = (1 << 5),
   CEPH_OSD_RMW_FLAG_CACHE       = (1 << 6),
-  CEPH_OSD_RMW_FLAG_PROMOTE     = (1 << 7),
 };
 
 
@@ -767,12 +766,8 @@ inline ostream& operator<<(ostream& out, const osd_stat_t& s) {
 #define PG_STATE_BACKFILL_TOOFULL (1<<21) // backfill can't proceed: too full
 #define PG_STATE_RECOVERY_WAIT (1<<22) // waiting for recovery reservations
 #define PG_STATE_UNDERSIZED    (1<<23) // pg acting < pool size
-#define PG_STATE_ACTIVATING   (1<<24) // pg is peered but not yet active
-#define PG_STATE_PEERED        (1<<25) // peered, cannot go active, can recover
 
 std::string pg_state_string(int state);
-std::string pg_vector_string(const vector<int32_t> &a);
-int pg_string_state(std::string state);
 
 
 /*
@@ -826,10 +821,6 @@ struct pg_pool_t {
     FLAG_FULL       = 1<<1, // pool is full
     FLAG_DEBUG_FAKE_EC_POOL = 1<<2, // require ReplicatedPG to act like an EC pg
     FLAG_INCOMPLETE_CLONES = 1<<3, // may have incomplete clones (bc we are/were an overlay)
-    FLAG_NODELETE = 1<<4, // pool can't be deleted
-    FLAG_NOPGCHANGE = 1<<5, // pool's pg and pgp num can't be changed
-    FLAG_NOSIZECHANGE = 1<<6, // pool's size and min size can't be changed
-    FLAG_WRITE_FADVISE_DONTNEED = 1<<7, // write mode with LIBRADOS_OP_FLAG_FADVISE_DONTNEED
   };
 
   static const char *get_flag_name(int f) {
@@ -838,10 +829,6 @@ struct pg_pool_t {
     case FLAG_FULL: return "full";
     case FLAG_DEBUG_FAKE_EC_POOL: return "require_local_rollback";
     case FLAG_INCOMPLETE_CLONES: return "incomplete_clones";
-    case FLAG_NODELETE: return "nodelete";
-    case FLAG_NOPGCHANGE: return "nopgchange";
-    case FLAG_NOSIZECHANGE: return "nosizechange";
-    case FLAG_WRITE_FADVISE_DONTNEED: return "write_fadvise_dontneed";
     default: return "???";
     }
   }
@@ -858,25 +845,6 @@ struct pg_pool_t {
   }
   string get_flags_string() const {
     return get_flags_string(flags);
-  }
-  static uint64_t get_flag_by_name(const string& name) {
-    if (name == "hashpspool")
-      return FLAG_HASHPSPOOL;
-    if (name == "full")
-      return FLAG_FULL;
-    if (name == "require_local_rollback")
-      return FLAG_DEBUG_FAKE_EC_POOL;
-    if (name == "incomplete_clones")
-      return FLAG_INCOMPLETE_CLONES;
-    if (name == "nodelete")
-      return FLAG_NODELETE;
-    if (name == "nopgchange")
-      return FLAG_NOPGCHANGE;
-    if (name == "nosizechange")
-      return FLAG_NOSIZECHANGE;
-    if (name == "write_fadvise_dontneed")
-      return FLAG_WRITE_FADVISE_DONTNEED;
-    return 0;
   }
 
   typedef enum {
@@ -1051,8 +1019,6 @@ public:
 
   uint64_t get_flags() const { return flags; }
   bool has_flag(uint64_t f) const { return flags & f; }
-  void set_flag(uint64_t f) { flags |= f; }
-  void unset_flag(uint64_t f) { flags &= ~f; }
 
   /// This method will later return true for ec pools as well
   bool ec_pool() const {
@@ -1206,10 +1172,6 @@ ostream& operator<<(ostream& out, const pg_pool_t& p);
  * This is just a container for object stats; we don't know what for.
  */
 struct object_stat_sum_t {
-  /**************************************************************************
-   * WARNING: be sure to update operator==, floor, and split when
-   * adding/removing fields!
-   **************************************************************************/
   int64_t num_bytes;    // in bytes
   int64_t num_objects;
   int64_t num_object_clones;
@@ -1218,10 +1180,8 @@ struct object_stat_sum_t {
   int64_t num_objects_degraded;
   int64_t num_objects_misplaced;
   int64_t num_objects_unfound;
-  int64_t num_rd;
-  int64_t num_rd_kb;
-  int64_t num_wr;
-  int64_t num_wr_kb;
+  int64_t num_rd, num_rd_kb;
+  int64_t num_wr, num_wr_kb;
   int64_t num_scrub_errors;	// total deep and shallow scrub errors
   int64_t num_shallow_scrub_errors;
   int64_t num_deep_scrub_errors;
@@ -1339,17 +1299,12 @@ struct object_stat_sum_t {
 };
 WRITE_CLASS_ENCODER(object_stat_sum_t)
 
-bool operator==(const object_stat_sum_t& l, const object_stat_sum_t& r);
-
 /**
  * a collection of object stat sums
  *
  * This is a collection of stat sums over different categories.
  */
 struct object_stat_collection_t {
-  /**************************************************************************
-   * WARNING: be sure to update the operator== when adding/removing fields! *
-   **************************************************************************/
   object_stat_sum_t sum;
 
   void calc_copies(int nrep) {
@@ -1386,19 +1341,10 @@ struct object_stat_collection_t {
 };
 WRITE_CLASS_ENCODER(object_stat_collection_t)
 
-inline bool operator==(const object_stat_collection_t& l,
-		       const object_stat_collection_t& r) {
-  return l.sum == r.sum;
-}
-
-
 /** pg_stat
  * aggregate stats for a single PG.
  */
 struct pg_stat_t {
-  /**************************************************************************
-   * WARNING: be sure to update the operator== when adding/removing fields! *
-   **************************************************************************/
   eversion_t version;
   version_t reported_seq;  // sequence number
   epoch_t reported_epoch;  // epoch of this report
@@ -1406,7 +1352,6 @@ struct pg_stat_t {
   utime_t last_fresh;   // last reported
   utime_t last_change;  // new state != previous state
   utime_t last_active;  // state & PG_STATE_ACTIVE
-  utime_t last_peered;  // state & PG_STATE_ACTIVE || state & PG_STATE_ACTIVE
   utime_t last_clean;   // state & PG_STATE_CLEAN
   utime_t last_unstale; // (state & PG_STATE_STALE) == 0
   utime_t last_undegraded; // (state & PG_STATE_DEGRADED) == 0
@@ -1438,7 +1383,6 @@ struct pg_stat_t {
   vector<int32_t> blocked_by;  ///< osds on which the pg is blocked
 
   utime_t last_became_active;
-  utime_t last_became_peered;
 
   /// true if num_objects_dirty is not accurate (because it was not
   /// maintained starting from pool creation)
@@ -1501,7 +1445,6 @@ struct pg_stat_t {
     ondisk_log_size -= o.ondisk_log_size;
   }
 
-  bool is_acting_osd(int32_t osd, bool primary) const;
   void dump(Formatter *f) const;
   void dump_brief(Formatter *f) const;
   void encode(bufferlist &bl) const;
@@ -1509,8 +1452,6 @@ struct pg_stat_t {
   static void generate_test_instances(list<pg_stat_t*>& o);
 };
 WRITE_CLASS_ENCODER(pg_stat_t)
-
-bool operator==(const pg_stat_t& l, const pg_stat_t& r);
 
 /*
  * summation over an entire pool
@@ -1969,6 +1910,12 @@ inline ostream& operator<<(ostream& out, const pg_query_t& q) {
   return out;
 }
 
+#define MODID_APPEND 1
+#define MODID_SETATTRS 2
+#define MODID_DELETE 3
+#define MODID_CREATE 4
+#define MODID_UPDATE_SNAPS 5
+
 class PGBackend;
 class ObjectModDesc {
   bool can_local_rollback;
@@ -1985,13 +1932,13 @@ public:
   };
   void visit(Visitor *visitor) const;
   mutable bufferlist bl;
-  enum ModID {
+  /*enum ModID {
     APPEND = 1,
     SETATTRS = 2,
     DELETE = 3,
     CREATE = 4,
     UPDATE_SNAPS = 5
-  };
+  };*/
   ObjectModDesc() : can_local_rollback(true), rollback_info_completed(false) {}
   void claim(ObjectModDesc &other) {
     bl.clear();
@@ -2020,7 +1967,7 @@ public:
     other.rollback_info_completed = rollback_info_completed;
     rollback_info_completed = temp;
   }
-  void append_id(ModID id) {
+  void append_id(int/*by ketor ModID*/ id) {
     uint8_t _id(id);
     ::encode(_id, bl);
   }
@@ -2028,7 +1975,7 @@ public:
     if (!can_local_rollback || rollback_info_completed)
       return;
     ENCODE_START(1, 1, bl);
-    append_id(APPEND);
+    append_id(MODID_APPEND);
     ::encode(old_size, bl);
     ENCODE_FINISH(bl);
   }
@@ -2036,7 +1983,7 @@ public:
     if (!can_local_rollback || rollback_info_completed)
       return;
     ENCODE_START(1, 1, bl);
-    append_id(SETATTRS);
+    append_id(MODID_SETATTRS);
     ::encode(old_attrs, bl);
     ENCODE_FINISH(bl);
   }
@@ -2044,7 +1991,7 @@ public:
     if (!can_local_rollback || rollback_info_completed)
       return false;
     ENCODE_START(1, 1, bl);
-    append_id(DELETE);
+    append_id(MODID_DELETE);
     ::encode(deletion_version, bl);
     ENCODE_FINISH(bl);
     rollback_info_completed = true;
@@ -2055,14 +2002,14 @@ public:
       return;
     rollback_info_completed = true;
     ENCODE_START(1, 1, bl);
-    append_id(CREATE);
+    append_id(MODID_CREATE);
     ENCODE_FINISH(bl);
   }
   void update_snaps(set<snapid_t> &old_snaps) {
     if (!can_local_rollback || rollback_info_completed)
       return;
     ENCODE_START(1, 1, bl);
-    append_id(UPDATE_SNAPS);
+    append_id(MODID_UPDATE_SNAPS);
     ::encode(old_snaps, bl);
     ENCODE_FINISH(bl);
   }
@@ -2095,42 +2042,50 @@ public:
 };
 WRITE_CLASS_ENCODER(ObjectModDesc)
 
-
+#define OSD_TYPES_MODIFY 1   // some unspecified modification (but not *all* modifications)
+#define OSD_TYPES_CLONE 2    // cloned object from head
+#define OSD_TYPES_DELETE 3   // deleted object
+#define OSD_TYPES_BACKLOG 4  // event invented by generate_backlog [deprecated]
+#define OSD_TYPES_LOST_REVERT 5 // lost new version, revert to an older version.
+#define OSD_TYPES_LOST_DELETE 6 // lost new version, revert to no object (deleted).
+#define OSD_TYPES_LOST_MARK 7   // lost new version, now EIO
+#define OSD_TYPES_PROMOTE 8     // promoted object from another tier
+#define OSD_TYPES_CLEAN 9       // mark an object clean
 /**
  * pg_log_entry_t - single entry/event in pg log
  *
  */
 struct pg_log_entry_t {
-  enum {
-    MODIFY = 1,   // some unspecified modification (but not *all* modifications)
-    CLONE = 2,    // cloned object from head
-    DELETE = 3,   // deleted object
-    BACKLOG = 4,  // event invented by generate_backlog [deprecated]
-    LOST_REVERT = 5, // lost new version, revert to an older version.
-    LOST_DELETE = 6, // lost new version, revert to no object (deleted).
-    LOST_MARK = 7,   // lost new version, now EIO
-    PROMOTE = 8,     // promoted object from another tier
-    CLEAN = 9,       // mark an object clean
-  };
+//  enum {
+//    OSD_TYPES_MODIFY = 1,   // some unspecified modification (but not *all* modifications)
+//    CLONE = 2,    // cloned object from head
+//    DELETE = 3,   // deleted object
+//    BACKLOG = 4,  // event invented by generate_backlog [deprecated]
+//    LOST_REVERT = 5, // lost new version, revert to an older version.
+//    LOST_DELETE = 6, // lost new version, revert to no object (deleted).
+//    LOST_MARK = 7,   // lost new version, now EIO
+//    PROMOTE = 8,     // promoted object from another tier
+//    CLEAN = 9,       // mark an object clean
+//  };
   static const char *get_op_name(int op) {
     switch (op) {
-    case MODIFY:
+    case OSD_TYPES_MODIFY:
       return "modify  ";
-    case PROMOTE:
+    case OSD_TYPES_PROMOTE:
       return "promote ";
-    case CLONE:
+    case OSD_TYPES_CLONE:
       return "clone   ";
-    case DELETE:
+    case OSD_TYPES_DELETE:
       return "delete  ";
-    case BACKLOG:
+    case OSD_TYPES_BACKLOG:
       return "backlog ";
-    case LOST_REVERT:
+    case OSD_TYPES_LOST_REVERT:
       return "l_revert";
-    case LOST_DELETE:
+    case OSD_TYPES_LOST_DELETE:
       return "l_delete";
-    case LOST_MARK:
+    case OSD_TYPES_LOST_MARK:
       return "l_mark  ";
-    case CLEAN:
+    case OSD_TYPES_CLEAN:
       return "clean   ";
     default:
       return "unknown ";
@@ -2154,9 +2109,7 @@ struct pg_log_entry_t {
 
   /// describes state for a locally-rollbackable entry
   ObjectModDesc mod_desc;
-
-  vector<osd_reqid_t> extra_reqids;
-
+      
   pg_log_entry_t()
     : op(0), user_version(0),
       invalid_hash(false), invalid_pool(false), offset(0) {}
@@ -2169,14 +2122,14 @@ struct pg_log_entry_t {
       reqid(rid), mtime(mt), invalid_hash(false), invalid_pool(false),
       offset(0) {}
       
-  bool is_clone() const { return op == CLONE; }
-  bool is_modify() const { return op == MODIFY; }
-  bool is_promote() const { return op == PROMOTE; }
-  bool is_clean() const { return op == CLEAN; }
-  bool is_backlog() const { return op == BACKLOG; }
-  bool is_lost_revert() const { return op == LOST_REVERT; }
-  bool is_lost_delete() const { return op == LOST_DELETE; }
-  bool is_lost_mark() const { return op == LOST_MARK; }
+  bool is_clone() const { return op == OSD_TYPES_CLONE; }
+  bool is_modify() const { return op == OSD_TYPES_MODIFY; }
+  bool is_promote() const { return op == OSD_TYPES_PROMOTE; }
+  bool is_clean() const { return op == OSD_TYPES_CLEAN; }
+  bool is_backlog() const { return op == OSD_TYPES_BACKLOG; }
+  bool is_lost_revert() const { return op == OSD_TYPES_LOST_REVERT; }
+  bool is_lost_delete() const { return op == OSD_TYPES_LOST_DELETE; }
+  bool is_lost_mark() const { return op == OSD_TYPES_LOST_MARK; }
 
   bool is_update() const {
     return
@@ -2184,11 +2137,11 @@ struct pg_log_entry_t {
       is_backlog() || is_lost_revert() || is_lost_mark();
   }
   bool is_delete() const {
-    return op == DELETE || op == LOST_DELETE;
+    return op == OSD_TYPES_DELETE || op == OSD_TYPES_LOST_DELETE;
   }
       
   bool reqid_is_indexed() const {
-    return reqid != osd_reqid_t() && (op == MODIFY || op == DELETE);
+    return reqid != osd_reqid_t() && (op == OSD_TYPES_MODIFY || op == OSD_TYPES_DELETE);
   }
 
   string get_key_name() const;
@@ -2402,73 +2355,73 @@ ostream& operator<<(ostream& out, const pg_missing_t& missing);
  * pg list objects response format
  *
  */
-struct pg_nls_response_t {
-  collection_list_handle_t handle;
-  list<librados::ListObjectImpl> entries;
-
-  void encode(bufferlist& bl) const {
-    ENCODE_START(1, 1, bl);
-    ::encode(handle, bl);
-    __u32 n = (__u32)entries.size();
-    ::encode(n, bl);
-    for (list<librados::ListObjectImpl>::const_iterator i = entries.begin(); i != entries.end(); ++i) {
-      ::encode(i->nspace, bl);
-      ::encode(i->oid, bl);
-      ::encode(i->locator, bl);
-    }
-    ENCODE_FINISH(bl);
-  }
-  void decode(bufferlist::iterator& bl) {
-    DECODE_START(1, bl);
-    ::decode(handle, bl);
-    __u32 n;
-    ::decode(n, bl);
-    entries.clear();
-    while (n--) {
-      librados::ListObjectImpl i;
-      ::decode(i.nspace, bl);
-      ::decode(i.oid, bl);
-      ::decode(i.locator, bl);
-      entries.push_back(i);
-    }
-    DECODE_FINISH(bl);
-  }
-  void dump(Formatter *f) const {
-    f->dump_stream("handle") << handle;
-    f->open_array_section("entries");
-    for (list<librados::ListObjectImpl>::const_iterator p = entries.begin(); p != entries.end(); ++p) {
-      f->open_object_section("object");
-      f->dump_string("namespace", p->nspace);
-      f->dump_string("object", p->oid);
-      f->dump_string("key", p->locator);
-      f->close_section();
-    }
-    f->close_section();
-  }
-  static void generate_test_instances(list<pg_nls_response_t*>& o) {
-    o.push_back(new pg_nls_response_t);
-    o.push_back(new pg_nls_response_t);
-    o.back()->handle = hobject_t(object_t("hi"), "key", 1, 2, -1, "");
-    o.back()->entries.push_back(librados::ListObjectImpl("", "one", ""));
-    o.back()->entries.push_back(librados::ListObjectImpl("", "two", "twokey"));
-    o.back()->entries.push_back(librados::ListObjectImpl("", "three", ""));
-    o.push_back(new pg_nls_response_t);
-    o.back()->handle = hobject_t(object_t("hi"), "key", 3, 4, -1, "");
-    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1one", ""));
-    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1two", "n1twokey"));
-    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1three", ""));
-    o.push_back(new pg_nls_response_t);
-    o.back()->handle = hobject_t(object_t("hi"), "key", 5, 6, -1, "");
-    o.back()->entries.push_back(librados::ListObjectImpl("", "one", ""));
-    o.back()->entries.push_back(librados::ListObjectImpl("", "two", "twokey"));
-    o.back()->entries.push_back(librados::ListObjectImpl("", "three", ""));
-    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1one", ""));
-    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1two", "n1twokey"));
-    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1three", ""));
-  }
-};
-
-WRITE_CLASS_ENCODER(pg_nls_response_t)
+//struct pg_nls_response_t {
+//  collection_list_handle_t handle;
+//  list<librados::ListObjectImpl> entries;
+//
+//  void encode(bufferlist& bl) const {
+//    ENCODE_START(1, 1, bl);
+//    ::encode(handle, bl);
+//    __u32 n = (__u32)entries.size();
+//    ::encode(n, bl);
+//    for (list<librados::ListObjectImpl>::const_iterator i = entries.begin(); i != entries.end(); ++i) {
+//      ::encode(i->nspace, bl);
+//      ::encode(i->oid, bl);
+//      ::encode(i->locator, bl);
+//    }
+//    ENCODE_FINISH(bl);
+//  }
+//  void decode(bufferlist::iterator& bl) {
+//    DECODE_START(1, bl);
+//    ::decode(handle, bl);
+//    __u32 n;
+//    ::decode(n, bl);
+//    entries.clear();
+//    while (n--) {
+//      librados::ListObjectImpl i;
+//      ::decode(i.nspace, bl);
+//      ::decode(i.oid, bl);
+//      ::decode(i.locator, bl);
+//      entries.push_back(i);
+//    }
+//    DECODE_FINISH(bl);
+//  }
+//  void dump(Formatter *f) const {
+//    f->dump_stream("handle") << handle;
+//    f->open_array_section("entries");
+//    for (list<librados::ListObjectImpl>::const_iterator p = entries.begin(); p != entries.end(); ++p) {
+//      f->open_object_section("object");
+//      f->dump_string("namespace", p->nspace);
+//      f->dump_string("object", p->oid);
+//      f->dump_string("key", p->locator);
+//      f->close_section();
+//    }
+//    f->close_section();
+//  }
+//  static void generate_test_instances(list<pg_nls_response_t*>& o) {
+//    o.push_back(new pg_nls_response_t);
+//    o.push_back(new pg_nls_response_t);
+//    o.back()->handle = hobject_t(object_t("hi"), "key", 1, 2, -1, "");
+//    o.back()->entries.push_back(librados::ListObjectImpl("", "one", ""));
+//    o.back()->entries.push_back(librados::ListObjectImpl("", "two", "twokey"));
+//    o.back()->entries.push_back(librados::ListObjectImpl("", "three", ""));
+//    o.push_back(new pg_nls_response_t);
+//    o.back()->handle = hobject_t(object_t("hi"), "key", 3, 4, -1, "");
+//    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1one", ""));
+//    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1two", "n1twokey"));
+//    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1three", ""));
+//    o.push_back(new pg_nls_response_t);
+//    o.back()->handle = hobject_t(object_t("hi"), "key", 5, 6, -1, "");
+//    o.back()->entries.push_back(librados::ListObjectImpl("", "one", ""));
+//    o.back()->entries.push_back(librados::ListObjectImpl("", "two", "twokey"));
+//    o.back()->entries.push_back(librados::ListObjectImpl("", "three", ""));
+//    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1one", ""));
+//    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1two", "n1twokey"));
+//    o.back()->entries.push_back(librados::ListObjectImpl("n1", "n1three", ""));
+//  }
+//};
+//
+//WRITE_CLASS_ENCODER(pg_nls_response_t)
 
 // For backwards compatibility with older OSD requests
 struct pg_ls_response_t {
@@ -2574,10 +2527,6 @@ struct object_copy_data_t {
   vector<snapid_t> snaps;
   ///< latest snap seq for the object (if head)
   snapid_t snap_seq;
-
-  ///< recent reqids on this object
-  vector<osd_reqid_t> reqids;
-
 public:
   object_copy_data_t() : size((uint64_t)-1), data_digest(-1),
 			 omap_digest(-1), flags(0) {}
@@ -3012,15 +2961,13 @@ public:
     enum State {
       RWNONE,
       RWREAD,
-      RWWRITE,
-      RWEXCL,
+      RWWRITE
     };
     static const char *get_state_name(State s) {
       switch (s) {
       case RWNONE: return "none";
       case RWREAD: return "read";
       case RWWRITE: return "write";
-      case RWEXCL: return "excl";
       default: return "???";
       }
     }
@@ -3033,7 +2980,7 @@ public:
     list<OpRequestRef> waiters;  ///< ops waiting on state change
 
     /// if set, restart backfill when we can get a read lock
-    bool recovery_read_marker;
+    bool backfill_read_marker;
 
     /// if set, requeue snaptrim on lock release
     bool snaptrimmer_write_marker;
@@ -3041,7 +2988,7 @@ public:
     RWState()
       : state(RWNONE),
 	count(0),
-	recovery_read_marker(false),
+	backfill_read_marker(false),
 	snaptrimmer_write_marker(false)
     {}
     bool get_read(OpRequestRef op) {
@@ -3067,8 +3014,6 @@ public:
 	return true;
       case RWWRITE:
 	return false;
-      case RWEXCL:
-	return false;
       default:
 	assert(0 == "unhandled case");
 	return false;
@@ -3087,7 +3032,7 @@ public:
       if (!greedy) {
 	// don't starve anybody!
 	if (!waiters.empty() ||
-	    recovery_read_marker) {
+	    backfill_read_marker) {
 	  return false;
 	}
       }
@@ -3101,38 +3046,10 @@ public:
 	return true;
       case RWREAD:
 	return false;
-      case RWEXCL:
-	return false;
       default:
 	assert(0 == "unhandled case");
 	return false;
       }
-    }
-    bool get_excl_lock() {
-      switch (state) {
-      case RWNONE:
-	assert(count == 0);
-	state = RWEXCL;
-	count = 1;
-	return true;
-      case RWWRITE:
-	return false;
-      case RWREAD:
-	return false;
-      case RWEXCL:
-	return false;
-      default:
-	assert(0 == "unhandled case");
-	return false;
-      }
-    }
-    bool get_excl(OpRequestRef op) {
-      if (get_excl_lock()) {
-	return true;
-      } // else
-      if (op)
-	waiters.push_back(op);
-      return false;
     }
     /// same as get_write_lock, but ignore starvation
     bool take_write_lock() {
@@ -3159,10 +3076,6 @@ public:
       assert(state == RWWRITE);
       dec(requeue);
     }
-    void put_excl(list<OpRequestRef> *requeue) {
-      assert(state == RWEXCL);
-      dec(requeue);
-    }
     bool empty() const { return state == RWNONE; }
   } rwstate;
 
@@ -3171,22 +3084,6 @@ public:
   }
   bool get_write(OpRequestRef op) {
     return rwstate.get_write(op, false);
-  }
-  bool get_excl(OpRequestRef op) {
-    return rwstate.get_excl(op);
-  }
-  bool get_lock_type(OpRequestRef op, RWState::State type) {
-    switch (type) {
-    case RWState::RWWRITE:
-      return get_write(op);
-    case RWState::RWREAD:
-      return get_read(op);
-    case RWState::RWEXCL:
-      return get_excl(op);
-    default:
-      assert(0 == "invalid lock type");
-      return true;
-    }
   }
   bool get_write_greedy(OpRequestRef op) {
     return rwstate.get_write(op, true);
@@ -3199,40 +3096,27 @@ public:
       return false;
     }
   }
-  bool get_recovery_read() {
-    rwstate.recovery_read_marker = true;
+  bool get_backfill_read() {
+    rwstate.backfill_read_marker = true;
     if (rwstate.get_read_lock()) {
       return true;
     }
     return false;
   }
-  void drop_recovery_read(list<OpRequestRef> *ls) {
-    assert(rwstate.recovery_read_marker);
+  void drop_backfill_read(list<OpRequestRef> *ls) {
+    assert(rwstate.backfill_read_marker);
     rwstate.put_read(ls);
-    rwstate.recovery_read_marker = false;
+    rwstate.backfill_read_marker = false;
   }
   void put_read(list<OpRequestRef> *to_wake) {
     rwstate.put_read(to_wake);
-  }
-  void put_excl(list<OpRequestRef> *to_wake,
-		 bool *requeue_recovery,
-		 bool *requeue_snaptrimmer) {
-    rwstate.put_excl(to_wake);
-    if (rwstate.empty() && rwstate.recovery_read_marker) {
-      rwstate.recovery_read_marker = false;
-      *requeue_recovery = true;
-    }
-    if (rwstate.empty() && rwstate.snaptrimmer_write_marker) {
-      rwstate.snaptrimmer_write_marker = false;
-      *requeue_snaptrimmer = true;
-    }
   }
   void put_write(list<OpRequestRef> *to_wake,
 		 bool *requeue_recovery,
 		 bool *requeue_snaptrimmer) {
     rwstate.put_write(to_wake);
-    if (rwstate.empty() && rwstate.recovery_read_marker) {
-      rwstate.recovery_read_marker = false;
+    if (rwstate.empty() && rwstate.backfill_read_marker) {
+      rwstate.backfill_read_marker = false;
       *requeue_recovery = true;
     }
     if (rwstate.empty() && rwstate.snaptrimmer_write_marker) {

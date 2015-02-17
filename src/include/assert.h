@@ -9,9 +9,11 @@
 #endif
 
 #ifdef __CEPH__
-# include "acconfig.h"
+#include "acconfig.h"
 #endif
-
+#ifdef _WIN32
+#define __STRING(x) #x 
+#endif
 class CephContext;
 
 #ifdef __cplusplus

@@ -16,8 +16,10 @@
 #define CEPH_XLIST_H
 
 #include "include/assert.h"
+#ifdef _WIN32
+#else
 #include <cstdlib>
-
+#endif
 template<typename T>
 class xlist {
 public:

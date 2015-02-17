@@ -18,14 +18,20 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+#ifdef _WIN32
+#else
 #include <netinet/in.h>
+#endif
 #if defined(__linux__)
 #include <linux/types.h>
 #elif defined(__FreeBSD__)
 #include <sys/types.h>
 #endif
+#ifdef _WIN32
+#include "common/ceph-mingw-type.h"
+#else
 #include <unistd.h>
+#endif
 #include <string.h>
 #include "rados_types.h"
 
@@ -65,6 +71,22 @@ extern "C" {
  * rados_read_op_set_flags() and rados_write_op_set_flags().
  */
 /** @cond TODO_enums_not_yet_in_asphyxiate */
+#ifdef _WIN32
+enum {
+  // fail a create operation if the object already exists
+  LIBRADOS_OP_FLAG_EXCL               =  0x1,
+  // allow the transaction to succeed even if the flagged op fails
+  LIBRADOS_OP_FLAG_FAILOK 	      = 0x2,
+  // indicate read/write op random
+  LIBRADOS_OP_FLAG_FADVISE_RANDOM     = 0x4,
+  // indicate read/write op sequential
+  LIBRADOS_OP_FLAG_FADVISE_SEQUENTIAL = 0x8,
+  // indicate read/write data will be accessed in the near future
+  LIBRADOS_OP_FLAG_FADVISE_WILLNEED   = 0x10,
+  // indicate read/write data will not accessed int the near future
+  LIBRADOS_OP_FLAG_FADVISE_DONTNEED   = 0x20,
+};
+#else
 enum {
   // fail a create operation if the object already exists
   LIBRADOS_OP_FLAG_EXCL               =  0x1,
@@ -81,7 +103,7 @@ enum {
   // indicate read/write data will not accessed again (by *this* client)
   LIBRADOS_OP_FLAG_FADVISE_NOCACHE    = 0x40,
 };
-
+#endif
 #if __GNUC__ >= 4
   #define CEPH_RADOS_API  __attribute__ ((visibility ("default")))
 #else
@@ -2220,8 +2242,10 @@ CEPH_RADOS_API void rados_write_op_assert_exists(rados_write_op_t write_op);
  * @param write_op operation to add this action to
  * @param ver object version number
  */
+#ifdef _WIN32
+#else
 CEPH_RADOS_API void rados_write_op_assert_version(rados_write_op_t write_op, uint64_t ver);
-
+#endif
 /**
  * Ensure that given xattr satisfies comparison.
  * If the comparison is not satisfied, the return code of the
@@ -2479,8 +2503,10 @@ CEPH_RADOS_API void rados_read_op_assert_exists(rados_read_op_t read_op);
  * @param read_op operation to add this action to
  * @param ver object version number
  */
+#ifdef _WIN32
+#else
 CEPH_RADOS_API void rados_read_op_assert_version(rados_read_op_t write_op, uint64_t ver);
-
+#endif
 /**
  * Ensure that the an xattr satisfies a comparison
  * If the comparison is not satisfied, the return code of the
@@ -2806,10 +2832,12 @@ CEPH_RADOS_API int rados_break_lock(rados_ioctx_t io, const char *o,
  * @param expire_seconds number of seconds to blacklist (0 for default)
  * @returns 0 on success, negative error code on failure
  */
+#ifdef _WIN32
+#else
 CEPH_RADOS_API int rados_blacklist_add(rados_t cluster,
 				       char *client_address,
 				       uint32_t expire_seconds);
-
+#endif
 /**
  * @defgroup librados_h_commands Mon/OSD/PG Commands
  *

@@ -19,13 +19,19 @@
 #include "global/pidfile.h"
 #include "global/signal_handler.h"
 
+#ifdef _WIN32
+#else
 #include <poll.h>
+#endif
+
 #include <signal.h>
 #include <sstream>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#ifdef _WIN32
+#else
 void install_sighandler(int signum, signal_handler_t handler, int flags)
 {
   int ret;
@@ -47,7 +53,7 @@ void install_sighandler(int signum, signal_handler_t handler, int flags)
     exit(1);
   }
 }
-
+#endif
 void sighup_handler(int signum)
 {
   g_ceph_context->reopen_logs();
@@ -72,7 +78,8 @@ static void reraise_fatal(int signum)
   }
   exit(1);
 }
-
+#ifdef _WIN32
+#else
 static void handle_fatal_signal(int signum)
 {
   // This code may itself trigger a SIGSEGV if the heap is corrupt. In that
@@ -120,7 +127,7 @@ void install_standard_sighandlers(void)
   install_sighandler(SIGXFSZ, handle_fatal_signal, SA_RESETHAND | SA_NODEFER);
   install_sighandler(SIGSYS, handle_fatal_signal, SA_RESETHAND | SA_NODEFER);
 }
-
+#endif
 
 
 /// --- safe handler ---
@@ -163,6 +170,8 @@ struct SignalHandler : public Thread {
   SignalHandler()
     : stop(false), lock("SignalHandler::lock")
   {
+#ifdef _WIN32
+#else
     for (unsigned i = 0; i < 32; i++)
       handlers[i] = NULL;
 
@@ -174,6 +183,7 @@ struct SignalHandler : public Thread {
 
     // create thread
     create();
+#endif
   }
 
   ~SignalHandler() {
@@ -193,6 +203,8 @@ struct SignalHandler : public Thread {
 
   // thread entry point
   void *entry() {
+#ifdef _WIN32
+#else
     while (!stop) {
       // build fd list
       struct pollfd fds[33];
@@ -237,6 +249,7 @@ struct SignalHandler : public Thread {
 	//cout << "no data, got r=" << r << " errno=" << errno << std::endl;
       }
     }
+#endif
     return NULL;
   }
 
@@ -263,6 +276,8 @@ static void handler_hook(int signum)
 
 void SignalHandler::register_handler(int signum, signal_handler_t handler, bool oneshot)
 {
+#ifdef _WIN32
+#else
   int r;
 
   assert(signum >= 0 && signum < 32);
@@ -293,10 +308,13 @@ void SignalHandler::register_handler(int signum, signal_handler_t handler, bool 
 
   int ret = sigaction(signum, &act, &oldact);
   assert(ret == 0);
+#endif
 }
 
 void SignalHandler::unregister_handler(int signum, signal_handler_t handler)
 {
+#ifdef _WIN32
+#else
   assert(signum >= 0 && signum < 32);
   safe_handler *h = handlers[signum];
   assert(h);
@@ -314,6 +332,7 @@ void SignalHandler::unregister_handler(int signum, signal_handler_t handler)
   close(h->pipefd[0]);
   close(h->pipefd[1]);
   delete h;
+#endif
 }
 
 
@@ -321,39 +340,57 @@ void SignalHandler::unregister_handler(int signum, signal_handler_t handler)
 
 void init_async_signal_handler()
 {
+#ifdef _WIN32
+#else
   assert(!g_signal_handler);
   g_signal_handler = new SignalHandler;
+#endif
 }
 
 void shutdown_async_signal_handler()
 {
+#ifdef _WIN32
+#else
   assert(g_signal_handler);
   delete g_signal_handler;
   g_signal_handler = NULL;
+#endif
 }
 
 void queue_async_signal(int signum)
 {
+#ifdef _WIN32
+#else
   assert(g_signal_handler);
   g_signal_handler->queue_signal(signum);
+#endif
 }
 
 void register_async_signal_handler(int signum, signal_handler_t handler)
 {
+#ifdef _WIN32
+#else
   assert(g_signal_handler);
   g_signal_handler->register_handler(signum, handler, false);
+#endif
 }
 
 void register_async_signal_handler_oneshot(int signum, signal_handler_t handler)
 {
+#ifdef _WIN32
+#else
   assert(g_signal_handler);
   g_signal_handler->register_handler(signum, handler, true);
+#endif
 }
 
 void unregister_async_signal_handler(int signum, signal_handler_t handler)
 {
+#ifdef _WIN32
+#else
   assert(g_signal_handler);
   g_signal_handler->unregister_handler(signum, handler);
+#endif
 }
 
 

@@ -23,15 +23,19 @@
 #include "include/atomic.h"
 #include "common/Mutex.h"
 #include "include/types.h"
-#include "include/compat.h"
+#include "include/compat.h"\
+#ifdef _WIN32
+#else
 #if defined(HAVE_XIO)
 #include "msg/xio/XioMsg.h"
+#endif
+#include <sys/uio.h>
 #endif
 
 #include <errno.h>
 #include <fstream>
 #include <sstream>
-#include <sys/uio.h>
+
 #include <limits.h>
 
 namespace ceph {
@@ -218,7 +222,8 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       return new raw_malloc(len);
     }
   };
-
+#ifdef _WIN32
+#else
 #ifndef __CYGWIN__
   class buffer::raw_mmap_pages : public buffer::raw {
   public:
@@ -270,6 +275,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
 #endif
 
 #ifdef __CYGWIN__
+#endif
   class buffer::raw_hack_aligned : public buffer::raw {
     unsigned align;
     char *realdata;
@@ -296,6 +302,8 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       return new raw_hack_aligned(len, align);
     }
   };
+#ifdef _WIN32
+#else
 #endif
 
 #ifdef CEPH_HAVE_SPLICE
@@ -474,7 +482,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
     int pipefds[2];
   };
 #endif // CEPH_HAVE_SPLICE
-
+#endif
   /*
    * primitive buffer types
    */
@@ -531,7 +539,8 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       return new buffer::raw_char(len);
     }
   };
-
+#ifdef _WIN32
+#else
 #if defined(HAVE_XIO)
   class buffer::xio_msg_buffer : public buffer::raw {
   private:
@@ -584,7 +593,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
     return bp;
   }
 #endif /* HAVE_XIO */
-
+#endif
   buffer::raw* buffer::copy(const char *c, unsigned len) {
     raw* r = new raw_char(len);
     memcpy(r->data, c, len);
@@ -605,6 +614,16 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
   buffer::raw* buffer::create_static(unsigned len, char *buf) {
     return new raw_static(buf, len);
   }
+#ifdef _WIN32
+buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
+//#ifndef __CYGWIN__
+    //return new raw_mmap_pages(len);
+    //return new raw_posix_aligned(len, align);
+//#else
+    return new raw_hack_aligned(len, align);
+//#endif
+  }
+#else
   buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
 #ifndef __CYGWIN__
     //return new raw_mmap_pages(len);
@@ -613,6 +632,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
     return new raw_hack_aligned(len, align);
 #endif
   }
+#endif
   buffer::raw* buffer::create_page_aligned(unsigned len) {
     return create_aligned(len, CEPH_PAGE_SIZE);
   }
@@ -1736,6 +1756,8 @@ int buffer::list::write_file(const char *fn, int mode)
 
 int buffer::list::write_fd(int fd) const
 {
+#ifdef _WIN32
+#else
   if (can_zero_copy())
     return write_fd_zero_copy(fd);
 
@@ -1787,6 +1809,7 @@ int buffer::list::write_fd(int fd) const
     }
   }
   return 0;
+#endif
 }
 
 int buffer::list::write_fd_zero_copy(int fd) const

@@ -36,13 +36,14 @@
 #define HAVE_EVPORT 1
 #endif
 #endif
-
+#ifdef _WIN32
+#else
 #include <pthread.h>
-
+#include "net_handler.h"
+#endif
 #include "include/Context.h"
 #include "include/unordered_map.h"
 #include "common/WorkQueue.h"
-#include "net_handler.h"
 
 #define EVENT_NONE 0
 #define EVENT_READABLE 1
@@ -101,28 +102,55 @@ class EventCenter {
   CephContext *cct;
   int nevent;
   // Used only to external event
+#ifdef _WIN32
+  Mutex lock;
+#else
   Mutex external_lock, file_lock, time_lock;
+#endif
   deque<EventCallbackRef> external_events;
   FileEvent *file_events;
   EventDriver *driver;
   map<utime_t, list<TimeEvent> > time_events;
   uint64_t time_event_next_id;
   time_t last_time; // last time process time event
+#ifdef _WIN32
+  int notify_receive_fd;
+  int notify_send_fd;
+#else
   utime_t next_time; // next wake up time
   int notify_receive_fd;
   int notify_send_fd;
   NetHandler net;
   pthread_t owner;
-
+#endif
   int process_time_events();
   FileEvent *_get_file_event(int fd) {
+#ifdef _WIN32
+#else
     assert(fd < nevent);
+#endif
     FileEvent *p = &file_events[fd];
     if (!p->mask)
       new(p) FileEvent();
     return p;
   }
+#ifdef _WIN32
+ public:
+  EventCenter(CephContext *c):
+    cct(c), nevent(0),
+    lock("AsyncMessenger::lock"),
+    driver(NULL), time_event_next_id(0),
+    notify_receive_fd(-1), notify_send_fd(-1) {
+    last_time = time(NULL);
+  }
+  ~EventCenter();
+  int init(int nevent);
+  // Used by internal thread
+  int create_file_event(int fd, int mask, EventCallbackRef ctxt);
+  uint64_t create_time_event(uint64_t milliseconds, EventCallbackRef ctxt);
+  void delete_file_event(int fd, int mask);
 
+#else
  public:
   EventCenter(CephContext *c):
     cct(c), nevent(0),
@@ -146,6 +174,7 @@ class EventCenter {
   uint64_t create_time_event(uint64_t milliseconds, EventCallbackRef ctxt);
   void delete_file_event(int fd, int mask);
   void delete_time_event(uint64_t id);
+#endif
   int process_events(int timeout_microseconds);
   void wakeup();
 

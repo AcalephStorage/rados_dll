@@ -11,6 +11,8 @@
 #ifdef USE_CRYPTOPP
 # define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
 #include <string.h>
+#ifdef _WIN32
+#else
 # include <cryptopp/md5.h>
 # include <cryptopp/sha.h>
 # include <cryptopp/hmac.h>
@@ -52,7 +54,15 @@ namespace ceph {
 
 // ugly bit of CryptoPP that we have to emulate here :(
 typedef unsigned char byte;
-
+#endif
+#ifdef _WIN32
+namespace ceph {
+  namespace crypto {
+    void init(CephContext *cct);
+    void shutdown();
+	}
+}
+#else
 namespace ceph {
   namespace crypto {
     void assert_init();
@@ -152,6 +162,7 @@ namespace ceph {
 	Restart();
       }
     };
+#endif
   }
 }
 

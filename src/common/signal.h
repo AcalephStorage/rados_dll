@@ -20,8 +20,10 @@
 
 // Returns a string showing the set of blocked signals for the calling thread.
 // Other threads may have a different set (this is per-thread thing).
+#ifdef _WIN32
+#else
 extern std::string signal_mask_to_str();
-
+#endif
 // Block a list of signals. If siglist == NULL, blocks all signals.
 // If not, the list is terminated with a 0 element.
 //

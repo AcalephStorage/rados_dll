@@ -28,13 +28,23 @@
 #include <string.h>
 #include <sys/types.h>
 
-
+#ifdef _WIN32
+Thread::Thread()
+  : /*by ketor thread_id(0),*/
+    pid(0),
+    ioprio_class(-1),
+    ioprio_priority(-1)
+{
+	thread_id.p = NULL;
+	thread_id.x = 0;
+#else
 Thread::Thread()
   : thread_id(0),
     pid(0),
     ioprio_class(-1),
     ioprio_priority(-1)
 {
+#endif
 }
 
 Thread::~Thread()
@@ -68,17 +78,29 @@ const pthread_t &Thread::get_thread_id()
 
 bool Thread::is_started() const
 {
+#ifdef _WIN32
+  return thread_id.p != NULL;
+#else
   return thread_id != 0;
+#endif
 }
 
 bool Thread::am_self()
 {
+#ifdef _WIN32
+  return (pthread_self().p == thread_id.p);
+#else
   return (pthread_self() == thread_id);
+#endif
 }
 
 int Thread::kill(int signal)
 {
+#ifdef _WIN32
+  if (thread_id.p != NULL)
+#else
   if (thread_id)
+#endif
     return pthread_kill(thread_id, signal);
   else
     return -EINVAL;
@@ -102,6 +124,9 @@ int Thread::try_create(size_t stacksize)
   // the set of signals we want to block.  (It's ok to block signals more
   // signals than usual for a little while-- they will just be delivered to
   // another thread or delieverd to this thread later.)
+#ifdef _WIN32
+  r = pthread_create(&thread_id, thread_attr, _entry_func, (void*)this);
+#else
   sigset_t old_sigset;
   if (g_code_env == CODE_ENVIRONMENT_LIBRARY) {
     block_signals(NULL, &old_sigset);
@@ -112,7 +137,7 @@ int Thread::try_create(size_t stacksize)
   }
   r = pthread_create(&thread_id, thread_attr, _entry_func, (void*)this);
   restore_sigset(&old_sigset);
-
+#endif
   if (thread_attr)
     free(thread_attr);
   return r;
@@ -132,14 +157,24 @@ void Thread::create(size_t stacksize)
 
 int Thread::join(void **prval)
 {
-  if (thread_id == 0) {
+#ifdef _WIN32
+  if (thread_id.p == NULL)
+#else
+  if (thread_id == 0) 
+#endif
+{
     assert("join on thread that was never started" == 0);
     return -EINVAL;
   }
 
   int status = pthread_join(thread_id, prval);
   assert(status == 0);
+#ifdef _WIN32
+  thread_id.p = NULL;
+  thread_id.x = 0;
+#else
   thread_id = 0;
+#endif
   return status;
 }
 

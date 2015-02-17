@@ -22,6 +22,26 @@
 #include "msg/Messenger.h"
 #include "PipeConnection.h"
 
+#ifdef _WIN32
+/* Structure describing messages sent by
+   `sendmsg' and received by `recvmsg'.  */
+struct msghdr
+  {
+    void *msg_name;             /* Address to send to/receive from.  */
+    socklen_t msg_namelen;      /* Length of address data.  */
+
+    struct iovec *msg_iov;	/* Vector of data to send/receive into.  */
+    size_t msg_iovlen;          /* Number of elements in the vector.  */
+
+    void *msg_control;          /* Ancillary data (eg BSD filedesc passing). */
+    size_t msg_controllen;	/* Ancillary data buffer length.
+                                   !! The type should be socklen_t but the
+                                   definition of the kernel is incompatible
+                                   with this.  */
+
+    int msg_flags;              /* Flags on received message.  */
+  };
+#endif
 
 class SimpleMessenger;
 class IncomingQueue;
@@ -177,7 +197,11 @@ class DispatchQueue;
     }
 
   private:
+#ifdef _WIN32
+    SOCKET sd;
+#else
     int sd;
+#endif
     struct iovec msgvec[IOV_MAX];
 
   public:
@@ -326,7 +350,11 @@ class DispatchQueue;
     void shutdown_socket() {
       recv_reset();
       if (sd >= 0)
+#ifdef _WIN32
+        ::shutdown(sd, SD_BOTH);
+#else
         ::shutdown(sd, SHUT_RDWR);
+#endif
     }
 
     void recv_reset() {

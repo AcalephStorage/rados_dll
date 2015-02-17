@@ -181,7 +181,12 @@ public:
    * @param sd socket
    */
   Pipe *add_accept_pipe(int sd);
+#ifdef _WIN32
+  Connection *create_anon_connection() {
+    return new PipeConnection(cct, NULL);
+  }
 
+#endif
 private:
 
   /**

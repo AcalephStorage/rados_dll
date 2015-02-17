@@ -35,7 +35,11 @@
 
 #include "crush.h"
 #include "hash.h"
+
+#ifdef _WIN32
+#else
 #include "crush_ln_table.h"
+#endif
 
 /*
  * Implement the core CRUSH mapping algorithm.
@@ -252,7 +256,8 @@ static int bucket_straw_choose(struct crush_bucket_straw *bucket,
 	}
 	return bucket->h.items[high];
 }
-
+#ifdef _WIN32
+#else
 // compute 2^44*log2(input+1)
 uint64_t crush_ln(unsigned xin)
 {
@@ -338,7 +343,7 @@ static int bucket_straw2_choose(struct crush_bucket_straw2 *bucket,
 	return bucket->h.items[high];
 }
 
-
+#endif
 static int crush_bucket_choose(struct crush_bucket *in, int x, int r)
 {
 	dprintk(" crush_bucket_choose %d x=%d r=%d\n", in->id, x, r);
@@ -356,9 +361,12 @@ static int crush_bucket_choose(struct crush_bucket *in, int x, int r)
 	case CRUSH_BUCKET_STRAW:
 		return bucket_straw_choose((struct crush_bucket_straw *)in,
 					   x, r);
+#ifdef _WIN32
+#else
 	case CRUSH_BUCKET_STRAW2:
 		return bucket_straw2_choose((struct crush_bucket_straw2 *)in,
 					    x, r);
+#endif
 	default:
 		dprintk("unknown bucket %d alg %d\n", in->id, in->alg);
 		return in->items[0];
@@ -748,9 +756,11 @@ static void crush_choose_indep(const struct crush_map *map,
 			out2[rep] = CRUSH_ITEM_NONE;
 		}
 	}
+#ifdef _WIN32
+#else
         if (map->choose_tries && ftotal <= map->choose_total_tries)
           map->choose_tries[ftotal]++;
-
+#endif
 #ifdef DEBUG_INDEP
 	if (out2) {
 		printf("%u %d a: ", ftotal, left);

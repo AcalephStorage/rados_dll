@@ -13,8 +13,12 @@
  */
 
 #include <time.h>
-
+#ifdef _WIN32
+#else
 #include <boost/algorithm/string.hpp>
+#include "common/HeartbeatMap.h"
+#include "common/lockdep.h"
+#endif
 
 #include "common/admin_socket.h"
 #include "common/perf_counters.h"
@@ -22,9 +26,9 @@
 #include "common/ceph_context.h"
 #include "common/config.h"
 #include "common/debug.h"
-#include "common/HeartbeatMap.h"
+
 #include "common/errno.h"
-#include "common/lockdep.h"
+
 #include "common/Formatter.h"
 #include "log/Log.h"
 #include "auth/Crypto.h"
@@ -36,9 +40,10 @@
 #include <pthread.h>
 
 #include "include/Spinlock.h"
-
+#ifdef _WIN32
+#else
 using ceph::HeartbeatMap;
-
+#endif
 class CephContextServiceThread : public Thread
 {
 public:
@@ -69,7 +74,10 @@ public:
         _cct->_log->reopen_log_file();
         _reopen_logs = false;
       }
+#ifdef _WIN32
+#else
       _cct->_heartbeat_map->check_touch_file();
+#endif
     }
     return NULL;
   }
@@ -217,11 +225,15 @@ public:
 
   bool call(std::string command, cmdmap_t& cmdmap, std::string format,
 	    bufferlist& out) {
+#ifdef _WIN32
+#else
     m_cct->do_command(command, cmdmap, format, &out);
+#endif
     return true;
   }
 };
-
+#ifdef _WIN32
+#else
 void CephContext::do_command(std::string command, cmdmap_t& cmdmap,
 			     std::string format, bufferlist *out)
 {
@@ -347,8 +359,22 @@ void CephContext::do_command(std::string command, cmdmap_t& cmdmap,
   lgeneric_dout(this, 1) << "do_command '" << command << "' '" << ss.str()
 		         << "result is " << out->length() << " bytes" << dendl;
 }
-
-
+#endif
+#ifdef _WIN32
+CephContext::CephContext(uint32_t module_type_)
+  : nref(1),
+    _conf(new md_config_t()),
+    _log(NULL),
+    _module_type(module_type_),
+    _service_thread(NULL),
+    _log_obs(NULL),
+    //by ketor _admin_socket(NULL),
+    _perf_counters_collection(NULL),
+    _perf_counters_conf_obs(NULL),
+    //by ketor _heartbeat_map(NULL),
+    _crypto_none(NULL),
+    _crypto_aes(NULL)
+#else
 CephContext::CephContext(uint32_t module_type_)
   : nref(1),
     _conf(new md_config_t()),
@@ -362,6 +388,7 @@ CephContext::CephContext(uint32_t module_type_)
     _heartbeat_map(NULL),
     _crypto_none(NULL),
     _crypto_aes(NULL)
+#endif
 {
   ceph_spin_init(&_service_thread_lock);
   ceph_spin_init(&_associated_objs_lock);
@@ -377,6 +404,9 @@ CephContext::CephContext(uint32_t module_type_)
   _conf->add_observer(_cct_obs);
 
   _perf_counters_collection = new PerfCountersCollection(this);
+#ifdef _WIN32
+  _admin_hook = new CephContextHook(this);
+#else
   _admin_socket = new AdminSocket(this);
   _heartbeat_map = new HeartbeatMap(this);
 
@@ -397,7 +427,7 @@ CephContext::CephContext(uint32_t module_type_)
   _admin_socket->register_command("log flush", "log flush", _admin_hook, "flush log entries to log file");
   _admin_socket->register_command("log dump", "log dump", _admin_hook, "dump recent log entries to log file");
   _admin_socket->register_command("log reopen", "log reopen", _admin_hook, "reopen log file");
-
+#endif
   _crypto_none = new CryptoNone;
   _crypto_aes = new CryptoAES;
 }
@@ -405,7 +435,9 @@ CephContext::CephContext(uint32_t module_type_)
 CephContext::~CephContext()
 {
   join_service_thread();
-
+#ifdef _WIN32
+  delete _admin_hook;
+#else
   for (map<string, AssociatedSingletonObject*>::iterator it = _associated_objs.begin();
        it != _associated_objs.end(); ++it)
     delete it->second;
@@ -432,7 +464,7 @@ CephContext::~CephContext()
   delete _admin_socket;
 
   delete _heartbeat_map;
-
+#endif
   delete _perf_counters_collection;
   _perf_counters_collection = NULL;
 
@@ -481,8 +513,11 @@ void CephContext::start_service_thread()
   _conf->call_all_observers();
 
   // start admin socket
+#ifdef _WIN32
+#else
   if (_conf->admin_socket.length())
     _admin_socket->init(_conf->admin_socket);
+#endif
 }
 
 void CephContext::reopen_logs()
@@ -518,11 +553,13 @@ PerfCountersCollection *CephContext::get_perfcounters_collection()
 {
   return _perf_counters_collection;
 }
-
+#ifdef _WIN32
+#else
 AdminSocket *CephContext::get_admin_socket()
 {
   return _admin_socket;
 }
+#endif
 
 CryptoHandler *CephContext::get_crypto_handler(int type)
 {

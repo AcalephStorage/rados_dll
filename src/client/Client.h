@@ -113,10 +113,16 @@ struct CommandOp
 /* getdir result */
 struct DirEntry {
   string d_name;
+#ifdef _WIN32
+  struct stat_ceph st;
+  DirEntry(const string &n, struct stat_ceph& s, int stm) : d_name(n), st(s), stmask(stm) {}
+#else
   struct stat st;
+  DirEntry(const string &n, struct stat& s, int stm) : d_name(n), st(s), stmask(stm) {}
+#endif
   int stmask;
   DirEntry(const string &s) : d_name(s), stmask(0) {}
-  DirEntry(const string &n, struct stat& s, int stm) : d_name(n), st(s), stmask(stm) {}
+
 };
 
 struct Inode;
@@ -433,7 +439,11 @@ protected:
   // path traversal for high-level interface
   Inode *cwd;
   int path_walk(const filepath& fp, Inode **end, bool followsym=true);
+#ifdef _WIN32
+  int fill_stat(Inode *in, struct stat_ceph *st, frag_info_t *dirstat=0, nest_info_t *rstat=0);
+#else
   int fill_stat(Inode *in, struct stat *st, frag_info_t *dirstat=0, nest_info_t *rstat=0);
+#endif
   void touch_dn(Dentry *dn);
 
   // trim cache.
@@ -600,8 +610,11 @@ private:
   void fill_dirent(struct dirent *de, const char *name, int type, uint64_t ino, loff_t next_off);
 
   // some readdir helpers
+#ifdef _WIN32
+  typedef int (*add_dirent_cb_t)(void *p, struct dirent *de, struct stat_ceph *st, int stmask, off_t off);
+#else
   typedef int (*add_dirent_cb_t)(void *p, struct dirent *de, struct stat *st, int stmask, off_t off);
-
+#endif
   int _opendir(Inode *in, dir_result_t **dirpp, int uid=-1, int gid=-1);
   void _readdir_drop_dirp_buffer(dir_result_t *dirp);
   bool _readdir_have_frag(dir_result_t *dirp);
@@ -646,7 +659,11 @@ private:
   int _rmdir(Inode *dir, const char *name, int uid=-1, int gid=-1);
   int _symlink(Inode *dir, const char *name, const char *target, int uid=-1, int gid=-1, Inode **inp = 0);
   int _mknod(Inode *dir, const char *name, mode_t mode, dev_t rdev, int uid=-1, int gid=-1, Inode **inp = 0);
+#ifdef _WIN32
+  int _setattr(Inode *in, struct stat_ceph *attr, int mask, int uid=-1, int gid=-1, Inode **inp = 0);
+#else
   int _setattr(Inode *in, struct stat *attr, int mask, int uid=-1, int gid=-1, Inode **inp = 0);
+#endif
   int _getattr(Inode *in, int mask, int uid=-1, int gid=-1, bool force=false);
   int _readlink(Inode *in, char *buf, size_t size);
   int _getxattr(Inode *in, const char *name, void *value, size_t len, int uid=-1, int gid=-1);
@@ -763,8 +780,11 @@ public:
 
   struct dirent * readdir(dir_result_t *d);
   int readdir_r(dir_result_t *dirp, struct dirent *de);
+#ifdef _WIN32
+  int readdirplus_r(dir_result_t *dirp, struct dirent *de, struct stat_ceph *st, int *stmask);
+#else
   int readdirplus_r(dir_result_t *dirp, struct dirent *de, struct stat *st, int *stmask);
-
+#endif
   int getdir(const char *relpath, list<string>& names);  // get the whole dir at once.
 
   /**
@@ -799,12 +819,19 @@ public:
   int symlink(const char *existing, const char *newname);
 
   // inode stuff
+#ifdef _WIN32
+  int stat(const char *path, struct stat_ceph *stbuf, frag_info_t *dirstat=0, int mask=CEPH_STAT_CAP_INODE_ALL);
+  int lstat(const char *path, struct stat_ceph *stbuf, frag_info_t *dirstat=0, int mask=CEPH_STAT_CAP_INODE_ALL);
+  int setattr(const char *relpath, struct stat_ceph *attr, int mask);
+  int fsetattr(int fd, struct stat_ceph *attr, int mask);
+#else
   int stat(const char *path, struct stat *stbuf, frag_info_t *dirstat=0, int mask=CEPH_STAT_CAP_INODE_ALL);
   int lstat(const char *path, struct stat *stbuf, frag_info_t *dirstat=0, int mask=CEPH_STAT_CAP_INODE_ALL);
-  int lstatlite(const char *path, struct statlite *buf);
-
   int setattr(const char *relpath, struct stat *attr, int mask);
   int fsetattr(int fd, struct stat *attr, int mask);
+#endif
+  int lstatlite(const char *path, struct statlite *buf);
+
   int chmod(const char *path, mode_t mode);
   int fchmod(int fd, mode_t mode);
   int lchmod(const char *path, mode_t mode);
@@ -830,7 +857,11 @@ public:
   int fake_write_size(int fd, loff_t size);
   int ftruncate(int fd, loff_t size);
   int fsync(int fd, bool syncdataonly);
+#ifdef _WIN32
+  int fstat(int fd, struct stat_ceph *stbuf);
+#else
   int fstat(int fd, struct stat *stbuf);
+#endif
   int fallocate(int fd, int mode, loff_t offset, loff_t length);
 
   // full path xattr ops
@@ -873,7 +904,8 @@ public:
   // expose caps
   int get_caps_issued(int fd);
   int get_caps_issued(const char *path);
-
+#ifdef _WIN32
+#else
   // low-level interface v2
   inodeno_t ll_get_inodeno(Inode *in) {
     Mutex::Locker lock(client_lock);
@@ -954,6 +986,7 @@ public:
   int ll_osdaddr(int osd, char* buf, size_t size);
 
   void ll_register_callbacks(struct client_callback_args *args);
+#endif
 };
 
 #endif

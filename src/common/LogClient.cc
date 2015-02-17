@@ -27,8 +27,10 @@
 #include <iostream>
 #include <errno.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+#else
 #include <syslog.h>
-
+#endif
 #ifdef DARWIN
 #include <sys/param.h>
 #include <sys/mount.h>
@@ -46,6 +48,8 @@ int parse_log_client_options(CephContext *cct,
 			     map<string,string> &log_channels,
 			     map<string,string> &log_prios)
 {
+#ifdef _WIN32
+#else
   ostringstream oss;
 
   int r = get_conf_str_map_helper(cct->_conf->clog_to_monitors, oss,
@@ -76,6 +80,7 @@ int parse_log_client_options(CephContext *cct,
     return r;
   }
   return 0;
+#endif
 }
 
 #undef dout_prefix
@@ -132,6 +137,8 @@ void LogChannel::update_config(map<string,string> &log_to_monitors,
 			       map<string,string> &log_channels,
 			       map<string,string> &log_prios)
 {
+#ifdef _WIN32
+#else
   bool to_monitors = (get_str_map_key(log_to_monitors, log_channel,
                                       &CLOG_CHANNEL_DEFAULT) == "true");
   bool to_syslog = (get_str_map_key(log_to_syslog, log_channel,
@@ -150,6 +157,7 @@ void LogChannel::update_config(map<string,string> &log_to_monitors,
 		 << " to_syslog: " << (to_syslog ? "true" : "false")
 		 << " syslog_facility: " << syslog_facility
 		 << " prio: " << prio << ")" << dendl;
+#endif
 }
 
 void LogChannel::do_log(clog_type prio, std::stringstream& ss)

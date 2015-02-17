@@ -26,8 +26,10 @@ void install_sighandler(int signum, signal_handler_t handler, int flags);
 void sighup_handler(int signum);
 
 // Install the standard Ceph signal handlers
+#ifdef _WIN32
+#else
 void install_standard_sighandlers(void);
-
+#endif
 
 /// initialize async signal handler framework
 void init_async_signal_handler();

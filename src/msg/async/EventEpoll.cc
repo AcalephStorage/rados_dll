@@ -46,8 +46,11 @@ int EpollDriver::init(int nevent)
 
 int EpollDriver::add_event(int fd, int cur_mask, int add_mask)
 {
+#ifdef _WIN32
+#else
   ldout(cct, 20) << __func__ << " add event fd=" << fd << " cur_mask=" << cur_mask
                  << " add_mask=" << add_mask << " to " << epfd << dendl;
+#endif
   struct epoll_event ee;
   /* If the fd was already monitored for some event, we need a MOD
    * operation. Otherwise we need an ADD operation. */
@@ -62,19 +65,31 @@ int EpollDriver::add_event(int fd, int cur_mask, int add_mask)
     ee.events |= EPOLLOUT;
   ee.data.u64 = 0; /* avoid valgrind warning */
   ee.data.fd = fd;
+#ifdef _WIN32
+    lderr(cct) << __func__ << " unable to add event: "
+                       << cpp_strerror(errno) << dendl;
+    return -errno;
+  }
+
+  ldout(cct, 10) << __func__ << " add event to fd=" << fd << " mask=" << add_mask
+                 << dendl;
+#else
   if (epoll_ctl(epfd, op, fd, &ee) == -1) {
     lderr(cct) << __func__ << " epoll_ctl: add fd=" << fd << " failed. "
                << cpp_strerror(errno) << dendl;
     return -errno;
   }
-
+#endif
   return 0;
 }
 
 void EpollDriver::del_event(int fd, int cur_mask, int delmask)
 {
+#ifdef _WIN32
+#else
   ldout(cct, 20) << __func__ << " del event fd=" << fd << " cur_mask=" << cur_mask
                  << " delmask=" << delmask << " to " << epfd << dendl;
+#endif
   struct epoll_event ee;
   int mask = cur_mask & (~delmask);
 
@@ -96,6 +111,10 @@ void EpollDriver::del_event(int fd, int cur_mask, int delmask)
                  << " failed." << cpp_strerror(errno) << dendl;
     }
   }
+#ifdef _WIN32
+  ldout(cct, 10) << __func__ << " del event fd=" << fd << " cur mask=" << mask
+                 << dendl;
+#endif
 }
 
 int EpollDriver::resize_events(int newsize)

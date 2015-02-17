@@ -484,7 +484,15 @@ extern "C" int ceph_readdir_r(struct ceph_mount_info *cmount, struct ceph_dir_re
     return -ENOTCONN;
   return cmount->get_client()->readdir_r(reinterpret_cast<dir_result_t*>(dirp), de);
 }
-
+#ifdef _WIN32
+extern "C" int ceph_readdirplus_r(struct ceph_mount_info *cmount, struct ceph_dir_result *dirp,
+				  struct dirent *de, struct stat_ceph *st, int *stmask)
+{
+  if (!cmount->is_mounted())
+    return -ENOTCONN;
+  return cmount->get_client()->readdirplus_r(reinterpret_cast<dir_result_t*>(dirp), de, st, stmask);
+}
+#else
 extern "C" int ceph_readdirplus_r(struct ceph_mount_info *cmount, struct ceph_dir_result *dirp,
 				  struct dirent *de, struct stat *st, int *stmask)
 {
@@ -492,7 +500,7 @@ extern "C" int ceph_readdirplus_r(struct ceph_mount_info *cmount, struct ceph_di
     return -ENOTCONN;
   return cmount->get_client()->readdirplus_r(reinterpret_cast<dir_result_t*>(dirp), de, st, stmask);
 }
-
+#endif
 extern "C" int ceph_getdents(struct ceph_mount_info *cmount, struct ceph_dir_result *dirp,
 			     char *buf, int buflen)
 {
@@ -593,6 +601,31 @@ extern "C" int ceph_symlink(struct ceph_mount_info *cmount, const char *existing
 }
 
 // inode stuff
+#ifdef _WIN32
+extern "C" int ceph_stat(struct ceph_mount_info *cmount, const char *path,
+			 struct stat_ceph *stbuf)
+{
+  if (!cmount->is_mounted())
+    return -ENOTCONN;
+  return cmount->get_client()->stat(path, stbuf);
+}
+
+extern "C" int ceph_lstat(struct ceph_mount_info *cmount, const char *path,
+			  struct stat_ceph *stbuf)
+{
+  if (!cmount->is_mounted())
+    return -ENOTCONN;
+  return cmount->get_client()->lstat(path, stbuf);
+}
+
+extern "C" int ceph_setattr(struct ceph_mount_info *cmount, const char *relpath,
+			    struct stat_ceph *attr, int mask)
+{
+  if (!cmount->is_mounted())
+    return -ENOTCONN;
+  return cmount->get_client()->setattr(relpath, attr, mask);
+}
+#else
 extern "C" int ceph_stat(struct ceph_mount_info *cmount, const char *path,
 			 struct stat *stbuf)
 {
@@ -616,7 +649,7 @@ extern "C" int ceph_setattr(struct ceph_mount_info *cmount, const char *relpath,
     return -ENOTCONN;
   return cmount->get_client()->setattr(relpath, attr, mask);
 }
-
+#endif
 // *xattr() calls supporting samba/vfs
 extern "C" int ceph_getxattr(struct ceph_mount_info *cmount, const char *path, const char *name, void *value, size_t size)
 {
@@ -805,13 +838,21 @@ extern "C" int ceph_fallocate(struct ceph_mount_info *cmount, int fd, int mode,
   return cmount->get_client()->fallocate(fd, mode, offset, length);
 }
 
+#ifdef _WIN32
+extern "C" int ceph_fstat(struct ceph_mount_info *cmount, int fd, struct stat_ceph *stbuf)
+{
+  if (!cmount->is_mounted())
+    return -ENOTCONN;
+  return cmount->get_client()->fstat(fd, stbuf);
+}
+#else
 extern "C" int ceph_fstat(struct ceph_mount_info *cmount, int fd, struct stat *stbuf)
 {
   if (!cmount->is_mounted())
     return -ENOTCONN;
   return cmount->get_client()->fstat(fd, stbuf);
 }
-
+#endif
 extern "C" int ceph_sync_fs(struct ceph_mount_info *cmount)
 {
   if (!cmount->is_mounted())
@@ -1250,7 +1291,17 @@ extern "C" int ceph_get_pool_replication(struct ceph_mount_info *cmount,
   return cmount->get_client()->get_pool_replication(pool_id);
 }
 /* Low-level exports */
+#ifdef _WIN32
+extern "C" void ceph_show_version()
+{
+  cout << pretty_version_to_str() << std::endl;
+}
 
+extern "C" void ceph_printf_stdout(const char* strlog)
+{
+  cout << strlog << std::endl;
+}
+#else
 extern "C" int ceph_ll_lookup_root(struct ceph_mount_info *cmount,
                   Inode **parent)
 {
@@ -1621,3 +1672,4 @@ extern "C" void ceph_buffer_free(char *buf)
     free(buf);
   }
 }
+#endif

@@ -18,9 +18,10 @@
 
 #include "include/str_map.h"
 #include "include/str_list.h"
-
+#ifdef _WIN32
+#else
 #include "json_spirit/json_spirit.h"
-
+#endif
 using namespace std;
 
 int get_json_str_map(
@@ -29,6 +30,8 @@ int get_json_str_map(
     map<string,string> *str_map,
     bool fallback_to_plain)
 {
+#ifdef _WIN32
+#else
   json_spirit::mValue json;
   try {
     // try json parsing first
@@ -56,6 +59,7 @@ int get_json_str_map(
       return -EINVAL;
     }
   }
+#endif
   return 0;
 }
 

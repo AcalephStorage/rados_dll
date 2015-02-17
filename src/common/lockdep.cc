@@ -20,7 +20,8 @@
 
 #include "include/unordered_map.h"
 #include "include/hash_namespace.h"
-
+#ifdef _WIN32
+#else 
 #if defined(__FreeBSD__) && defined(__LP64__)	// On FreeBSD pthread_t is a pointer.
 CEPH_HASH_NAMESPACE_START
   template<>
@@ -32,7 +33,7 @@ CEPH_HASH_NAMESPACE_START
     };
 CEPH_HASH_NAMESPACE_END
 #endif
-
+#endif
 /******* Constants **********/
 #define lockdep_dout(v) lsubdout(g_lockdep_ceph_ctx, lockdep, v)
 #define MAX_LOCKS  2000   // increase me as needed
@@ -58,16 +59,21 @@ static BackTrace *follows[MAX_LOCKS][MAX_LOCKS];       // follows[a][b] means b 
 /******* Functions **********/
 void lockdep_register_ceph_context(CephContext *cct)
 {
+#ifdef _WIN32
+#else
   pthread_mutex_lock(&lockdep_mutex);
   if (g_lockdep_ceph_ctx == NULL) {
     g_lockdep_ceph_ctx = cct;
     lockdep_dout(0) << "lockdep start" << dendl;
   }
   pthread_mutex_unlock(&lockdep_mutex);
+#endif
 }
 
 void lockdep_unregister_ceph_context(CephContext *cct)
 {
+#ifdef _WIN32
+#else
   pthread_mutex_lock(&lockdep_mutex);
   if (cct == g_lockdep_ceph_ctx) {
     lockdep_dout(0) << "lockdep stop" << dendl;
@@ -85,10 +91,13 @@ void lockdep_unregister_ceph_context(CephContext *cct)
     last_id = 0;
   }
   pthread_mutex_unlock(&lockdep_mutex);
+#endif
 }
 
 int lockdep_dump_locks()
 {
+#ifdef _WIN32
+#else
   pthread_mutex_lock(&lockdep_mutex);
 
   for (ceph::unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();
@@ -106,12 +115,16 @@ int lockdep_dump_locks()
   }
 
   pthread_mutex_unlock(&lockdep_mutex);
+#endif
   return 0;
 }
 
 
 int lockdep_register(const char *name)
 {
+#ifdef _WIN32
+return 0;
+#else
   int id;
 
   pthread_mutex_lock(&lockdep_mutex);
@@ -135,12 +148,15 @@ int lockdep_register(const char *name)
   pthread_mutex_unlock(&lockdep_mutex);
 
   return id;
+#endif
 }
 
 
 // does b follow a?
 static bool does_follow(int a, int b)
 {
+#ifdef _WIN32
+#else
   if (follows[a][b]) {
     lockdep_dout(0) << "\n";
     *_dout << "------------------------------------" << "\n";
@@ -161,12 +177,14 @@ static bool does_follow(int a, int b)
       return true;
     }
   }
-
+#endif
   return false;
 }
 
 int lockdep_will_lock(const char *name, int id)
 {
+#ifdef _WIN32
+#else
   pthread_t p = pthread_self();
   if (id < 0) id = lockdep_register(name);
 
@@ -230,11 +248,14 @@ int lockdep_will_lock(const char *name, int id)
   }
 
   pthread_mutex_unlock(&lockdep_mutex);
+#endif
   return id;
 }
 
 int lockdep_locked(const char *name, int id, bool force_backtrace)
 {
+#ifdef _WIN32
+#else
   pthread_t p = pthread_self();
 
   if (id < 0) id = lockdep_register(name);
@@ -246,11 +267,14 @@ int lockdep_locked(const char *name, int id, bool force_backtrace)
   else
     held[p][id] = 0;
   pthread_mutex_unlock(&lockdep_mutex);
+#endif
   return id;
 }
 
 int lockdep_will_unlock(const char *name, int id)
 {
+#ifdef _WIN32
+#else
   pthread_t p = pthread_self();
 
   if (id < 0) {
@@ -269,6 +293,7 @@ int lockdep_will_unlock(const char *name, int id)
   delete held[p][id];
   held[p].erase(id);
   pthread_mutex_unlock(&lockdep_mutex);
+#endif
   return id;
 }
 

@@ -36,6 +36,8 @@ extern "C" {
       WARN_UNUSED_RESULT;
   ssize_t safe_pwrite(int fd, const void *buf, size_t count, off_t offset)
       WARN_UNUSED_RESULT;
+#ifdef _WIN32
+#else
 #ifdef CEPH_HAVE_SPLICE
   /*
    * Similar to the above (non-exact version) and below (exact version).
@@ -48,7 +50,7 @@ extern "C" {
 			    loff_t *off_out, size_t len, unsigned int flags)
     WARN_UNUSED_RESULT;
 #endif
-
+#endif
   /*
    * Same as the above functions, but return -EDOM unless exactly the requested
    * number of bytes can be read.

@@ -21,6 +21,17 @@
 #endif
 
 #include <stdlib.h>
+#ifdef _WIN32
+#include <winsock2.h>
+
+#ifdef __struct_timespec_defined
+#ifndef HAVE_STRUCT_TIMESPEC
+#define HAVE_STRUCT_TIMESPEC
+#endif
+#endif
+
+#include <pthread.h>
+#endif
 #include "include/Spinlock.h"
 
 namespace ceph {
@@ -81,6 +92,8 @@ namespace ceph {
 
 // libatomic_ops implementation
 #define AO_REQUIRE_CAS
+#ifdef _WIN32
+#else
 #include <atomic_ops.h>
 
 // reinclude our assert to clobber the system one
@@ -126,7 +139,7 @@ namespace ceph {
 #endif
 
 }
-
+#endif
 #else
 /*
  * crappy slow implementation that uses a pthreads spinlock.

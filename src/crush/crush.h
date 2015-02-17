@@ -2,7 +2,13 @@
 #define CEPH_CRUSH_CRUSH_H
 
 #include "include/int_types.h"
-
+#ifdef _WIN32
+#if defined(__linux__)
+#include <linux/types.h>
+#elif defined(__FreeBSD__)
+#include <sys/types.h>
+#endif
+#endif
 /*
  * CRUSH is a pseudo-random data distribution algorithm that
  * efficiently distributes input values (typically, data objects)
@@ -103,6 +109,14 @@ struct crush_rule {
  *  straw           O(n)       better       better
  *  straw2          O(n)       optimal      optimal
  */
+#ifdef _WIN32
+enum {
+	CRUSH_BUCKET_UNIFORM = 1,
+	CRUSH_BUCKET_LIST = 2,
+	CRUSH_BUCKET_TREE = 3,
+	CRUSH_BUCKET_STRAW = 4
+};
+#else
 enum {
 	CRUSH_BUCKET_UNIFORM = 1,
 	CRUSH_BUCKET_LIST = 2,
@@ -110,8 +124,10 @@ enum {
 	CRUSH_BUCKET_STRAW = 4,
 	CRUSH_BUCKET_STRAW2 = 5,
 };
+#endif
 extern const char *crush_bucket_alg_name(int alg);
-
+#ifdef _WIN32
+#else
 /*
  * although tree was a legacy algorithm, it has been buggy, so
  * exclude it.
@@ -120,7 +136,7 @@ extern const char *crush_bucket_alg_name(int alg);
 		(1 << CRUSH_BUCKET_UNIFORM) |	\
 		(1 << CRUSH_BUCKET_LIST) |	\
 		(1 << CRUSH_BUCKET_STRAW))
-
+#endif
 struct crush_bucket {
 	__s32 id;        /* this'll be negative */
 	__u16 type;      /* non-zero; type=0 is reserved for devices */
@@ -163,12 +179,13 @@ struct crush_bucket_straw {
 	__u32 *item_weights;   /* 16-bit fixed point */
 	__u32 *straws;         /* 16-bit fixed point */
 };
-
+#ifdef _WIN32
+#else
 struct crush_bucket_straw2 {
 	struct crush_bucket h;
 	__u32 *item_weights;   /* 16-bit fixed point */
 };
-
+#endif
 
 
 /*
@@ -206,7 +223,8 @@ struct crush_map {
 	 * fixes a few of them.
 	 */
 	__u8 straw_calc_version;
-
+#ifdef _WIN32
+#else
 	/*
 	 * allowed bucket algs is a bitmask, here the bit positions
 	 * are CRUSH_BUCKET_*.  note that these are *bits* and
@@ -215,7 +233,7 @@ struct crush_map {
 	 * minimize confusion (bucket type values start at 1).
 	 */
 	__u32 allowed_bucket_algs;
-
+#endif
 	__u32 *choose_tries;
 };
 
@@ -228,7 +246,10 @@ extern void crush_destroy_bucket_uniform(struct crush_bucket_uniform *b);
 extern void crush_destroy_bucket_list(struct crush_bucket_list *b);
 extern void crush_destroy_bucket_tree(struct crush_bucket_tree *b);
 extern void crush_destroy_bucket_straw(struct crush_bucket_straw *b);
+#ifdef _WIN32
+#else
 extern void crush_destroy_bucket_straw2(struct crush_bucket_straw2 *b);
+#endif
 extern void crush_destroy_bucket(struct crush_bucket *b);
 extern void crush_destroy_rule(struct crush_rule *r);
 extern void crush_destroy(struct crush_map *map);

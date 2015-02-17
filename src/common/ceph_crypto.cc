@@ -29,7 +29,8 @@ void ceph::crypto::init(CephContext *cct)
 void ceph::crypto::shutdown()
 {
 }
-
+#ifdef _WIN32
+#else
 // nothing
 ceph::crypto::HMACSHA1::~HMACSHA1()
 {
@@ -70,4 +71,5 @@ ceph::crypto::HMACSHA1::~HMACSHA1()
 
 #else
 # error "No supported crypto implementation found."
+#endif
 #endif
