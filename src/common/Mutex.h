@@ -18,9 +18,8 @@
 #include "include/assert.h"
 #include "lockdep.h"
 #include "common/ceph_context.h"
-#ifdef _WIN32
+
 #include <winsock2.h>
-#endif
 #include <pthread.h>
 
 using namespace ceph;
@@ -72,11 +71,7 @@ public:
     return (nlock > 0);
   }
   bool is_locked_by_me() const {
-#ifdef _WIN32
     return nlock > 0 && locked_by.p == pthread_self().p;
-#else
-    return nlock > 0 && locked_by == pthread_self();
-#endif
   }
 
   bool TryLock() {
@@ -93,11 +88,7 @@ public:
   void _post_lock() {
     if (!recursive) {
       assert(nlock == 0);
-#ifdef _WIN32
-	  locked_by.p = pthread_self().p;
-#else
-      locked_by = pthread_self();
-#endif
+      locked_by.p = pthread_self().p;
     };
     nlock++;
   }
@@ -106,14 +97,9 @@ public:
     assert(nlock > 0);
     --nlock;
     if (!recursive) {
-#ifdef _WIN32
-	  assert(locked_by.p == pthread_self().p);
+      assert(locked_by.p == pthread_self().p);
+      //locked_by = 0;
       locked_by.p = NULL;
-      assert(nlock == 0);
-#else
-      assert(locked_by == pthread_self());
-      locked_by = 0;
-#endif
       assert(nlock == 0);
     }
   }

@@ -1341,7 +1341,6 @@ public:
 
 
   // Pools and statistics 
-
   struct NListContext {
     int current_pg;
     collection_list_handle_t cookie;
@@ -1851,11 +1850,10 @@ private:
   void get_session(OSDSession *s);
   void _reopen_session(OSDSession *session);
   void close_session(OSDSession *session);
-//#ifdef _WIN32
-//#else  
+
   void _nlist_reply(NListContext *list_context, int r, Context *final_finish,
 		   epoch_t reply_epoch);
-//#endif
+
   void _list_reply(ListContext *list_context, int r, Context *final_finish,
 		   epoch_t reply_epoch);
 
@@ -2493,11 +2491,10 @@ public:
     o->snapc = snapc;
     return op_submit(o);
   }
-//#ifdef _WIN32
-//#else
+
   void list_nobjects(NListContext *p, Context *onfinish);
   uint32_t list_nobjects_seek(NListContext *p, uint32_t pos);
-//#endif
+
   void list_objects(ListContext *p, Context *onfinish);
   uint32_t list_objects_seek(ListContext *p, uint32_t pos);
 

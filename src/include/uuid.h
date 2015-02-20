@@ -6,7 +6,7 @@
  */
 
 #include "encoding.h"
-#include <ostream>
+#include "ostream"
 
 extern "C" {
 //by ketor #include <uuid/uuid.h>

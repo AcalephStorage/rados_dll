@@ -40,7 +40,7 @@
 #include "Watch.h"
 #include "OpRequest.h"
 #include "include/cmp.h"
-#include "../librados/ListObjectImpl.h"
+#include "librados/ListObjectImpl.h"
 
 #define CEPH_OSD_ONDISK_MAGIC "ceph osd volume v026"
 

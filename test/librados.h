@@ -28,7 +28,7 @@ extern "C" {
 #include <sys/types.h>
 #endif
 #ifdef _WIN32
-//#include "../../common/ceph-mingw-type.h"
+#include "common/ceph-mingw-type.h"
 #else
 #include <unistd.h>
 #endif
@@ -487,7 +487,7 @@ CEPH_RADOS_API int rados_conf_read_file(rados_t cluster, const char *path);
  * @returns 0 on success, negative error code on failure
  */
 CEPH_RADOS_API int rados_conf_parse_argv(rados_t cluster, int argc,
-                                         char **argv);
+                                         const char **argv);
 
 
 /**

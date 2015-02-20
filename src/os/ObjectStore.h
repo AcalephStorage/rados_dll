@@ -3994,4 +3994,3 @@ WRITE_CLASS_ENCODER(ObjectStore::Transaction::TransactionData)
 ostream& operator<<(ostream& out, const ObjectStore::Sequencer& s);
 
 #endif
-#endif

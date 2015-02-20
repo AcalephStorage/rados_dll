@@ -23,7 +23,7 @@
 #include "include/types.h"
 #include <include/stringify.h>
 
-#include "include/ceph-mingw-types.h"
+//#include "../common/ceph-mingw-types.h"
 
 #include "librados/AioCompletionImpl.h"
 #include "librados/IoCtxImpl.h"

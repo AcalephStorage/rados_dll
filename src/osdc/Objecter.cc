@@ -3122,7 +3122,7 @@ void Objecter::handle_osd_op_reply(MOSDOpReply *m)
      ldout(cct, 20) << pg_num << " placement groups" << dendl;
    }
    if (list_context->starting_pg_num != pg_num) {
-       start reading from the beginning; the pgs have changed
+ //      start reading from the beginning; the pgs have changed
      ldout(cct, 10) << " pg_num changed; restarting with " << pg_num << dendl;
      list_context->current_pg = 0;
      list_context->cookie = collection_list_handle_t();
@@ -3176,7 +3176,7 @@ void Objecter::handle_osd_op_reply(MOSDOpReply *m)
      ldout(cct, 20) << " at end of pg" << dendl;
      list_context->at_end_of_pg = true;
    } else {
-       there is more for this pg; get it?
+       //there is more for this pg; get it?
      if (response_size < list_context->max_entries) {
        list_context->max_entries -= response_size;
        list_nobjects(list_context, final_finish);

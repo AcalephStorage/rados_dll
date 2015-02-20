@@ -23,14 +23,12 @@
 #include "include/atomic.h"
 #include "common/Mutex.h"
 #include "include/types.h"
-#include "include/compat.h"\
-#ifdef _WIN32
-#else
-#if defined(HAVE_XIO)
-#include "msg/xio/XioMsg.h"
-#endif
-#include <sys/uio.h>
-#endif
+#include "include/compat.h"
+# if defined(HAVE_XIO)
+#  include "msg/xio/XioMsg.h"
+#  endif
+#include "include/buffer.h"
+
 
 #include <errno.h>
 #include <fstream>
@@ -222,10 +220,11 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       return new raw_malloc(len);
     }
   };
+/*  
 #ifdef _WIN32
 #else
 #ifndef __CYGWIN__
-  class buffer::raw_mmap_pages : public buffer::raw {
+class buffer::raw_mmap_pages : public buffer::raw {
   public:
     raw_mmap_pages(unsigned l) : raw(l) {
       data = (char*)::mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
@@ -257,7 +256,8 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       int r = ::posix_memalign((void**)(void*)&data, align, len);
       if (r)
 	throw bad_alloc();
-#endif /* DARWIN */
+#endif /* DARWIN 
+
       if (!data)
 	throw bad_alloc();
       inc_total_alloc(len);
@@ -273,7 +273,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
     }
   };
 #endif
-
+*/
 #ifdef __CYGWIN__
 #endif
   class buffer::raw_hack_aligned : public buffer::raw {
@@ -482,7 +482,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
     int pipefds[2];
   };
 #endif // CEPH_HAVE_SPLICE
-#endif
+
   /*
    * primitive buffer types
    */
@@ -620,7 +620,7 @@ buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
     //return new raw_mmap_pages(len);
     //return new raw_posix_aligned(len, align);
 //#else
-    return new raw_hack_aligned(len, align);
+//    return new raw_hack_aligned(len, align);
 //#endif
   }
 #else

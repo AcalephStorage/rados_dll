@@ -195,7 +195,7 @@ int librados::RadosClient::connect()
 
   // already connected?
   if (state == CONNECTING)
-    return -EINPROGRESS;
+  //  return -EINPROGRESS;
   if (state == CONNECTED)
     return -EISCONN;
   state = CONNECTING;

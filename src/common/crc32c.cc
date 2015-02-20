@@ -2,15 +2,13 @@
 // vim: ts=8 sw=2 smarttab
 
 #include "include/crc32c.h"
-#ifdef _WIN32
+
+//by ketor #include "arch/probe.h"
+//#include "arch/intel.h"
 #include "common/sctp_crc32.h"
-#else
-#include "arch/probe.h"
-#include "arch/intel.h"
-#include "common/sctp_crc32.h"
-#include "common/crc32c_intel_baseline.h"
-#include "common/crc32c_intel_fast.h"
-#endif
+//by ketor #include "common/crc32c_intel_baseline.h"
+//#include "common/crc32c_intel_fast.h"
+
 /*
  * choose best implementation based on the CPU architecture.
  */
@@ -18,16 +16,14 @@ ceph_crc32c_func_t ceph_choose_crc32(void)
 {
   // make sure we've probed cpu features; this might depend on the
   // link order of this file relative to arch/probe.cc.
-#ifdef _WIN32
-#else
-  ceph_arch_probe();
+//by ketor   ceph_arch_probe();
 
   // if the CPU supports it, *and* the fast version is compiled in,
   // use that.
-  if (ceph_arch_intel_sse42 && ceph_crc32c_intel_fast_exists()) {
-    return ceph_crc32c_intel_fast;
-  }
-#endif
+//by ketor   if (ceph_arch_intel_sse42 && ceph_crc32c_intel_fast_exists()) {
+//    return ceph_crc32c_intel_fast;
+//  }
+
   // default
   return ceph_crc32c_sctp;
 }

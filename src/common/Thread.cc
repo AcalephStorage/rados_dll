@@ -28,7 +28,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#ifdef _WIN32
+//#ifdef _WIN32
 Thread::Thread()
   : /*by ketor thread_id(0),*/
     pid(0),
@@ -37,14 +37,14 @@ Thread::Thread()
 {
 	thread_id.p = NULL;
 	thread_id.x = 0;
-#else
+/*#else
 Thread::Thread()
   : thread_id(0),
     pid(0),
     ioprio_class(-1),
     ioprio_priority(-1)
 {
-#endif
+#endif*/
 }
 
 Thread::~Thread()
@@ -150,7 +150,7 @@ void Thread::create(size_t stacksize)
     char buf[256];
     snprintf(buf, sizeof(buf), "Thread::try_create(): pthread_create "
 	     "failed with error %d", ret);
-    dout_emergency(buf);
+    //dout_emergency(buf);
     assert(ret == 0);
   }
 }
