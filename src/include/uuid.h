@@ -6,10 +6,11 @@
  */
 
 #include "encoding.h"
-#include "ostream"
+#include "iostream"
 
 extern "C" {
-//by ketor #include <uuid/uuid.h>
+//by ketor 
+#include <uuid.h>
 #include <unistd.h>
 
 #undef uuid_t

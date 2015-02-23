@@ -52,29 +52,37 @@ CLIBS    =
 	$(CPP) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:mon/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
+../$(BUILD)/%.o:global/%.cc
+	$(CPP) -c $(CFLAGS) $^ -o $@
+../$(BUILD)/%.o:crush/%.cc
+	$(CPP) -c $(CFLAGS) $^ -o $@
+../$(BUILD)/%.o:crush/%.c
+	$(CC) -c $(CFLAGS) $^ -o $@
 
 
-
-OBJECTS= ../$(BUILD)/MonClient.o ../$(BUILD)/ceph_argparse.o ../$(BUILD)/ceph_context.o ../$(BUILD)/CephxClientHandler.o \
-../$(BUILD)/Message.o ../$(BUILD)/osd_types.o ../$(BUILD)/Messenger.o ../$(BUILD)/RotatingKeyRing.o ../$(BUILD)/CephxProtocol.o \
-../$(BUILD)/LogClient.o ../$(BUILD)/entity_name.o ../$(BUILD)/AuthMethodList.o \
-../$(BUILD)/Formatter.o ../$(BUILD)/assert.o  ../$(BUILD)/escape.o  \
-../$(BUILD)/Timer.o  ../$(BUILD)/BackTrace.o \
- ../$(BUILD)/MonMap.o ../$(BUILD)/Finisher.o ../$(BUILD)/Throttle.o \
-../$(BUILD)/config.o ../$(BUILD)/MonCap.o   \
-../$(BUILD)/types.o ../$(BUILD)/Crypto.o \
- ../$(BUILD)/errno.o  ../$(BUILD)/snap_types.o  \
-../$(BUILD)/buffer.o ../$(BUILD)/Mutex.o  \
+OBJECTS= ../$(BUILD)/MonClient.o ../$(BUILD)/CrushWrapper.o ../$(BUILD)/Objecter.o ../$(BUILD)/MonMap.o ../$(BUILD)/mdstypes.o ../$(BUILD)/assert.o \
+ ../$(BUILD)/MDSMap.o ../$(BUILD)/ceph_argparse.o ../$(BUILD)/OSDMap.o \
+../$(BUILD)/entity_name.o  ../$(BUILD)/ceph_context.o ../$(BUILD)/CephxClientHandler.o \
+../$(BUILD)/Message.o ../$(BUILD)/common_init.o ../$(BUILD)/osd_types.o ../$(BUILD)/Messenger.o \
+../$(BUILD)/RotatingKeyRing.o ../$(BUILD)/CephxProtocol.o ../$(BUILD)/global_context.o \
+../$(BUILD)/LogClient.o  ../$(BUILD)/AuthMethodList.o ../$(BUILD)/ceph_strings.o \
+../$(BUILD)/Formatter.o  ../$(BUILD)/escape.o ../$(BUILD)/ceph_crypto.o ../$(BUILD)/builder.o \
+../$(BUILD)/Timer.o  ../$(BUILD)/BackTrace.o ../$(BUILD)/hex.o ../$(BUILD)/crush.o \
+../$(BUILD)/Finisher.o ../$(BUILD)/Throttle.o ../$(BUILD)/ceph_fs.o ../$(BUILD)/mapper.o \
+../$(BUILD)/ceph_frag.o ../$(BUILD)/config.o ../$(BUILD)/MonCap.o  ../$(BUILD)/Filer.o \
+../$(BUILD)/types.o ../$(BUILD)/Crypto.o ../$(BUILD)/str_map.o \
+../$(BUILD)/errno.o  ../$(BUILD)/snap_types.o ../$(BUILD)/Striper.o \
+../$(BUILD)/buffer.o ../$(BUILD)/Mutex.o ../$(BUILD)/hash.o \
 ../$(BUILD)/lockdep.o ../$(BUILD)/perf_counters.o ../$(BUILD)/Clock.o \
 ../$(BUILD)/armor.o ../$(BUILD)/AuthClientHandler.o \
 ../$(BUILD)/environment.o ../$(BUILD)/safe_io.o ../$(BUILD)/strtol.o \
-../$(BUILD)/simple_spin.o \
+../$(BUILD)/simple_spin.o  ../$(BUILD)/Clock.o \
 ../$(BUILD)/page.o ../$(BUILD)/sctp_crc32.o ../$(BUILD)/crc32c.o \
- ../$(BUILD)/KeyRing.o  \
+ ../$(BUILD)/KeyRing.o ../$(BUILD)/RefCountedObj.o  \
 ../$(BUILD)/Thread.o ../$(BUILD)/code_environment.o \
 ../$(BUILD)/io_priority.o ../$(BUILD)/signal.o \
 ../$(BUILD)/ConfUtils.o ../$(BUILD)/utf8.o ../$(BUILD)/hobject.o \
-../$(BUILD)/bloom_filter.o \
+../$(BUILD)/bloom_filter.o ../$(BUILD)/DecayCounter.o	\
 ../$(BUILD)/msg_types.o ../$(BUILD)/SubsystemMap.o \
 ../$(BUILD)/HitSet.o  ../$(BUILD)/Log.o ../$(BUILD)/PrebufferedStreambuf.o \
 

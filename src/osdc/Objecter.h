@@ -625,12 +625,7 @@ struct ObjectOperation {
     uint32_t *out_flags;
     uint32_t *out_data_digest;
     uint32_t *out_omap_digest;
-#ifdef _WIN32
-#else
-    vector<osd_reqid_t> *out_reqids;
-#endif
     int *prval;
-#ifdef _WIN32
     C_ObjectOperation_copyget(object_copy_cursor_t *c,
 			      uint64_t *s,
 			      utime_t *m,
@@ -649,27 +644,6 @@ struct ObjectOperation {
 	out_omap_data(o), out_snaps(osnaps), out_snap_seq(osnap_seq),
 	out_flags(flags), out_data_digest(dd), out_omap_digest(od),
 	prval(r) {}
-#else
-    C_ObjectOperation_copyget(object_copy_cursor_t *c,
-			      uint64_t *s,
-			      utime_t *m,
-			      std::map<std::string,bufferlist> *a,
-			      bufferlist *d, bufferlist *oh,
-			      bufferlist *o,
-			      std::vector<snapid_t> *osnaps,
-			      snapid_t *osnap_seq,
-			      uint32_t *flags,
-			      uint32_t *dd,
-			      uint32_t *od,
-			      vector<osd_reqid_t> *oreqids,
-			      int *r)
-      : cursor(c),
-	out_size(s), out_mtime(m),
-	out_attrs(a), out_data(d), out_omap_header(oh),
-	out_omap_data(o), out_snaps(osnaps), out_snap_seq(osnap_seq),
-	out_flags(flags), out_data_digest(dd), out_omap_digest(od),
-        out_reqids(oreqids), prval(r) {}
-#endif
     void finish(int r) {
       if (r < 0)
 	return;
@@ -699,11 +673,6 @@ struct ObjectOperation {
 	  *out_data_digest = copy_reply.data_digest;
 	if (out_omap_digest)
 	  *out_omap_digest = copy_reply.omap_digest;
-#ifdef _WIN32
-#else
-	if (out_reqids)
-	  *out_reqids = copy_reply.reqids;
-#endif
 	*cursor = copy_reply.cursor;
       } catch (buffer::error& e) {
 	if (prval)
@@ -711,7 +680,7 @@ struct ObjectOperation {
       }
     }
   };
-#ifdef _WIN32
+
   void copy_get(object_copy_cursor_t *cursor,
 		uint64_t max,
 		uint64_t *out_size,
@@ -741,38 +710,7 @@ struct ObjectOperation {
     out_bl[p] = &h->bl;
     out_handler[p] = h;
   }
-#else
-  void copy_get(object_copy_cursor_t *cursor,
-		uint64_t max,
-		uint64_t *out_size,
-		utime_t *out_mtime,
-		std::map<std::string,bufferlist> *out_attrs,
-		bufferlist *out_data,
-		bufferlist *out_omap_header,
-		bufferlist *out_omap_data,
-		vector<snapid_t> *out_snaps,
-		snapid_t *out_snap_seq,
-		uint32_t *out_flags,
-		uint32_t *out_data_digest,
-		uint32_t *out_omap_digest,
-		vector<osd_reqid_t> *out_reqids,
-		int *prval) {
-    OSDOp& osd_op = add_op(CEPH_OSD_OP_COPY_GET);
-    osd_op.op.copy_get.max = max;
-    ::encode(*cursor, osd_op.indata);
-    ::encode(max, osd_op.indata);
-    unsigned p = ops.size() - 1;
-    out_rval[p] = prval;
-    C_ObjectOperation_copyget *h =
-      new C_ObjectOperation_copyget(cursor, out_size, out_mtime,
-                                    out_attrs, out_data, out_omap_header,
-				    out_omap_data, out_snaps, out_snap_seq,
-				    out_flags, out_data_digest, out_omap_digest,
-				    out_reqids, prval);
-    out_bl[p] = &h->bl;
-    out_handler[p] = h;
-  }
-#endif
+
   void undirty() {
     add_op(CEPH_OSD_OP_UNDIRTY);
   }
@@ -1341,69 +1279,69 @@ public:
 
 
   // Pools and statistics 
-  struct NListContext {
-    int current_pg;
-    collection_list_handle_t cookie;
-    epoch_t current_pg_epoch;
-    int starting_pg_num;
-    bool at_end_of_pool;
-    bool at_end_of_pg;
+//  struct NListContext {
+//    int current_pg;
+//    collection_list_handle_t cookie;
+//    epoch_t current_pg_epoch;
+//    int starting_pg_num;
+//    bool at_end_of_pool;
+//    bool at_end_of_pg;
+//
+//    int64_t pool_id;
+//    int pool_snap_seq;
+//    int max_entries;
+//    string nspace;
+//
+//    bufferlist bl;   // raw data read to here
+//    std::list<librados::ListObjectImpl> list;
+//
+//    bufferlist filter;
+//
+//    bufferlist extra_info;
+//
+//    // The budget associated with this context, once it is set (>= 0),
+//    // the budget is not get/released on OP basis, instead the budget
+//    // is acquired before sending the first OP and released upon receiving
+//    // the last op reply.
+//    int ctx_budget;
+//
+//    NListContext() : current_pg(0), current_pg_epoch(0), starting_pg_num(0),
+//		    at_end_of_pool(false),
+//		    at_end_of_pg(false),
+//		    pool_id(0),
+//		    pool_snap_seq(0),
+//                    max_entries(0),
+//                    nspace(),
+//                    bl(),
+//                    list(),
+//                    filter(),
+//                    extra_info(),
+//                    ctx_budget(-1) {}
+//
+//    bool at_end() const {
+//      return at_end_of_pool;
+//    }
+//
+//    uint32_t get_pg_hash_position() const {
+//      return current_pg;
+//    }
+//  };
 
-    int64_t pool_id;
-    int pool_snap_seq;
-    int max_entries;
-    string nspace;
-
-    bufferlist bl;   // raw data read to here
-    std::list<librados::ListObjectImpl> list;
-
-    bufferlist filter;
-
-    bufferlist extra_info;
-
-    // The budget associated with this context, once it is set (>= 0),
-    // the budget is not get/released on OP basis, instead the budget
-    // is acquired before sending the first OP and released upon receiving
-    // the last op reply.
-    int ctx_budget;
-
-    NListContext() : current_pg(0), current_pg_epoch(0), starting_pg_num(0),
-		    at_end_of_pool(false),
-		    at_end_of_pg(false),
-		    pool_id(0),
-		    pool_snap_seq(0),
-                    max_entries(0),
-                    nspace(),
-                    bl(),
-                    list(),
-                    filter(),
-                    extra_info(),
-                    ctx_budget(-1) {}
-
-    bool at_end() const {
-      return at_end_of_pool;
-    }
-
-    uint32_t get_pg_hash_position() const {
-      return current_pg;
-    }
-  };
-
-  struct C_NList : public Context {
-    NListContext *list_context;
-    Context *final_finish;
-    Objecter *objecter;
-    epoch_t epoch;
-    C_NList(NListContext *lc, Context * finish, Objecter *ob) :
-      list_context(lc), final_finish(finish), objecter(ob), epoch(0) {}
-    void finish(int r) {
-      if (r >= 0) {
-        objecter->_nlist_reply(list_context, r, final_finish, epoch);
-      } else {
-        final_finish->complete(r);
-      }
-    }
-  };
+//  struct C_NList : public Context {
+//    NListContext *list_context;
+//    Context *final_finish;
+//    Objecter *objecter;
+//    epoch_t epoch;
+//    C_NList(NListContext *lc, Context * finish, Objecter *ob) :
+//      list_context(lc), final_finish(finish), objecter(ob), epoch(0) {}
+//    void finish(int r) {
+//      if (r >= 0) {
+//        objecter->_nlist_reply(list_context, r, final_finish, epoch);
+//      } else {
+//        final_finish->complete(r);
+//      }
+//    }
+//  };
 
   // Old pgls context we still use for talking to older OSDs
   struct ListContext {
@@ -1850,10 +1788,9 @@ private:
   void get_session(OSDSession *s);
   void _reopen_session(OSDSession *session);
   void close_session(OSDSession *session);
-
-  void _nlist_reply(NListContext *list_context, int r, Context *final_finish,
-		   epoch_t reply_epoch);
-
+  
+//  void _nlist_reply(NListContext *list_context, int r, Context *final_finish,
+//		   epoch_t reply_epoch);
   void _list_reply(ListContext *list_context, int r, Context *final_finish,
 		   epoch_t reply_epoch);
 
@@ -1890,10 +1827,7 @@ private:
     put_op_budget_bytes(op_budget);
   }
   void put_list_context_budget(ListContext *list_context);
-//#ifdef _WIN32
-//#else
-  void put_nlist_context_budget(NListContext *list_context);
-//#endif
+//  void put_nlist_context_budget(NListContext *list_context);
   Throttle op_throttle_bytes, op_throttle_ops;
 
  public:
@@ -2492,9 +2426,8 @@ public:
     return op_submit(o);
   }
 
-  void list_nobjects(NListContext *p, Context *onfinish);
-  uint32_t list_nobjects_seek(NListContext *p, uint32_t pos);
-
+//  void list_nobjects(NListContext *p, Context *onfinish);
+//  uint32_t list_nobjects_seek(NListContext *p, uint32_t pos);
   void list_objects(ListContext *p, Context *onfinish);
   uint32_t list_objects_seek(ListContext *p, uint32_t pos);
 
