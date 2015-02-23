@@ -62,22 +62,14 @@ FormatterAttrs::FormatterAttrs(const char *attr, ...)
 Formatter::Formatter() { }
 
 Formatter::~Formatter() { }
-#ifdef _WIN32
+
 Formatter *
 new_formatter(const std::string &type)
-#else
-Formatter *Formatter::create(const std::string &type,
-			     const std::string& default_type,
-			     const std::string& fallback)
-#endif
 {
   std::string mytype = type;
   if (mytype == "")
-#ifdef _WIN32
     mytype = "json-pretty";
-#else
-    mytype = default_type;
-#endif
+
   if (mytype == "json")
     return new JSONFormatter(false);
   else if (mytype == "json-pretty")
@@ -90,11 +82,6 @@ Formatter *Formatter::create(const std::string &type,
     return new TableFormatter();
   else if (mytype == "table-kv")
     return new TableFormatter(true);
-#ifdef _WIN32
-#else
-  else if (fallback != "")
-    return create(fallback, "", "");
-#endif
   else
     return (Formatter *) NULL;
 }
@@ -136,11 +123,6 @@ void JSONFormatter::flush(std::ostream& os)
 {
   finish_pending_string();
   os << m_ss.str();
-#ifdef _WIN32
-#else
-  if (m_pretty)
-    os << "\n";
-#endif
   m_ss.clear();
   m_ss.str("");
 }
@@ -164,13 +146,7 @@ void JSONFormatter::print_comma(json_formatter_stack_entry_d& entry)
     } else {
       m_ss << ",";
     }
-  } 
-#ifdef _WIN32
-  else if (entry.is_array && m_pretty)
-#else
-  else if (m_pretty) 
-#endif
-{
+  } else if (entry.is_array && m_pretty) {
     m_ss << "\n";
     for (unsigned i = 1; i < m_stack.size(); i++)
       m_ss << "    ";
@@ -178,7 +154,7 @@ void JSONFormatter::print_comma(json_formatter_stack_entry_d& entry)
   if (m_pretty && entry.is_array)
     m_ss << "    ";
 }
-#ifdef _WIN32
+
 void JSONFormatter::print_quoted_string(const char *s)
 {
   int len = escape_json_attr_len(s);
@@ -187,15 +163,7 @@ void JSONFormatter::print_quoted_string(const char *s)
   m_ss << '\"' << escaped << '\"';
   delete[] escaped;
 }
-#else
-void JSONFormatter::print_quoted_string(const std::string& s)
-{
-  int len = escape_json_attr_len(s.c_str(), s.size());
-  char escaped[len];
-  escape_json_attr(s.c_str(), s.size(), escaped);
-  m_ss << '\"' << escaped << '\"';
-}
-#endif
+
 void JSONFormatter::print_name(const char *name)
 {
   finish_pending_string();
@@ -205,14 +173,10 @@ void JSONFormatter::print_name(const char *name)
   print_comma(entry);
   if (!entry.is_array) {
     if (m_pretty) {
-#ifdef _WIN32
-if (entry.size)
+      if (entry.size)
         m_ss << "  ";
       else
         m_ss << " ";
-#else
-      m_ss << "    ";
-#endif
     }
     m_ss << "\"" << name << "\"";
     if (m_pretty)
@@ -266,14 +230,6 @@ void JSONFormatter::close_section()
   finish_pending_string();
 
   struct json_formatter_stack_entry_d& entry = m_stack.back();
-#ifdef _WIN32
-#else
-  if (m_pretty && entry.size) {
-    m_ss << "\n";
-    for (unsigned i = 1; i < m_stack.size(); i++)
-      m_ss << "    ";
-  }
-#endif
   m_ss << (entry.is_array ? ']' : '}');
   m_stack.pop_back();
 }
@@ -281,10 +237,7 @@ void JSONFormatter::close_section()
 void JSONFormatter::finish_pending_string()
 {
   if (m_is_pending_string) {
-#ifdef _WIN32
-#else
-    print_quoted_string(m_pending_string.str());
-#endif
+    print_quoted_string(m_pending_string.str().c_str());
     m_pending_string.str(std::string());
     m_is_pending_string = false;
   }
@@ -309,19 +262,13 @@ void JSONFormatter::dump_float(const char *name, double d)
   snprintf(foo, sizeof(foo), "%lf", d);
   m_ss << foo;
 }
-#ifdef _WIN32
+
 void JSONFormatter::dump_string(const char *name, std::string s)
 {
   print_name(name);
   print_quoted_string(s.c_str());
 }
-#else
-void JSONFormatter::dump_string(const char *name, const std::string& s)
-{
-  print_name(name);
-  print_quoted_string(s);
-}
-#endif
+
 std::ostream& JSONFormatter::dump_stream(const char *name)
 {
   print_name(name);
@@ -336,15 +283,9 @@ void JSONFormatter::dump_format_va(const char *name, const char *ns, bool quoted
 
   print_name(name);
   if (quoted) {
-#ifdef _WIN32
     print_quoted_string(buf);
   } else {
     m_ss << buf;
-#else
-    print_quoted_string(std::string(buf));
-  } else {
-    m_ss << std::string(buf);
-#endif
   }
 }
 
@@ -371,11 +312,6 @@ void XMLFormatter::flush(std::ostream& os)
 {
   finish_pending_string();
   os << m_ss.str();
-#ifdef _WIN32
-#else
-  if (m_pretty)
-    os << "\n";
-#endif
   m_ss.clear();
   m_ss.str("");
 }
@@ -459,11 +395,8 @@ void XMLFormatter::dump_float(const char *name, double d)
   if (m_pretty)
     m_ss << "\n";
 }
-#ifdef _WIN32
+
 void XMLFormatter::dump_string(const char *name, std::string s)
-#else
-void XMLFormatter::dump_string(const char *name, const std::string& s)
-#endif
 {
   std::string e(name);
   print_spaces();
@@ -471,11 +404,8 @@ void XMLFormatter::dump_string(const char *name, const std::string& s)
   if (m_pretty)
     m_ss << "\n";
 }
-#ifdef _WIN32
+
 void XMLFormatter::dump_string_with_attrs(const char *name, std::string s, const FormatterAttrs& attrs)
-#else
-void XMLFormatter::dump_string_with_attrs(const char *name, const std::string& s, const FormatterAttrs& attrs)
-#endif
 {
   std::string e(name);
   std::string attrs_str;
@@ -837,11 +767,8 @@ void TableFormatter::dump_float(const char *name, double d)
   m_ss.clear();
   m_ss.str("");
 }
-#ifdef _WIN32
+
 void TableFormatter::dump_string(const char *name, std::string s)
-#else
-void TableFormatter::dump_string(const char *name, const std::string& s)
-#endif
 {
   finish_pending_string();
   size_t i = m_vec_index(name);
@@ -852,7 +779,7 @@ void TableFormatter::dump_string(const char *name, const std::string& s)
   m_ss.str("");
 }
 
-void TableFormatter::dump_string_with_attrs(const char *name, const std::string& s, const FormatterAttrs& attrs)
+void TableFormatter::dump_string_with_attrs(const char *name, std::string s, const FormatterAttrs& attrs)
 {
   finish_pending_string();
   size_t i = m_vec_index(name);

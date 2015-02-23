@@ -12,7 +12,7 @@
 enum ClsLockType {
   LOCK_NONE      = 0,
   LOCK_EXCLUSIVE = 1,
-  LOCK_SHARED    = 2,
+  LOCK_SHARED    = 3,
 };
 
 static inline const char *cls_lock_type_str(ClsLockType type)
