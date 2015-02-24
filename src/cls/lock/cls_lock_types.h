@@ -11,7 +11,7 @@
 
 enum ClsLockType {
   LOCK_NONE      = 0,
-  LOCK_EXCLUSIVE = 1,
+  LOCK_EXCLUSIVE_one = 1,
   LOCK_SHARED    = 3,
 };
 
@@ -20,7 +20,7 @@ static inline const char *cls_lock_type_str(ClsLockType type)
     switch (type) {
       case LOCK_NONE:
 	return "none";
-      case LOCK_EXCLUSIVE:
+      case LOCK_EXCLUSIVE_one:
 	return "exclusive";
       case LOCK_SHARED:
 	return "shared";

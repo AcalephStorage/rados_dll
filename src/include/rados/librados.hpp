@@ -630,10 +630,9 @@ namespace librados
 
     // get pool auid
     int get_auid(uint64_t *auid_);
-#ifdef _WIN32
-#else
+
     uint64_t get_instance_id() const;
-#endif
+
     std::string get_pool_name();
 
     bool pool_requires_alignment();
@@ -1118,11 +1117,10 @@ namespace librados
 
     /// get/wait for the most recent osdmap
     int wait_for_latest_osdmap();
-#ifdef _WIN32
-#else
+
     int blacklist_add(const std::string& client_address,
                       uint32_t expire_seconds);
-#endif
+
     /*
      * pool aio
      *

@@ -1811,12 +1811,9 @@ void Pipe::writer()
 			      << " " << m << " " << *m << dendl;
 
 	// encode and copy out of *m
-#ifdef _WIN32
-	m->encode(features, !msgr->cct->_conf->ms_nocrc);
 
-#else
 	m->encode(features, msgr->crcflags);
-#endif
+
 	// prepare everything
 	ceph_msg_header& header = m->get_header();
 	ceph_msg_footer& footer = m->get_footer();

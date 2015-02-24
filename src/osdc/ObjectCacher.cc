@@ -31,11 +31,10 @@ ObjectCacher::BufferHead *ObjectCacher::Object::split(BufferHead *left, loff_t o
   
   // split off right
   ObjectCacher::BufferHead *right = new BufferHead(this);
-#ifdef _WIN32
-#else
+
   //inherit and if later access, this auto clean.
   right->set_dontneed(left->get_dontneed());
-#endif
+
   right->last_write_tid = left->last_write_tid;
   right->last_read_tid = left->last_read_tid;
   right->set_state(left->get_state());
@@ -102,10 +101,9 @@ void ObjectCacher::Object::merge_left(BufferHead *left, BufferHead *right)
   // note: this is sorta busted, but should only be used for dirty buffers
   left->last_write_tid =  MAX( left->last_write_tid, right->last_write_tid );
   left->last_write = MAX( left->last_write, right->last_write );
-#ifdef _WIN32
-#else
+
   left->set_dontneed(right->get_dontneed() ? left->get_dontneed() : false);
-#endif
+
   // waiters
   for (map<loff_t, list<Context*> >::iterator p = right->waitfor_read.begin();
        p != right->waitfor_read.end();
@@ -181,8 +179,7 @@ bool ObjectCacher::Object::is_cached(loff_t cur, loff_t left)
 /*
  * all cached data in this range[off, off+len]
  */
-#ifdef _WIN32
-#else
+
 bool ObjectCacher::Object::include_all_cached_data(loff_t off, loff_t len)
 {
   assert(oc->lock.is_locked());
@@ -195,7 +192,7 @@ bool ObjectCacher::Object::include_all_cached_data(loff_t off, loff_t len)
   else
     return false;
 }
-#endif
+
 /*
  * map a range of bytes into buffer_heads.
  * - create missing buffer_heads as necessary.
@@ -587,33 +584,7 @@ void ObjectCacher::perf_stop()
   cct->get_perfcounters_collection()->remove(perfcounter);
   delete perfcounter;
 }
-#ifdef _WIN32
-ObjectCacher::Object *ObjectCacher::get_object(sobject_t oid, ObjectSet *oset,
-					       object_locator_t &l,
-					       uint64_t truncate_size,
-					       uint64_t truncate_seq)
-{
-  // XXX: Add handling of nspace in object_locator_t in cache
-  assert(lock.is_locked());
-  // have it?
-  if ((uint32_t)l.pool < objects.size()) {
-    if (objects[l.pool].count(oid)) {
-      Object *o = objects[l.pool][oid];
-      o->truncate_size = truncate_size;
-      o->truncate_seq = truncate_seq;
-      return o;
-    }
-  } else {
-    objects.resize(l.pool+1);
-  }
 
-  // create it.
-  Object *o = new Object(this, oid, oset, l, truncate_size, truncate_seq);
-  objects[l.pool][oid] = o;
-  ob_lru.lru_insert_top(o);
-  return o;
-}
-#else
 /* private */
 ObjectCacher::Object *ObjectCacher::get_object(sobject_t oid,
 					       uint64_t object_no,
@@ -644,7 +615,7 @@ ObjectCacher::Object *ObjectCacher::get_object(sobject_t oid,
   ob_lru.lru_insert_top(o);
   return o;
 }
-#endif
+
 void ObjectCacher::close_object(Object *ob) 
 {
   assert(lock.is_locked());
@@ -674,17 +645,12 @@ void ObjectCacher::bh_read(BufferHead *bh)
   C_ReadFinish *onfinish = new C_ReadFinish(this, bh->ob, bh->last_read_tid,
 					    bh->start(), bh->length());
   // go
-#ifdef _WIN32
-  writeback_handler.read(bh->ob->get_oid(), bh->ob->get_oloc(),
-			 bh->start(), bh->length(), bh->ob->get_snap(),
-			 &onfinish->bl, bh->ob->truncate_size, bh->ob->truncate_seq,
-			 onfinish);
-#else
+
   writeback_handler.read(bh->ob->get_oid(), bh->ob->get_object_number(),
 			 bh->ob->get_oloc(), bh->start(), bh->length(),
 			 bh->ob->get_snap(), &onfinish->bl,
 			 bh->ob->truncate_size, bh->ob->truncate_seq, onfinish);
-#endif
+
   ++reads_outstanding;
 }
 
@@ -702,15 +668,7 @@ void ObjectCacher::bh_read_finish(int64_t poolid, sobject_t oid, ceph_tid_t tid,
 		<< " returned " << r
 		<< " outstanding reads " << reads_outstanding
 		<< dendl;
-#ifdef _WIN32
-  if (bl.length() < length) {
-    bufferptr bp(length - bl.length());
-    bp.zero();
-    ldout(cct, 7) << "bh_read_finish " << oid << " padding " << start << "~" << length 
-	    << " with " << bp.length() << " bytes of zeroes" << dendl;
-    bl.push_back(bp);
-  }
-#else
+
   if (r >= 0 && bl.length() < length) {
     bufferptr bp(length - bl.length());
     bp.zero();
@@ -718,7 +676,7 @@ void ObjectCacher::bh_read_finish(int64_t poolid, sobject_t oid, ceph_tid_t tid,
 	    << " with " << bp.length() << " bytes of zeroes" << dendl;
     bl.push_back(bp);
   }
-#endif
+
   list<Context*> ls;
   int err = 0;
 
@@ -1097,17 +1055,14 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
   assert(lock.is_locked());
   bool success = true;
   int error = 0;
-#ifdef _WIN32
-  list<BufferHead*> hit_ls;
-#endif
+
   uint64_t bytes_in_cache = 0;
   uint64_t bytes_not_in_cache = 0;
   uint64_t total_bytes_read = 0;
   map<uint64_t, bufferlist> stripe_map;  // final buffer offset -> substring
-#ifdef _WIN32
-#else
+
   bool dontneed = rd->fadvise_flags & LIBRADOS_OP_FLAG_FADVISE_DONTNEED;
-#endif
+
   for (vector<ObjectExtent>::iterator ex_it = rd->extents.begin();
        ex_it != rd->extents.end();
        ++ex_it) {
@@ -1117,14 +1072,11 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
 
     // get Object cache
     sobject_t soid(ex_it->oid, rd->snap);
-#ifdef _WIN32
-    Object *o = get_object(soid, oset, ex_it->oloc, ex_it->truncate_size, oset->truncate_seq);
-    touch_ob(o);
-#else
+
     Object *o = get_object(soid, ex_it->objectno, oset, ex_it->oloc, ex_it->truncate_size, oset->truncate_seq);
     if (external_call)
       touch_ob(o);
-#endif
+
     // does not exist and no hits?
     if (oset->return_enoent && !o->exists) {
       // WARNING: we can only meaningfully return ENOENT if the read request
@@ -1170,11 +1122,10 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
       if (allzero) {
 	ldout(cct, 10) << "readx  ob has all zero|rx, returning ENOENT" << dendl;
 	delete rd;
-#ifdef _WIN32
-#else
+
 	if (dontneed)
 	  bottouch_ob(o);
-#endif
+
 	return -ENOENT;
       }
     }
@@ -1237,12 +1188,11 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
         bytes_not_in_cache += bh_it->second->length();
 	success = false;
       }
-#ifdef _WIN32
-#else
+
       for (map<loff_t, BufferHead*>::iterator bh_it = hits.begin();
            bh_it != hits.end();  ++bh_it)
 	touch_bh(bh_it->second); //bump in lru, so we don't lose it when later read
-#endif
+
     } else {
       assert(!hits.empty());
 
@@ -1250,14 +1200,7 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
       for (map<loff_t, BufferHead*>::iterator bh_it = hits.begin();
            bh_it != hits.end();
            ++bh_it) {
-#ifdef _WIN32
-	ldout(cct, 10) << "readx hit bh " << *bh_it->second << dendl;
-	if (bh_it->second->is_error() && bh_it->second->error)
-	  error = bh_it->second->error;
-        hit_ls.push_back(bh_it->second);
-        bytes_in_cache += bh_it->second->length();
 
-#else
 	BufferHead *bh = bh_it->second;
 	ldout(cct, 10) << "readx hit bh " << *bh << dendl;
 	if (bh->is_error() && bh->error)
@@ -1272,7 +1215,7 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
 	  if (bh->is_clean())
 	    bh_lru_rest.lru_bottouch(bh);
 	}
-#endif
+
       }
 
       // create reverse map of buffer offset -> object for the eventual result.
@@ -1325,20 +1268,13 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
       }
       assert(f_it == ex_it->buffer_extents.end());
       assert(opos == (loff_t)ex_it->offset + (loff_t)ex_it->length);
-#ifdef _WIN32
-#else
+
       if (dontneed && o->include_all_cached_data(ex_it->offset, ex_it->length))
 	  bottouch_ob(o);
-#endif
+
     }
   }
-#ifdef _WIN32
-#else  
-  for (list<BufferHead*>::iterator bhit = hit_ls.begin();
-       bhit != hit_ls.end();
-       ++bhit) 
-    touch_bh(*bhit);
-#endif
+
   if (!success) {
     if (perfcounter && external_call) {
       perfcounter->inc(l_objectcacher_data_read, total_bytes_read);
@@ -1360,9 +1296,7 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
   }
 
   // no misses... success!  do the read.
-#ifdef _WIN32
-  assert(!hit_ls.empty());
-#endif
+
   ldout(cct, 10) << "readx has all buffers" << dendl;
 
   // ok, assemble into result buffer.
@@ -1417,21 +1351,18 @@ int ObjectCacher::writex(OSDWrite *wr, ObjectSet *oset, Mutex& wait_on_lock,
   utime_t now = ceph_clock_now(cct);
   uint64_t bytes_written = 0;
   uint64_t bytes_written_in_flush = 0;
-#ifdef _WIN32
-#else
+
   bool dontneed = wr->fadvise_flags & LIBRADOS_OP_FLAG_FADVISE_DONTNEED;
-#endif  
+
   for (vector<ObjectExtent>::iterator ex_it = wr->extents.begin();
        ex_it != wr->extents.end();
        ++ex_it) {
     // get object cache
     sobject_t soid(ex_it->oid, CEPH_NOSNAP);
-#ifdef _WIN32
-    Object *o = get_object(soid, oset, ex_it->oloc, ex_it->truncate_size, oset->truncate_seq);
-#else
+
     Object *o = get_object(soid, ex_it->objectno, oset, ex_it->oloc,
 			   ex_it->truncate_size, oset->truncate_seq);
-#endif
+
     // map it all into a single bufferhead.
     BufferHead *bh = o->map_write(wr);
     bh->snapc = wr->snapc;
@@ -1471,14 +1402,12 @@ int ObjectCacher::writex(OSDWrite *wr, ObjectSet *oset, Mutex& wait_on_lock,
 
     // ok, now bh is dirty.
     mark_dirty(bh);
-#ifdef _WIN32
-    touch_bh(bh);
-#else
+
     if (dontneed)
       bh->set_dontneed(true);
     else
       touch_bh(bh);
-#endif
+
     bh->last_write = now;
 
     o->try_merge_bh(bh);
@@ -2182,14 +2111,12 @@ void ObjectCacher::bh_set_state(BufferHead *bh, int s)
     bh_lru_dirty.lru_insert_top(bh);
   } else if (s != BufferHead::STATE_DIRTY && state == BufferHead::STATE_DIRTY) {
     bh_lru_dirty.lru_remove(bh);
-#ifdef _WIN32
-    bh_lru_rest.lru_insert_top(bh);
-#else
+
     if (bh->get_dontneed())
       bh_lru_rest.lru_insert_bot(bh);
     else
       bh_lru_rest.lru_insert_top(bh);
-#endif
+
   }
 
   if ((s == BufferHead::STATE_TX ||
@@ -2223,14 +2150,12 @@ void ObjectCacher::bh_add(Object *ob, BufferHead *bh)
     bh_lru_dirty.lru_insert_top(bh);
     dirty_or_tx_bh.insert(bh);
   } else {
-#ifdef _WIN32
-	bh_lru_rest.lru_insert_top(bh);
-#else
+
     if (bh->get_dontneed())
       bh_lru_rest.lru_insert_bot(bh);
     else
       bh_lru_rest.lru_insert_top(bh);
-#endif
+
   }
 
   if (bh->is_tx()) {

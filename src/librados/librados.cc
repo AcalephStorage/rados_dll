@@ -23,7 +23,7 @@
 #include "include/types.h"
 #include <include/stringify.h>
 
-//#include <common/ceph-mingw-types.h>
+#include "common/ceph-mingw-type.h"
 
 #include "librados/AioCompletionImpl.h"
 #include "librados/IoCtxImpl.h"
@@ -32,6 +32,11 @@
 #include "librados/RadosXattrIter.h"
 #include "librados/ListObjectImpl.h"
 #include <cls/lock/cls_lock_client.h>
+
+#ifdef _WINSOCK2_H
+#undef _WINSOCK2_H
+#endif
+
 
 #include <string>
 #include <map>
@@ -100,8 +105,8 @@ static void set_op_flags(::ObjectOperation *o, int flags)
     rados_flags |= CEPH_OSD_OP_FLAG_FADVISE_WILLNEED;
   if (flags & LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
     rados_flags |= CEPH_OSD_OP_FLAG_FADVISE_DONTNEED;
-  if (flags & LIBRADOS_OP_FLAG_FADVISE_NOCACHE)
-    rados_flags |= CEPH_OSD_OP_FLAG_FADVISE_NOCACHE;
+  //if (flags & LIBRADOS_OP_FLAG_FADVISE_NOCACHE)
+  //  rados_flags |= CEPH_OSD_OP_FLAG_FADVISE_NOCACHE;
   o->set_last_op_flags(rados_flags);
 }
 
@@ -1457,7 +1462,7 @@ int librados::IoCtx::lock_exclusive(const std::string &oid, const std::string &n
   if (duration)
     dur.set_from_timeval(duration);
 
-  return rados::cls::lock::lock(this, oid, name, LOCK_EXCLUSIVE, cookie, "",
+  return rados::cls::lock::lock(this, oid, name, LOCK_EXCLUSIVE_one, cookie, "",
 		  		description, dur, flags);
 }
 
@@ -1516,7 +1521,7 @@ int librados::IoCtx::list_lockers(const std::string &oid, const std::string &nam
   if (tag)
     *tag = tmp_tag;
   if (exclusive) {
-    if (tmp_type == LOCK_EXCLUSIVE)
+    if (tmp_type == LOCK_EXCLUSIVE_one)
       *exclusive = 1;
     else
       *exclusive = 0;

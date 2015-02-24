@@ -18,10 +18,9 @@
 
 #include "include/str_map.h"
 #include "include/str_list.h"
-#ifdef _WIN32
-#else
+
 #include "json_spirit/json_spirit.h"
-#endif
+
 using namespace std;
 
 int get_json_str_map(

@@ -10,7 +10,7 @@
 
 extern "C" {
 //by ketor 
-#include <uuid.h>
+//#include <boost/uuid/uuid.hpp>
 #include <unistd.h>
 
 #undef uuid_t
