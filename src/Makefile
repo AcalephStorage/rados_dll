@@ -30,6 +30,8 @@ CLIBS    =
 	$(CPP) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:include/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
+../$(BUILD)/%.o:include/%.c
+	$(CC) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:common/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:common/%.c
@@ -65,11 +67,13 @@ CLIBS    =
 ../$(BUILD)/%.o:msg/simple/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
 
-OBJECTS= ../$(BUILD)/librados.o ../$(BUILD)/IoCtxImpl.o ../$(BUILD)/RadosClient.o ../$(BUILD)/RadosXattrIter.o ../$(BUILD)/Objecter.o ../$(BUILD)/MonClient.o ../$(BUILD)/CrushWrapper.o  ../$(BUILD)/MonMap.o ../$(BUILD)/mdstypes.o ../$(BUILD)/assert.o \
+OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/librados.o ../$(BUILD)/IoCtxImpl.o ../$(BUILD)/RadosClient.o ../$(BUILD)/RadosXattrIter.o \
+../$(BUILD)/Objecter.o ../$(BUILD)/MonClient.o ../$(BUILD)/CrushWrapper.o  ../$(BUILD)/MonMap.o \
+  ../$(BUILD)/mdstypes.o ../$(BUILD)/assert.o ../$(BUILD)/Pipe.o \
  ../$(BUILD)/MDSMap.o ../$(BUILD)/ceph_argparse.o ../$(BUILD)/OSDMap.o \
 ../$(BUILD)/entity_name.o  ../$(BUILD)/ceph_context.o ../$(BUILD)/CephxClientHandler.o \
 ../$(BUILD)/Message.o ../$(BUILD)/common_init.o ../$(BUILD)/osd_types.o ../$(BUILD)/Messenger.o \
-../$(BUILD)/RotatingKeyRing.o ../$(BUILD)/CephxProtocol.o ../$(BUILD)/global_context.o \
+../$(BUILD)/RotatingKeyRing.o ../$(BUILD)/CephxProtocol.o ../$(BUILD)/CephxSessionHandler.o ../$(BUILD)/global_context.o \
 ../$(BUILD)/LogClient.o  ../$(BUILD)/AuthMethodList.o ../$(BUILD)/ceph_strings.o \
 ../$(BUILD)/Formatter.o  ../$(BUILD)/escape.o ../$(BUILD)/ceph_crypto.o ../$(BUILD)/builder.o \
 ../$(BUILD)/Timer.o  ../$(BUILD)/BackTrace.o ../$(BUILD)/hex.o ../$(BUILD)/crush.o \
@@ -90,21 +94,22 @@ OBJECTS= ../$(BUILD)/librados.o ../$(BUILD)/IoCtxImpl.o ../$(BUILD)/RadosClient.
 ../$(BUILD)/bloom_filter.o ../$(BUILD)/DecayCounter.o ../$(BUILD)/inode_backtrace.o \
 ../$(BUILD)/msg_types.o ../$(BUILD)/SubsystemMap.o ../$(BUILD)/uuid.o \
 ../$(BUILD)/HitSet.o  ../$(BUILD)/Log.o ../$(BUILD)/PrebufferedStreambuf.o ../$(BUILD)/version.o \
-../$(BUILD)/Accepter.o ../$(BUILD)/DispatchQueue.o ../$(BUILD)/Pipe.o ../$(BUILD)/PipeConnection.o 
+../$(BUILD)/Accepter.o ../$(BUILD)/DispatchQueue.o  ../$(BUILD)/PipeConnection.o ../$(BUILD)/dout.o \
+../$(BUILD)/AuthSessionHandler.o ../$(BUILD)/histogram.o ../$(BUILD)/ceph_hash.o ../$(BUILD)/addr_parsing.o
 
-
+ALL: ../bin/rados_client.exe 
 ../bin/rados.dll:$(OBJECTS)
 	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0
 	@echo "**************************************************************"
 	@echo "MAKE "$@" FINISH"
 	@echo "**************************************************************"
 
-../bin/ceph-dokan.exe:../$(BUILD)/rados_client.o ../$(BUILD)/snap_set_diff.o ../bin/rados.dll
-	$(CPP) $(CFLAGS) $(CLIBS) -o $@ $^ -unicode -lws2_32 -lpthreadGCE2
+../bin/rados_client.exe:../$(BUILD)/librados_client.o ../bin/rados.dll
+	$(CPP) $(CFLAGS) $(CLIBS) -o $@ $^ -unicode -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0
 	@echo "**************************************************************"
 	@echo "MAKE "$@" FINISH"
 	@echo "**************************************************************"
 
 
 clean:
-	rm -f $(OBJECTS) ../$(BUILD)/*.o ../bin/rados.dll ../bin/librados_client.exe
+	rm -f $(OBJECTS) ../$(BUILD)/*.o ../bin/rados.dll ../bin/rados_client.exe

@@ -24,7 +24,7 @@ int main (int argc, char ** argv)
 
 
         /* Read a Ceph configuration file to configure the cluster handle. */
-        err = rados_conf_read_file(cluster, "/etc/ceph/ceph.conf");
+        err = rados_conf_read_file(cluster, "ceph.conf");
         if (err < 0) {
                 fprintf(stderr, "%s: cannot read config file: %s\n", argv[0], strerror(-err));
                 //exit(EXIT_FAILURE);
