@@ -2252,6 +2252,7 @@ extern "C" rados_config_t rados_cct(rados_t cluster)
 }
 
 extern "C" int rados_connect(rados_t cluster)
+
 {
   tracepoint(librados, rados_connect_enter, cluster);
   librados::RadosClient *client = (librados::RadosClient *)cluster;
@@ -2731,19 +2732,26 @@ extern "C" int rados_monitor_log(rados_t cluster, const char *level, rados_log_c
 
 extern "C" int rados_ioctx_create(rados_t cluster, const char *name, rados_ioctx_t *io)
 {
+  printf("1.1.1\n");
   tracepoint(librados, rados_ioctx_create_enter, cluster, name);
+  printf("1.1.2\n");
   librados::RadosClient *client = (librados::RadosClient *)cluster;
+  printf("1.1.3\n");
   librados::IoCtxImpl *ctx;
-
+  printf("1.1.4\n");
   int r = client->create_ioctx(name, &ctx);
+  printf("1.1.5\n");
   if (r < 0) {
     tracepoint(librados, rados_ioctx_create_exit, r, NULL);
+  printf("1.1.6\n");
     return r;
   }
-
+  printf("1.1.7\n");
   *io = ctx;
   ctx->get();
+  printf("1.1.8\n");
   tracepoint(librados, rados_ioctx_create_exit, 0, ctx);
+  printf("1.1.9\n");
   return 0;
 }
 

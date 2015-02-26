@@ -83,14 +83,19 @@ librados::RadosClient::RadosClient(CephContext *cct_)
 
 int64_t librados::RadosClient::lookup_pool(const char *name)
 {
+  printf("1.1.4.1.1\n");
   int r = wait_for_osdmap();
+  printf("1.1.4.1.2\n");
   if (r < 0) {
     return r;
   }
-
+  printf("1.1.4.1.3\n");
   const OSDMap *osdmap = objecter->get_osdmap_read();
+  printf("1.1.4.1.4\n");
   int64_t ret = osdmap->lookup_pg_pool_name(name);
+  printf("1.1.4.1.5\n");
   objecter->put_osdmap_read();
+  printf("1.1.4.1.6\n");
   return ret;
 }
 
@@ -352,6 +357,7 @@ librados::RadosClient::~RadosClient()
 
 int librados::RadosClient::create_ioctx(const char *name, IoCtxImpl **io)
 {
+  printf("1.1.4.1\n");
   int64_t poolid = lookup_pool(name);
   if (poolid < 0) {
     // Make sure we have the latest map
@@ -432,41 +438,53 @@ bool librados::RadosClient::_dispatch(Message *m)
 int librados::RadosClient::wait_for_osdmap()
 {
   assert(!lock.is_locked_by_me());
-
+  printf("1.1.4.1.1.1\n");
   if (state != CONNECTED) {
     return -ENOTCONN;
   }
-
+  printf("1.1.4.1.1.2\n");
   bool need_map = false;
   const OSDMap *osdmap = objecter->get_osdmap_read();
+  printf("1.1.4.1.1.3\n");
   if (osdmap->get_epoch() == 0) {
     need_map = true;
   }
+  printf("1.1.4.1.1.4\n");
   objecter->put_osdmap_read();
 
   if (need_map) {
     Mutex::Locker l(lock);
-
+  printf("1.1.4.1.1.5\n");
     utime_t timeout;
     if (cct->_conf->rados_mon_op_timeout > 0)
       timeout.set_from_double(cct->_conf->rados_mon_op_timeout);
-
+  printf("1.1.4.1.1.6\n");
     const OSDMap *osdmap = objecter->get_osdmap_read();
+    printf("1.1.4.1.1.7\n");
     if (osdmap->get_epoch() == 0) {
       ldout(cct, 10) << __func__ << " waiting" << dendl;
       utime_t start = ceph_clock_now(cct);
+      printf("1.1.4.1.1.8\n");
       while (osdmap->get_epoch() == 0) {
         objecter->put_osdmap_read();
+        printf("1.1.4.1.1.9\n");
+        std::cout << osdmap->get_epoch() << std::endl;
         cond.WaitInterval(cct, lock, timeout);
+        printf("1.1.4.1.1.10\n");
         utime_t elapsed = ceph_clock_now(cct) - start;
+        printf("1.1.4.1.1.11\n");
         if (!timeout.is_zero() && elapsed > timeout) {
+          printf("1.1.4.1.1.12\n");
           lderr(cct) << "timed out waiting for first osdmap from monitors" << dendl;
           return -ETIMEDOUT;
         }
+        printf("1.1.4.1.1.13\n");
         osdmap = objecter->get_osdmap_read();
       }
+      
       ldout(cct, 10) << __func__ << " done waiting" << dendl;
     }
+    printf("1.1.4.1.1.14\n");
     objecter->put_osdmap_read();
     return 0;
   } else {

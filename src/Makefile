@@ -67,7 +67,7 @@ CLIBS    =
 ../$(BUILD)/%.o:msg/simple/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
 
-OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/librados.o ../$(BUILD)/IoCtxImpl.o ../$(BUILD)/RadosClient.o ../$(BUILD)/RadosXattrIter.o \
+OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/snap_set_diff.o ../$(BUILD)/librados.o ../$(BUILD)/IoCtxImpl.o ../$(BUILD)/RadosClient.o ../$(BUILD)/RadosXattrIter.o \
 ../$(BUILD)/Objecter.o ../$(BUILD)/MonClient.o ../$(BUILD)/CrushWrapper.o  ../$(BUILD)/MonMap.o \
   ../$(BUILD)/mdstypes.o ../$(BUILD)/assert.o ../$(BUILD)/Pipe.o \
  ../$(BUILD)/MDSMap.o ../$(BUILD)/ceph_argparse.o ../$(BUILD)/OSDMap.o \
