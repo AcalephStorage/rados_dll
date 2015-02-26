@@ -104,8 +104,8 @@ ALL: ../bin/rados_client.exe
 	@echo "MAKE "$@" FINISH"
 	@echo "**************************************************************"
 
-../bin/rados_client.exe:../$(BUILD)/librados_client.o ../bin/rados.dll
-	$(CPP) $(CFLAGS) $(CLIBS) -o $@ $^ -unicode -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0
+../bin/rados_client.exe:../$(BUILD)/rados_client.o ../bin/rados.dll
+	$(CPP) $(CFLAGS) $(CLIBS) -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0 -unicode
 	@echo "**************************************************************"
 	@echo "MAKE "$@" FINISH"
 	@echo "**************************************************************"

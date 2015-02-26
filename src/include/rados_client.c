@@ -42,6 +42,7 @@ int main (int argc, char ** argv)
         }
 
         /* Connect to the cluster */
+        printf("1\n");
         err = rados_connect(cluster);
         if (err < 0) {
                 fprintf(stderr, "%s: cannot connect to cluster: %s\n", argv[0], strerror(-err));
@@ -49,5 +50,7 @@ int main (int argc, char ** argv)
         } else {
                 printf("\nConnected to the cluster.\n");
         }
+
+        
 
 }

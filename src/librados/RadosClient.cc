@@ -189,16 +189,17 @@ int librados::RadosClient::ping_monitor(const string mon_id, string *result)
 int librados::RadosClient::connect()
 {
   common_init_finish(cct);
-
   int err;
   uint64_t nonce;
 
   // already connected?
   if (state == CONNECTING)
   //  return -EINPROGRESS;
+  
   if (state == CONNECTED)
     return -EISCONN;
   state = CONNECTING;
+  
 
   // get monmap
   err = monclient.build_initial_monmap();
@@ -207,8 +208,10 @@ int librados::RadosClient::connect()
 
   err = -ENOMEM;
   nonce = getpid() + (1000000 * (uint64_t)rados_instance.inc());
+
   messenger = Messenger::create(cct, cct->_conf->ms_type, entity_name_t::CLIENT(-1),
 				"radosclient", nonce);
+
   if (!messenger)
     goto out;
 
@@ -248,7 +251,7 @@ int librados::RadosClient::connect()
     goto out;
   }
 
-  err = monclient.authenticate(conf->client_mount_timeout);
+  //err = monclient.authenticate(conf->client_mount_timeout);
   if (err) {
     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;
     shutdown();
@@ -257,7 +260,9 @@ int librados::RadosClient::connect()
   messenger->set_myname(entity_name_t::CLIENT(monclient.get_global_id()));
 
   objecter->set_client_incarnation(0);
+
   objecter->start();
+
   lock.Lock();
 
   timer.init();
@@ -287,7 +292,7 @@ int librados::RadosClient::connect()
       messenger = NULL;
     }
   }
-
+  
   return err;
 }
 
