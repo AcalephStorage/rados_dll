@@ -17,16 +17,16 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
   int ret = 0;
 
   // we will use all of these below
-  const char *pool_name = "hello_world_pool";
+  const char *pool_name = "pool";
   const char* hello = "hello world!";
   const char* object_name = "hello_object";
   uint64_t flags;
-  rados_ioctx_t io_ctx = NULL;
+  rados_ioctx_t io_ctx;
   int pool_created = 0;
 
   // first, we create a Rados object and initialize it

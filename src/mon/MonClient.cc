@@ -446,17 +446,20 @@ void MonClient::shutdown()
 
 int MonClient::authenticate(double timeout)
 {
-  Mutex::Locker lock(monc_lock);
 
+  Mutex::Locker lock(monc_lock);
+  printf("1\n");
   if (state == MC_STATE_HAVE_SESSION) {
+      printf("2\n");
     ldout(cct, 5) << "already authenticated" << dendl;
     return 0;
   }
 
   _sub_want("monmap", monmap.get_epoch() ? monmap.get_epoch() + 1 : 0, 0);
+    printf("3\n");
   if (cur_mon.empty())
     _reopen_session();
-
+  printf("4\n");
   utime_t until = ceph_clock_now(cct);
   until += timeout;
   if (timeout > 0.0)
@@ -467,21 +470,24 @@ int MonClient::authenticate(double timeout)
       if (r == ETIMEDOUT) {
 	ldout(cct, 0) << "authenticate timed out after " << timeout << dendl;
 	authenticate_err = -r;
+    printf("5\n");
       }
     } else {
       auth_cond.Wait(monc_lock);
+
     }
   }
-
+  printf("6\n");
   if (state == MC_STATE_HAVE_SESSION) {
     ldout(cct, 5) << "authenticate success, global_id " << global_id << dendl;
   }
-
+  printf("7\n");
   if (authenticate_err < 0 && no_keyring_disabled_cephx) {
     lderr(cct) << "authenticate NOTE: no keyring found; disabled cephx authentication" << dendl;
   }
-
+  printf("8\n");
   return authenticate_err;
+  
 }
 
 void MonClient::handle_auth(MAuthReply *m)

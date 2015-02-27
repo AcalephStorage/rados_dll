@@ -8,8 +8,8 @@
 #include <set>
 #include <vector>
 #include <utility>
-#include <memory.h>
-// #include <buffer.h>
+#include "include/memory.h"
+#include "include/buffer.h"
 
 #include "librados.h"
 #include "rados_types.hpp"
@@ -215,16 +215,7 @@ namespace librados
    * These are per-op flags which may be different among
    * ops added to an ObjectOperation.
    */
-#ifdef _WIN32
-  enum ObjectOperationFlags {
-    OP_EXCL =   LIBRADOS_OP_FLAG_EXCL,
-    OP_FAILOK = LIBRADOS_OP_FLAG_FAILOK,
-    OP_FADVISE_RANDOM = LIBRADOS_OP_FLAG_FADVISE_RANDOM,
-    OP_FADVISE_SEQUENTIAL = LIBRADOS_OP_FLAG_FADVISE_SEQUENTIAL,
-    OP_FADVISE_WILLNEED = LIBRADOS_OP_FLAG_FADVISE_WILLNEED,
-    OP_FADVISE_DONTNEED = LIBRADOS_OP_FLAG_FADVISE_DONTNEED,
-  };
-#else
+
   enum ObjectOperationFlags {
     OP_EXCL =   LIBRADOS_OP_FLAG_EXCL,
     OP_FAILOK = LIBRADOS_OP_FLAG_FAILOK,
@@ -234,7 +225,7 @@ namespace librados
     OP_FADVISE_DONTNEED = LIBRADOS_OP_FLAG_FADVISE_DONTNEED,
     OP_FADVISE_NOCACHE = LIBRADOS_OP_FLAG_FADVISE_NOCACHE,
   };
-#endif
+
   class CEPH_RADOS_API ObjectOperationCompletion {
   public:
     virtual ~ObjectOperationCompletion() {}

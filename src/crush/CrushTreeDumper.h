@@ -80,7 +80,10 @@ namespace CrushTreeDumper {
       if (empty()) {
 	if (root == roots.end())
 	  return false;
+#ifdef _WIN32
+#else
 	push_back(Item(*root, 0, crush->get_bucket_weightf(*root)));
+#endif
 	++root;
       }
 
@@ -94,8 +97,11 @@ namespace CrushTreeDumper {
 	for (int k = s - 1; k >= 0; k--) {
 	  int id = crush->get_bucket_item(qi.id, k);
 	  qi.children.push_back(id);
+#ifdef _WIN32
+#else
 	  push_front(Item(id, qi.depth + 1,
 			  crush->get_bucket_item_weightf(qi.id, k)));
+#endif
 	}
       }
       return true;

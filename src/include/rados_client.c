@@ -54,24 +54,18 @@ int main (int argc, const char ** argv)
 
 
 
-
-        //IO Creation
         rados_ioctx_t io;
         char *poolname = "rados_data";
-        printf("1\n");
+
         err = rados_ioctx_create(cluster, poolname, &io);
-        printf("1.1\n");
         if (err < 0) {
-                
                 fprintf(stderr, "%s: cannot open rados pool %s: %s\n", argv[0], poolname, strerror(-err));
                 rados_shutdown(cluster);
-        printf("1.2\n");
-                //exit(EXIT_FAILURE);
+                exit(EXIT_FAILURE);
         } else {
-        printf("1.3\n");
                 printf("\nCreated I/O context.\n");
         }
-        printf("2\n");
+
         /* Write data to the cluster synchronously. */
         err = rados_write(io, "hw", "Hello World!", 12, 0);
         if (err < 0) {
@@ -82,7 +76,7 @@ int main (int argc, const char ** argv)
         } else {
                 printf("\nWrote \"Hello World\" to object \"hw\".\n");
         }
-        printf("3\n");
+
         char xattr[] = "en_US";
         err = rados_setxattr(io, "hw", "lang", xattr, 5);
         if (err < 0) {
@@ -99,9 +93,7 @@ int main (int argc, const char ** argv)
          * First, set up asynchronous I/O completion.
          */
         rados_completion_t comp;
-        printf("4\n");
         err = rados_aio_create_completion(NULL, NULL, NULL, &comp);
-        printf("5\n");
         if (err < 0) {
                 fprintf(stderr, "%s: Could not create aio completion: %s\n", argv[0], strerror(-err));
                 rados_ioctx_destroy(io);
@@ -160,6 +152,4 @@ int main (int argc, const char ** argv)
         } else {
                 printf("\nRemoved object \"hw\".\n");
         }
-        
-
 }

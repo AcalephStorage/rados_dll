@@ -481,15 +481,17 @@ int librados::RadosClient::wait_for_osdmap()
         printf("1.1.4.1.1.13\n");
         osdmap = objecter->get_osdmap_read();
       }
-      
+      osdmap = objecter->get_osdmap_read();
       ldout(cct, 10) << __func__ << " done waiting" << dendl;
     }
+
     printf("1.1.4.1.1.14\n");
     objecter->put_osdmap_read();
     return 0;
   } else {
     return 0;
   }
+
 }
 
 
