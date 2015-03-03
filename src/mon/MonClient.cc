@@ -368,7 +368,7 @@ int MonClient::init()
       method = cct->_conf->auth_client_required;
   auth_supported = new AuthMethodList(cct, method);
   ldout(cct, 10) << "auth_supported " << auth_supported->get_supported_set() << " method " << method << dendl;
-/*
+
   int r = 0;
   keyring = new KeyRing; // initializing keyring anyway
 
@@ -397,7 +397,7 @@ int MonClient::init()
 
   if (r < 0) {
     return r;
-  }*/
+  }
 
   rotating_secrets = new RotatingKeyRing(cct, cct->get_module_type(), keyring);
 
@@ -462,7 +462,7 @@ int MonClient::authenticate(double timeout)
   printf("4\n");
   utime_t until = ceph_clock_now(cct);
   until += timeout;
-  /*if (timeout > 0.0)
+  if (timeout > 0.0)
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;
   while (state != MC_STATE_HAVE_SESSION && !authenticate_err) {
     if (timeout > 0.0) {
@@ -476,7 +476,7 @@ int MonClient::authenticate(double timeout)
       auth_cond.Wait(monc_lock);
 
     }
-  }*/
+  }
   printf("6\n");
   if (state == MC_STATE_HAVE_SESSION) {
     ldout(cct, 5) << "authenticate success, global_id " << global_id << dendl;

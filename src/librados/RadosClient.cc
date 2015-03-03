@@ -258,7 +258,7 @@ printf("3\n");
     goto out;
   }
   printf("92\n");
-  //err = monclient.authenticate(conf->client_mount_timeout);
+  err = monclient.authenticate(conf->client_mount_timeout);
   if (err) {
     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;
     printf("fail\n");
@@ -472,6 +472,7 @@ int librados::RadosClient::wait_for_osdmap()
         objecter->put_osdmap_read();
         printf("1.1.4.1.1.9\n");
         std::cout << osdmap->get_epoch() << std::endl;
+        printf("%d\n", osdmap->get_epoch());
         cond.WaitInterval(cct, lock, timeout);
         printf("1.1.4.1.1.10\n");
         utime_t elapsed = ceph_clock_now(cct) - start;
