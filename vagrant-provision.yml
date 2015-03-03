@@ -1,0 +1,45 @@
+---
+- hosts: all
+  tasks:
+  - apt: pkg=linux-image-extra-{{ ansible_kernel }} state=present update_cache=yes cache_valid_time=3600
+    sudo: yes
+  - name: Install required packages
+    apt: pkg={{item}}
+    with_items:
+      - build-essential
+      - autotools-dev
+      - autoconf
+      - automake
+      - cdbs
+      - gcc
+      - g++
+      - git
+      - libboost-dev
+      - libedit-dev
+      - libssl-dev
+      - libtool
+      - libfcgi
+      - libfcgi-dev
+      - libfuse-dev
+      - linux-kernel-headers
+      - libcrypto++-dev
+      - libexpat1-dev
+      - pkg-config
+      - libcurl4-gnutls-dev
+      - uuid-dev
+      - libkeyutils-dev
+      - libgoogle-perftools-dev
+      - libatomic-ops-dev
+      - libaio-dev
+      - libgdata-common
+      - libgdata13
+      - libsnappy-dev
+      - libleveldb-dev
+      - libblkid-dev
+      - xfslibs-dev
+      - libboost-thread-dev
+      - libboost-program-options-dev
+      - libudev-dev
+      - libcrypto++-doc
+      - libcrypto++-utils
+    sudo: yes
