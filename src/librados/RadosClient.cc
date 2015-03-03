@@ -362,13 +362,18 @@ int librados::RadosClient::create_ioctx(const char *name, IoCtxImpl **io)
 {
   printf("1.1.4.1\n");
   int64_t poolid = lookup_pool(name);
+  printf("poolid: %2\n", poolid);
+  printf("1.1.4.2\n");
   if (poolid < 0) {
     // Make sure we have the latest map
+    printf("1.1.4.3\n");
     int r = wait_for_latest_osdmap();
     if (r < 0)
       return r;
-
+    printf("1.1.4.4\n");
     poolid = lookup_pool(name);
+    printf("poolid: %2\n", poolid);
+    printf("1.1.4.5\n");
     if (poolid < 0) {
       return (int)poolid;
     }
