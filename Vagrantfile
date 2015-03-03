@@ -24,6 +24,9 @@ Vagrant.configure(2) do |config|
 
   config.vm.provider 'virtualbox' do |vbox|
     vbox.name = VM_NAME
+
+    # Use VBoxManage to customize the VM. For example to change memory:
+    vbox.customize ["modifyvm", :id, '--memory', '2048']
   end
 
   config.vm.provision 'ansible' do |ansible|
