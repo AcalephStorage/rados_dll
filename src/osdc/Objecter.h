@@ -1865,6 +1865,7 @@ private:
   void shutdown();
 
   const OSDMap *get_osdmap_read() {
+    printf("getting osd map\n");
     rwlock.get_read();
     return osdmap;
   }

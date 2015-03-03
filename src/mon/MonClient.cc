@@ -368,7 +368,7 @@ int MonClient::init()
       method = cct->_conf->auth_client_required;
   auth_supported = new AuthMethodList(cct, method);
   ldout(cct, 10) << "auth_supported " << auth_supported->get_supported_set() << " method " << method << dendl;
-
+/*
   int r = 0;
   keyring = new KeyRing; // initializing keyring anyway
 
@@ -397,7 +397,7 @@ int MonClient::init()
 
   if (r < 0) {
     return r;
-  }
+  }*/
 
   rotating_secrets = new RotatingKeyRing(cct, cct->get_module_type(), keyring);
 
@@ -462,7 +462,7 @@ int MonClient::authenticate(double timeout)
   printf("4\n");
   utime_t until = ceph_clock_now(cct);
   until += timeout;
-  if (timeout > 0.0)
+  /*if (timeout > 0.0)
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;
   while (state != MC_STATE_HAVE_SESSION && !authenticate_err) {
     if (timeout > 0.0) {
@@ -476,7 +476,7 @@ int MonClient::authenticate(double timeout)
       auth_cond.Wait(monc_lock);
 
     }
-  }
+  }*/
   printf("6\n");
   if (state == MC_STATE_HAVE_SESSION) {
     ldout(cct, 5) << "authenticate success, global_id " << global_id << dendl;
@@ -610,6 +610,7 @@ string MonClient::_pick_random_mon()
 void MonClient::_reopen_session(int rank, string name)
 {
   assert(monc_lock.is_locked());
+  printf("reopen 1\n");
   ldout(cct, 10) << "_reopen_session rank " << rank << " name " << name << dendl;
 
   if (rank < 0 && name.length() == 0) {
@@ -619,7 +620,7 @@ void MonClient::_reopen_session(int rank, string name)
   } else {
     cur_mon = monmap.get_name(rank);
   }
-
+  printf("reopen 2\n");
   if (cur_con) {
     cur_con->mark_down();
   }
@@ -634,14 +635,14 @@ void MonClient::_reopen_session(int rank, string name)
     waiting_for_session.front()->put();
     waiting_for_session.pop_front();
   }
-
+  printf("reopen 3\n");
   // throw out version check requests
   while (!version_requests.empty()) {
     finisher.queue(version_requests.begin()->second->context, -EAGAIN);
     delete version_requests.begin()->second;
     version_requests.erase(version_requests.begin());
   }
-
+printf("3.1\n");
   // adjust timeouts if necessary
   if (had_a_connection) {
     reopen_interval_multiplier *= cct->_conf->mon_client_hunt_interval_backoff;
@@ -650,28 +651,36 @@ void MonClient::_reopen_session(int rank, string name)
       reopen_interval_multiplier =
           cct->_conf->mon_client_hunt_interval_max_multiple;
   }
-
+printf("3.2\n");
   // restart authentication handshake
   state = MC_STATE_NEGOTIATING;
   hunting = true;
-
+printf("3.3\n");
   // send an initial keepalive to ensure our timestamp is valid by the
   // time we are in an OPENED state (by sequencing this before
   // authentication).
   cur_con->send_keepalive();
-
+printf("3.4\n");
   MAuth *m = new MAuth;
   m->protocol = 0;
+  printf("3.4.1\n");
   m->monmap_epoch = monmap.get_epoch();
+printf("3.5\n");
   __u8 struct_v = 1;
-  ::encode(struct_v, m->auth_payload);
-  ::encode(auth_supported->get_supported_set(), m->auth_payload);
-  ::encode(entity_name, m->auth_payload);
-  ::encode(global_id, m->auth_payload);
+  printf("3.5.0.1\n");
+//  ::encode(struct_v, m->auth_payload);
+  printf("3.5.1\n");
+//  ::encode(auth_supported->get_supported_set(), m->auth_payload);
+  printf("3.5.2\n");
+//  ::encode(entity_name, m->auth_payload);
+  printf("3.5.3\n");
+//  ::encode(global_id, m->auth_payload);
+  printf("3.5.4\n");
   _send_mon_message(m, true);
-
+printf("reopen 4\n");
   if (!sub_have.empty())
     _renew_subs();
+printf("reopen 5\n");
 }
 
 
