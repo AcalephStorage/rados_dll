@@ -20,8 +20,7 @@
 
 #include "include/unordered_map.h"
 #include "include/hash_namespace.h"
-#ifdef _WIN32
-#else 
+ 
 #if defined(__FreeBSD__) && defined(__LP64__)	// On FreeBSD pthread_t is a pointer.
 CEPH_HASH_NAMESPACE_START
   template<>
@@ -33,7 +32,7 @@ CEPH_HASH_NAMESPACE_START
     };
 CEPH_HASH_NAMESPACE_END
 #endif
-#endif
+
 /******* Constants **********/
 #define lockdep_dout(v) lsubdout(g_lockdep_ceph_ctx, lockdep, v)
 #define MAX_LOCKS  2000   // increase me as needed

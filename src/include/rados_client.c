@@ -18,7 +18,7 @@ int main (int argc, const char ** argv)
 
         if (err < 0) {
                 fprintf(stderr, "%s: Couldn't create the cluster handle! %s\n", argv[0], strerror(-err));
-                //exit();
+                exit(1);
         } else {
                 printf("\nCreated a cluster handle.\n");
         }
@@ -28,7 +28,7 @@ int main (int argc, const char ** argv)
         err = rados_conf_read_file(cluster, "ceph.conf");
         if (err < 0) {
                 fprintf(stderr, "%s: cannot read config file: %s\n", argv[0], strerror(-err));
-                //exit(EXIT_FAILURE);
+                exit(EXIT_FAILURE);
         } else {
                 printf("\nRead the config file.\n");
         }
@@ -37,7 +37,7 @@ int main (int argc, const char ** argv)
         err = rados_conf_parse_argv(cluster, argc, argv);
         if (err < 0) {
                 fprintf(stderr, "%s: cannot parse command line arguments: %s\n", argv[0], strerror(-err));
-                //exit(EXIT_FAILURE);
+                exit(EXIT_FAILURE);
         } else {
                 printf("\nRead the command line arguments.\n");
         }
@@ -47,17 +47,17 @@ int main (int argc, const char ** argv)
         err = rados_connect(cluster);
         if (err < 0) {
                 fprintf(stderr, "%s: cannot connect to cluster: %s\n", argv[0], strerror(-err));
-                //exit(EXIT_FAILURE);
+                exit(EXIT_FAILURE);
         } else {
                 printf("\nConnected to the cluster.\n");
         }
 
 
-
         rados_ioctx_t io;
-        char *poolname = "rados_data";
-
+        char *poolname = "data";
+        printf("create 1\n");
         err = rados_ioctx_create(cluster, poolname, &io);
+        printf("create 2\n");
         if (err < 0) {
                 fprintf(stderr, "%s: cannot open rados pool %s: %s\n", argv[0], poolname, strerror(-err));
                 rados_shutdown(cluster);
@@ -152,4 +152,6 @@ int main (int argc, const char ** argv)
         } else {
                 printf("\nRemoved object \"hw\".\n");
         }
+
+
 }

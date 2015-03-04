@@ -283,9 +283,9 @@ void Objecter::start()
 {
   RWLock::RLocker rl(rwlock);
   schedule_tick();
-  /*if (osdmap->get_epoch() == 0) {
+  if (osdmap->get_epoch() == 0) {
     _maybe_request_map();
-  }*/
+  }
 }
 
 void Objecter::shutdown()

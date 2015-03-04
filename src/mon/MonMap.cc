@@ -244,6 +244,7 @@ void MonMap::set_initial_members(CephContext *cct,
 
 int MonMap::build_initial(CephContext *cct, ostream& errout)
 {
+  printf("monmap 1\n");
   const md_config_t *conf = cct->_conf;
   // file?
   if (!conf->monmap.empty()) {
@@ -260,7 +261,7 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
 	 << ": " << cpp_strerror(-r) << std::endl;
     return r;
   }
-
+  printf("monmap 2\n");
   // fsid from conf?
   if (!cct->_conf->fsid.is_zero()) {
     fsid = cct->_conf->fsid;
@@ -276,7 +277,7 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
     }
     return 0;
   }
-
+  printf("monmap 3\n");
   // What monitors are in the config file?
   std::vector <std::string> sections;
   int ret = conf->get_all_sections(sections);
@@ -293,7 +294,7 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
       mon_names.push_back(s->substr(4));
     }
   }
-
+  printf("monmap 4\n");
   // Find an address for each monitor in the config file.
   for (std::vector <std::string>::const_iterator m = mon_names.begin();
        m != mon_names.end(); ++m) {
@@ -328,7 +329,7 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
 
     add(m->c_str(), addr);
   }
-
+  printf("monmap 5\n");
   if (size() == 0) {
     errout << "no monitors specified to connect to." << std::endl;
     return -ENOENT;

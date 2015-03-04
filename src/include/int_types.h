@@ -61,8 +61,7 @@
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
-#ifdef _WIN32
-#else
+
 #ifndef HAVE_LINUX_TYPES_H
 #endif
 #ifndef HAVE___U8
@@ -108,4 +107,4 @@ typedef __u32 __bitwise__ __be32;
 typedef __u64 __bitwise__ __le64;
 typedef __u64 __bitwise__ __be64;
 
-#endif
+

@@ -205,15 +205,15 @@ int librados::RadosClient::connect()
     return -EISCONN;
   state = CONNECTING;
   
-
+printf("5\n");
   // get monmap
   err = monclient.build_initial_monmap();
   if (err < 0)
     goto out;
-
+printf("8\n");
   err = -ENOMEM;
   nonce = getpid() + (1000000 * (uint64_t)rados_instance.inc());
-
+printf("3\n");
   messenger = Messenger::create(cct, cct->_conf->ms_type, entity_name_t::CLIENT(-1),
 				"radosclient", nonce);
 
@@ -237,28 +237,31 @@ int librados::RadosClient::connect()
   if (!objecter)
     goto out;
   objecter->set_balanced_budget();
-
+  printf("89\n");
   monclient.set_messenger(messenger);
 
   objecter->init();
   messenger->add_dispatcher_tail(objecter);
   messenger->add_dispatcher_tail(this);
-
+  printf("90\n");
   messenger->start();
 
   ldout(cct, 1) << "setting wanted keys" << dendl;
   monclient.set_want_keys(CEPH_ENTITY_TYPE_MON | CEPH_ENTITY_TYPE_OSD);
   ldout(cct, 1) << "calling monclient init" << dendl;
   err = monclient.init();
+  printf("91\n");
   if (err) {
+    printf("init error\n");
     ldout(cct, 0) << conf->name << " initialization error " << cpp_strerror(-err) << dendl;
     shutdown();
     goto out;
   }
-
-  //err = monclient.authenticate(conf->client_mount_timeout);
+  printf("92\n");
+  err = monclient.authenticate(conf->client_mount_timeout);
   if (err) {
     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;
+    printf("fail\n");
     shutdown();
     goto out;
   }
@@ -474,6 +477,7 @@ int librados::RadosClient::wait_for_osdmap()
         objecter->put_osdmap_read();
         printf("1.1.4.1.1.9\n");
         std::cout << osdmap->get_epoch() << std::endl;
+        printf("%d\n", osdmap->get_epoch());
         cond.WaitInterval(cct, lock, timeout);
         printf("1.1.4.1.1.10\n");
         utime_t elapsed = ceph_clock_now(cct) - start;
@@ -486,7 +490,7 @@ int librados::RadosClient::wait_for_osdmap()
         printf("1.1.4.1.1.13\n");
         osdmap = objecter->get_osdmap_read();
       }
-      osdmap = objecter->get_osdmap_read();
+      
       ldout(cct, 10) << __func__ << " done waiting" << dendl;
     }
 
