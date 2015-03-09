@@ -17,6 +17,8 @@
 #include "common/environment.h"
 #include "include/types.h"
 #include "lockdep.h"
+#include "crush/hash.h"
+#include <map>
 
 #include "include/unordered_map.h"
 #include "include/hash_namespace.h"
@@ -58,21 +60,19 @@ static BackTrace *follows[MAX_LOCKS][MAX_LOCKS];       // follows[a][b] means b 
 /******* Functions **********/
 void lockdep_register_ceph_context(CephContext *cct)
 {
-#ifdef _WIN32
-#else
+
   pthread_mutex_lock(&lockdep_mutex);
   if (g_lockdep_ceph_ctx == NULL) {
     g_lockdep_ceph_ctx = cct;
     lockdep_dout(0) << "lockdep start" << dendl;
   }
   pthread_mutex_unlock(&lockdep_mutex);
-#endif
+
 }
 
 void lockdep_unregister_ceph_context(CephContext *cct)
 {
-#ifdef _WIN32
-#else
+
   pthread_mutex_lock(&lockdep_mutex);
   if (cct == g_lockdep_ceph_ctx) {
     lockdep_dout(0) << "lockdep stop" << dendl;
@@ -90,18 +90,17 @@ void lockdep_unregister_ceph_context(CephContext *cct)
     last_id = 0;
   }
   pthread_mutex_unlock(&lockdep_mutex);
-#endif
+
 }
 
 int lockdep_dump_locks()
-{
-#ifdef _WIN32
-#else
-  pthread_mutex_lock(&lockdep_mutex);
+{//not working
 
-  for (ceph::unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();
-       p != held.end();
-       ++p) {
+  pthread_mutex_lock(&lockdep_mutex);
+  
+
+  for (ceph::unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();p != held.end();++p) 
+  {
     lockdep_dout(0) << "--- thread " << p->first << " ---" << dendl;
     for (map<int,BackTrace*>::iterator q = p->second.begin();
 	 q != p->second.end();
@@ -114,16 +113,14 @@ int lockdep_dump_locks()
   }
 
   pthread_mutex_unlock(&lockdep_mutex);
-#endif
+
   return 0;
 }
 
 
 int lockdep_register(const char *name)
 {
-#ifdef _WIN32
-return 0;
-#else
+
   int id;
 
   pthread_mutex_lock(&lockdep_mutex);
@@ -147,15 +144,14 @@ return 0;
   pthread_mutex_unlock(&lockdep_mutex);
 
   return id;
-#endif
+
 }
 
 
 // does b follow a?
 static bool does_follow(int a, int b)
 {
-#ifdef _WIN32
-#else
+
   if (follows[a][b]) {
     lockdep_dout(0) << "\n";
     *_dout << "------------------------------------" << "\n";
@@ -176,12 +172,12 @@ static bool does_follow(int a, int b)
       return true;
     }
   }
-#endif
+
   return false;
 }
 
 int lockdep_will_lock(const char *name, int id)
-{
+{//not working
 #ifdef _WIN32
 #else
   pthread_t p = pthread_self();
@@ -252,7 +248,7 @@ int lockdep_will_lock(const char *name, int id)
 }
 
 int lockdep_locked(const char *name, int id, bool force_backtrace)
-{
+{//not working
 #ifdef _WIN32
 #else
   pthread_t p = pthread_self();
@@ -271,7 +267,7 @@ int lockdep_locked(const char *name, int id, bool force_backtrace)
 }
 
 int lockdep_will_unlock(const char *name, int id)
-{
+{//not working
 #ifdef _WIN32
 #else
   pthread_t p = pthread_self();
