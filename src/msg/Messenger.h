@@ -255,10 +255,9 @@ public:
    * Get the default crc flags for this messenger.
    * but not yet dispatched.
    */
-#ifdef _WIN32
-#else
+
   static int get_default_crc_flags(md_config_t *);
-#endif
+
   /**
    * @} // Accessors
    */

@@ -80,7 +80,7 @@ OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/snap_set_diff.o ../$(BUILD)/librados.o .
 ../$(BUILD)/Finisher.o ../$(BUILD)/Throttle.o ../$(BUILD)/ceph_fs.o ../$(BUILD)/mapper.o \
 ../$(BUILD)/ceph_frag.o ../$(BUILD)/config.o ../$(BUILD)/MonCap.o  ../$(BUILD)/Filer.o \
 ../$(BUILD)/types.o  ../$(BUILD)/Crypto.o ../$(BUILD)/str_map.o \
-../$(BUILD)/errno.o  ../$(BUILD)/snap_types.o ../$(BUILD)/Striper.o \
+../$(BUILD)/errno.o  ../$(BUILD)/snap_types.o ../$(BUILD)/Striper.o  \
 ../$(BUILD)/buffer.o ../$(BUILD)/Mutex.o ../$(BUILD)/hash.o ../$(BUILD)/ObjectCacher.o \
 ../$(BUILD)/lockdep.o ../$(BUILD)/perf_counters.o ../$(BUILD)/Clock.o \
 ../$(BUILD)/armor.o ../$(BUILD)/AuthClientHandler.o ../$(BUILD)/LogEntry.o \

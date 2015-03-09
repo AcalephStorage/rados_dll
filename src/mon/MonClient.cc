@@ -460,7 +460,7 @@ int MonClient::authenticate(double timeout)
   if (cur_mon.empty())
     _reopen_session();
   printf("4\n");
-/*  utime_t until = ceph_clock_now(cct);
+ /* utime_t until = ceph_clock_now(cct);
   until += timeout;
   if (timeout > 0.0)
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;

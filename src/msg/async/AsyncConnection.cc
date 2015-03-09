@@ -31,28 +31,14 @@
 #define dout_prefix _conn_prefix(_dout)
 ostream& AsyncConnection::_conn_prefix(std::ostream *_dout) {
   return *_dout << "-- " << async_msgr->get_myinst().addr << " >> " << peer_addr << " conn(" << this
-                << " sd=" << sd << " :" << port
-                << " s=" << get_state_name(state)
-                << " pgs=" << peer_global_seq
-                << " cs=" << connect_seq
-                << " l=" << policy.lossy
-                << ").";
+        << " sd=" << sd << " :" << port
+        << " s=" << get_state_name(state)
+        << " pgs=" << peer_global_seq
+        << " cs=" << connect_seq
+        << " l=" << policy.lossy
+        << ").";
 }
-#ifdef _WIN32
-#else
-const int AsyncConnection::TCP_PREFETCH_MIN_SIZE = 512;
 
-class C_time_wakeup : public EventCallback {
-  AsyncConnectionRef conn;
-
- public:
-  C_time_wakeup(AsyncConnectionRef c): conn(c) {}
-  void do_request(int fd_or_id) {
-    conn->wakeup_from(fd_or_id);
-  }
-};
-#endif
-#ifdef _WIN32
 class C_handle_read : public EventCallback {
   AsyncConnectionRef conn;
 
@@ -62,17 +48,7 @@ class C_handle_read : public EventCallback {
     conn->process();
   }
 };
-#else
-class C_handle_read : public EventCallback {
-  AsyncConnectionRef conn;
 
- public:
-  C_handle_read(AsyncConnectionRef c): conn(c) {}
-  void do_request(int fd_or_id) {
-    conn->process();
-  }
-};
-#endif
 class C_handle_write : public EventCallback {
   AsyncConnectionRef conn;
 
@@ -120,50 +96,8 @@ class C_handle_dispatch : public EventCallback {
     //}
   }
 };
-#ifdef _WIN32
-#else
-
-class C_deliver_connect : public EventCallback {
-  AsyncMessenger *msgr;
-  AsyncConnectionRef conn;
-
- public:
-  C_deliver_connect(AsyncMessenger *msgr, AsyncConnectionRef c): msgr(msgr), conn(c) {}
-  void do_request(int id) {
-    msgr->ms_deliver_handle_connect(conn.get());
-  }
-};
-
-class C_deliver_accept : public EventCallback {
-  AsyncMessenger *msgr;
-  AsyncConnectionRef conn;
-
- public:
-  C_deliver_accept(AsyncMessenger *msgr, AsyncConnectionRef c): msgr(msgr), conn(c) {}
-  void do_request(int id) {
-    msgr->ms_deliver_handle_accept(conn.get());
-  }
-};
-
-class C_local_deliver : public EventCallback {
-  AsyncConnectionRef conn;
- public:
-  C_local_deliver(AsyncConnectionRef c): conn(c) {}
-  void do_request(int id) {
-    conn->local_deliver();
-  }
-};
 
 
-class C_clean_handler : public EventCallback {
-  AsyncConnectionRef conn;
- public:
-  C_clean_handler(AsyncConnectionRef c): conn(c) {}
-  void do_request(int id) {
-    conn->cleanup_handler();
-  }
-};
-#endif
 static void alloc_aligned_buffer(bufferlist& data, unsigned len, unsigned off)
 {
   // create a buffer to read into that matches the data alignment
@@ -187,7 +121,7 @@ static void alloc_aligned_buffer(bufferlist& data, unsigned len, unsigned off)
     data.push_back(bp);
   }
 }
-#ifdef _WIN32
+
 AsyncConnection::AsyncConnection(CephContext *cct, AsyncMessenger *m, EventCenter *c)
   : Connection(cct, m), async_msgr(m), global_seq(0), connect_seq(0), out_seq(0), in_seq(0), in_seq_acked(0),
     state(STATE_NONE), state_after_send(0), sd(-1),
@@ -201,47 +135,12 @@ AsyncConnection::AsyncConnection(CephContext *cct, AsyncMessenger *m, EventCente
   remote_reset_handler.reset(new C_handle_remote_reset(async_msgr, this));
   memset(msgvec, 0, sizeof(msgvec));
 }
-#else
-AsyncConnection::AsyncConnection(CephContext *cct, AsyncMessenger *m, EventCenter *c)
-  : Connection(cct, m), async_msgr(m), global_seq(0), connect_seq(0), peer_global_seq(0),
-    out_seq(0), in_seq(0), in_seq_acked(0), state(STATE_NONE), state_after_send(0), sd(-1),
-    port(-1), lock("AsyncConnection::lock"), open_write(false), keepalive(false), recv_buf(NULL),
-    recv_max_prefetch(MIN(msgr->cct->_conf->ms_tcp_prefetch_max_size, TCP_PREFETCH_MIN_SIZE)),
-    recv_start(0), recv_end(0), stop_lock("AsyncConnection::stop_lock"),
-    got_bad_auth(false), authorizer(NULL), replacing(false), once_session_reset(false),
-    is_reset_from_peer(false), state_buffer(NULL), state_offset(0), net(cct), center(c)
 
-{
-  read_handler.reset(new C_handle_read(this));
-  write_handler.reset(new C_handle_write(this));
-  reset_handler.reset(new C_handle_reset(async_msgr, this));
-  remote_reset_handler.reset(new C_handle_remote_reset(async_msgr, this));
-  connect_handler.reset(new C_deliver_connect(async_msgr, this));
-  accept_handler.reset(new C_deliver_accept(async_msgr, this));
-  local_deliver_handler.reset(new C_local_deliver(this));
-  memset(msgvec, 0, sizeof(msgvec));
-  // double recv_max_prefetch see "read_until"
-  recv_buf = new char[2*recv_max_prefetch];
-  state_buffer = new char[4096];
-}
-#endif
-#ifdef _WIN32
 AsyncConnection::~AsyncConnection()
 {
   assert(!authorizer);
 }
-#else
-AsyncConnection::~AsyncConnection()
-{
-  assert(out_q.empty());
-  assert(sent.empty());
-  delete authorizer;
-  if (recv_buf)
-    delete[] recv_buf;
-  if (state_buffer)
-    delete[] state_buffer;
-}
-#endif
+
 /* return -1 means `fd` occurs error or closed, it should be closed
  * return 0 means EAGAIN or EINTR */
 int AsyncConnection::read_bulk(int fd, char *buf, int len)
@@ -251,12 +150,12 @@ int AsyncConnection::read_bulk(int fd, char *buf, int len)
     if (errno == EAGAIN || errno == EINTR) {
       nread = 0;
     } else {
-      ldout(async_msgr->cct, 1) << __func__ << " reading from fd=" << fd
+      ldout(async_msgr->cct, 1) << __func__ << " Reading from fd=" << fd
                           << " : "<< strerror(errno) << dendl;
       return -1;
     }
   } else if (nread == 0) {
-    ldout(async_msgr->cct, 1) << __func__ << " peer close file descriptor "
+    ldout(async_msgr->cct, 1) << __func__ << " Peer close file descriptor "
                               << fd << dendl;
     return -1;
   }
@@ -273,7 +172,6 @@ int AsyncConnection::do_sendmsg(struct msghdr &msg, int len, bool more)
     if (r == 0) {
       ldout(async_msgr->cct, 10) << __func__ << " sendmsg got r==0!" << dendl;
     } else if (r < 0) {
-#ifdef _WIN32
       if (errno == EAGAIN || errno == EINTR) {
         r = len;
       } else {
@@ -281,26 +179,16 @@ int AsyncConnection::do_sendmsg(struct msghdr &msg, int len, bool more)
       }
 
       return r;
-#else
-      if (errno == EINTR) {
-        continue;
-      } else if (errno == EAGAIN) {
-        break;
-      } else {
-        ldout(async_msgr->cct, 1) << __func__ << " sendmsg error: " << cpp_strerror(errno) << dendl;
-        return r;
-      }
-#endif
     }
 
     len -= r;
     if (len == 0) break;
 
-    // hrmph. drain r bytes from the front of our message.
+    // hrmph.  trim r bytes off the front of our message.
     ldout(async_msgr->cct, 20) << __func__ << " short write did " << r << ", still have " << len << dendl;
     while (r > 0) {
       if (msg.msg_iov[0].iov_len <= (size_t)r) {
-        // drain this whole item
+        // lose this whole item
         r -= msg.msg_iov[0].iov_len;
         msg.msg_iov++;
         msg.msg_iovlen--;
@@ -311,11 +199,7 @@ int AsyncConnection::do_sendmsg(struct msghdr &msg, int len, bool more)
       }
     }
   }
-#ifdef _WIN32
   return 0;
-#else
-  return len;
-#endif
 }
 
 // return the remaining bytes, it may larger than the length of ptr
@@ -337,11 +221,7 @@ int AsyncConnection::_try_send(bufferlist send_bl, bool send)
     assert(!outcoming_bl.length());
     connect_seq++;
     state = STATE_CONNECTING;
-#ifdef _WIN32
     center->create_time_event(0, read_handler);
-#else
-    center->dispatch_event_external(read_handler);
-#endif
     return 0;
   }
 
@@ -353,7 +233,7 @@ int AsyncConnection::_try_send(bufferlist send_bl, bool send)
     ldout(async_msgr->cct, 1) << __func__ << " connection is closed" << dendl;
     return -EINTR;
   }
-#ifdef _WIN32
+
   int r = 0;
   uint64_t sended = 0;
   list<bufferptr>::const_iterator pb = outcoming_bl.buffers().begin();
@@ -379,41 +259,6 @@ int AsyncConnection::_try_send(bufferlist send_bl, bool send)
 
     // "r" is the remaining length
     sended += msglen - r;
-#else
-  if (async_msgr->cct->_conf->ms_inject_socket_failures && sd >= 0) {
-    if (rand() % async_msgr->cct->_conf->ms_inject_socket_failures == 0) {
-      ldout(async_msgr->cct, 0) << __func__ << " injecting socket failure" << dendl;
-      ::shutdown(sd, SHUT_RDWR);
-    }
-  }
-
-  uint64_t sent = 0;
-  list<bufferptr>::const_iterator pb = outcoming_bl.buffers().begin();
-  uint64_t left_pbrs = outcoming_bl.buffers().size();
-  while (left_pbrs) {
-    struct msghdr msg;
-    uint64_t size = MIN(left_pbrs, IOV_MAX);
-    left_pbrs -= size;
-    memset(&msg, 0, sizeof(msg));
-    msg.msg_iovlen = 0;
-    msg.msg_iov = msgvec;
-    int msglen = 0;
-    while (size > 0) {
-      msgvec[msg.msg_iovlen].iov_base = (void*)(pb->c_str());
-      msgvec[msg.msg_iovlen].iov_len = pb->length();
-      msg.msg_iovlen++;
-      msglen += pb->length();
-      ++pb;
-      size--;
-    }
-
-    int r = do_sendmsg(msg, msglen, false);
-    if (r < 0)
-      return r;
-
-    // "r" is the remaining length
-    sent += msglen - r;
-#endif
     if (r > 0) {
       ldout(async_msgr->cct, 5) << __func__ << " remaining " << r
                           << " needed to be sent, creating event for writing"
@@ -424,7 +269,6 @@ int AsyncConnection::_try_send(bufferlist send_bl, bool send)
   }
 
   // trim already sent for outcoming_bl
-#ifdef _WIN32
   if (sended) {
     bufferlist bl;
     if (sended < outcoming_bl.length())
@@ -435,17 +279,6 @@ int AsyncConnection::_try_send(bufferlist send_bl, bool send)
   ldout(async_msgr->cct, 20) << __func__ << " send bytes " << sended
                              << " remaining bytes " << outcoming_bl.length() << dendl;
 
-#else
-  if (sent) {
-    bufferlist bl;
-    if (sent < outcoming_bl.length())
-      outcoming_bl.splice(sent, outcoming_bl.length()-sent, &bl);
-    bl.swap(outcoming_bl);
-  }
-
-  ldout(async_msgr->cct, 20) << __func__ << " sent bytes " << sent
-                             << " remaining bytes " << outcoming_bl.length() << dendl;
-#endif
   if (!open_write && is_queued()) {
     center->create_file_event(sd, EVENT_WRITABLE, write_handler);
     open_write = true;
@@ -463,12 +296,8 @@ int AsyncConnection::_try_send(bufferlist send_bl, bool send)
 // the needed buffer, so the passed in bufferptr must be the same.
 // Normally, only "read_message" will pass existing bufferptr in
 //
-// And it will uses readahead method to reduce small read overhead,
-// "recv_buf" is used to store read buffer
-//
 // return the remaining bytes, 0 means this buffer is finished
 // else return < 0 means error
-#ifdef _WIN32
 int AsyncConnection::read_until(uint64_t needed, bufferptr &p)
 {
   assert(needed);
@@ -493,83 +322,7 @@ int AsyncConnection::read_until(uint64_t needed, bufferptr &p)
                       << get_state_name(state) << dendl;
   return needed - offset;
 }
-#else
-int AsyncConnection::read_until(uint64_t len, char *p)
-{
-  assert(len);
-  ldout(async_msgr->cct, 20) << __func__ << " len is " << len << " state_offset is "
-                             << state_offset << dendl;
 
-  if (async_msgr->cct->_conf->ms_inject_socket_failures && sd >= 0) {
-    if (rand() % async_msgr->cct->_conf->ms_inject_socket_failures == 0) {
-      ldout(async_msgr->cct, 0) << __func__ << " injecting socket failure" << dendl;
-      ::shutdown(sd, SHUT_RDWR);
-    }
-  }
-
-  int r = 0;
-  uint64_t left = len - state_offset;
-  if (recv_end > recv_start) {
-    assert(state_offset == 0);
-    uint64_t to_read = MIN(recv_end - recv_start, left);
-    memcpy(p, recv_buf+recv_start, to_read);
-    recv_start += to_read;
-    left -= to_read;
-    ldout(async_msgr->cct, 20) << __func__ << " got " << to_read << " in buffer "
-                               << " left is " << left << " buffer still has "
-                               << recv_end - recv_start << dendl;
-    if (left == 0) {
-      return 0;
-    }
-    state_offset += to_read;
-  }
-
-  assert(recv_end == recv_start);
-  recv_end = recv_start = 0;
-  /* nothing left in the prefetch buffer */
-  if (len > recv_max_prefetch) {
-    /* this was a large read, we don't prefetch for these */
-    do {
-      r = read_bulk(sd, p+state_offset, left);
-      ldout(async_msgr->cct, 20) << __func__ << " read_bulk left is " << left << " got " << r << dendl;
-      if (r < 0) {
-        ldout(async_msgr->cct, 1) << __func__ << " read failed, state is " << get_state_name(state) << dendl;
-        return -1;
-      } else if (r == static_cast<int>(left)) {
-        state_offset = 0;
-        return 0;
-      }
-      state_offset += r;
-      left -= r;
-    } while (r > 0);
-  } else {
-    do {
-      r = read_bulk(sd, recv_buf+recv_end, recv_max_prefetch);
-      ldout(async_msgr->cct, 20) << __func__ << " read_bulk recv_end is " << recv_end
-                                 << " left is " << left << " got " << r << dendl;
-      if (r < 0) {
-        ldout(async_msgr->cct, 1) << __func__ << " read failed, state is " << get_state_name(state) << dendl;
-        return -1;
-      }
-      recv_end += r;
-      if (r >= static_cast<int>(left)) {
-        recv_start = len - state_offset;
-        memcpy(p+state_offset, recv_buf, recv_start);
-        state_offset = 0;
-        return 0;
-      }
-      left -= r;
-    } while (r > 0);
-    memcpy(p+state_offset, recv_buf, recv_end-recv_start);
-    state_offset += (recv_end - recv_start);
-    recv_end = recv_start = 0;
-  }
-  ldout(async_msgr->cct, 20) << __func__ << " need len " << len << " remaining "
-                             << len - state_offset << " bytes, state is "
-                             << get_state_name(state) << dendl;
-  return len - state_offset;
-}
-#endif
 void AsyncConnection::process()
 {
   int r = 0;
@@ -583,7 +336,6 @@ void AsyncConnection::process()
       case STATE_OPEN:
         {
           char tag = -1;
-#ifdef _WIN32
           r = read_bulk(sd, &tag, sizeof(tag));
           if (r < 0) {
             ldout(async_msgr->cct, 1) << __func__ << " read tag failed, state is "
@@ -593,16 +345,6 @@ void AsyncConnection::process()
             break;
           }
           assert(r == 1);
-#else
-          r = read_until(sizeof(tag), &tag);
-          if (r < 0) {
-            ldout(async_msgr->cct, 1) << __func__ << " read tag failed, state is "
-                                      << get_state_name(state) << dendl;
-            goto fail;
-          } else if (r > 0) {
-            break;
-          }
-#endif
 
           if (tag == CEPH_MSGR_TAG_KEEPALIVE) {
             ldout(async_msgr->cct, 20) << __func__ << " got KEEPALIVE" << dendl;
@@ -636,11 +378,7 @@ void AsyncConnection::process()
           }
 
           ldout(async_msgr->cct, 30) << __func__ << " got KEEPALIVE2 tag ..." << dendl;
-#ifdef _WIN32
           t = (ceph_timespec*)(state_buffer.c_str());
-#else
-          t = (ceph_timespec*)state_buffer;
-#endif
           utime_t kp_t = utime_t(*t);
           _send_keepalive_or_ack(true, &kp_t);
           ldout(async_msgr->cct, 20) << __func__ << " got KEEPALIVE2 " << kp_t << dendl;
@@ -658,11 +396,8 @@ void AsyncConnection::process()
           } else if (r > 0) {
             break;
           }
-#ifdef _WIN32
+
           t = (ceph_timespec*)(state_buffer.c_str());
-#else
-          t = (ceph_timespec*)state_buffer;
-#endif
           last_keepalive_ack = utime_t(*t);
           ldout(async_msgr->cct, 20) << __func__ << " got KEEPALIVE_ACK" << dendl;
           state = STATE_OPEN;
@@ -679,12 +414,8 @@ void AsyncConnection::process()
           } else if (r > 0) {
             break;
           }
-#ifdef _WIN32
-          seq = (ceph_le64*)(state_buffer.c_str());
 
-#else
-          seq = (ceph_le64*)state_buffer;
-#endif
+          seq = (ceph_le64*)(state_buffer.c_str());
           ldout(async_msgr->cct, 20) << __func__ << " got ACK" << dendl;
           handle_ack(*seq);
           state = STATE_OPEN;
@@ -713,7 +444,6 @@ void AsyncConnection::process()
 
           ldout(async_msgr->cct, 20) << __func__ << " got MSG header" << dendl;
 
-#ifdef _WIN32
           if (has_feature(CEPH_FEATURE_NOSRCADDR)) {
             header = *((ceph_msg_header*)state_buffer.c_str());
             header_crc = ceph_crc32c(0, (unsigned char *)&header,
@@ -726,24 +456,6 @@ void AsyncConnection::process()
             header.reserved = oldheader.reserved;
             header.crc = oldheader.crc;
             header_crc = ceph_crc32c(0, (unsigned char *)&oldheader, sizeof(oldheader) - sizeof(oldheader.crc));
-
-#else
-          if (has_feature(CEPH_FEATURE_NOSRCADDR)) {
-            header = *((ceph_msg_header*)state_buffer);
-            if (msgr->crcflags & MSG_CRC_HEADER)
-              header_crc = ceph_crc32c(0, (unsigned char *)&header,
-                                       sizeof(header) - sizeof(header.crc));
-          } else {
-            oldheader = *((ceph_msg_header_old*)state_buffer);
-            // this is fugly
-            memcpy(&header, &oldheader, sizeof(header));
-            header.src = oldheader.src.name;
-            header.reserved = oldheader.reserved;
-            if (msgr->crcflags & MSG_CRC_HEADER) {
-              header.crc = oldheader.crc;
-              header_crc = ceph_crc32c(0, (unsigned char *)&oldheader, sizeof(oldheader) - sizeof(oldheader.crc));
-            }
-#endif
           }
 
           ldout(async_msgr->cct, 20) << __func__ << " got envelope type=" << header.type
@@ -753,20 +465,12 @@ void AsyncConnection::process()
                               << " off " << header.data_off << dendl;
 
           // verify header crc
-#ifdef _WIN32
           if (header_crc != header.crc) {
             ldout(async_msgr->cct,0) << __func__ << "reader got bad header crc "
                               << header_crc << " != " << header.crc << dendl;
-		  goto fail;
-		  }
-#else
-          if (msgr->crcflags & MSG_CRC_HEADER && header_crc != header.crc) {
-            ldout(async_msgr->cct,0) << __func__ << " reader got bad header crc "
-                                     << header_crc << " != " << header.crc << dendl;
-
             goto fail;
           }
-#endif
+
           // Reset state
           data_buf.clear();
           front.clear();
@@ -815,16 +519,8 @@ void AsyncConnection::process()
           // read front
           int front_len = current_header.front_len;
           if (front_len) {
-#ifdef _WIN32
             bufferptr ptr = buffer::create(front_len);
             r = read_until(front_len, ptr);
-#else
-            if (!front.length()) {
-              bufferptr ptr = buffer::create(front_len);
-              front.push_back(ptr);
-            }
-            r = read_until(front_len, front.c_str());
-#endif
             if (r < 0) {
               ldout(async_msgr->cct, 1) << __func__ << " read message front failed" << dendl;
               goto fail;
@@ -832,9 +528,7 @@ void AsyncConnection::process()
               break;
             }
 
-#ifdef _WIN32
             front.push_back(ptr);
-#endif
             ldout(async_msgr->cct, 20) << __func__ << " got front " << front.length() << dendl;
           }
           state = STATE_OPEN_MESSAGE_READ_MIDDLE;
@@ -846,25 +540,15 @@ void AsyncConnection::process()
           // read middle
           int middle_len = current_header.middle_len;
           if (middle_len) {
-#ifdef _WIN32
             bufferptr ptr = buffer::create(middle_len);
             r = read_until(middle_len, ptr);
-#else
-            if (!middle.length()) {
-              bufferptr ptr = buffer::create(middle_len);
-              middle.push_back(ptr);
-            }
-            r = read_until(middle_len, middle.c_str());
-#endif
             if (r < 0) {
               ldout(async_msgr->cct, 1) << __func__ << " read message middle failed" << dendl;
               goto fail;
             } else if (r > 0) {
               break;
             }
-#ifdef _WIN32
             middle.push_back(ptr);
-#endif
             ldout(async_msgr->cct, 20) << __func__ << " got middle " << middle.length() << dendl;
           }
 
@@ -906,11 +590,7 @@ void AsyncConnection::process()
           while (msg_left > 0) {
             bufferptr bp = data_blp.get_current_ptr();
             uint64_t read = MIN(bp.length(), msg_left);
-#ifdef _WIN32
             r = read_until(read, bp);
-#else
-            r = read_until(read, bp.c_str());
-#endif
             if (r < 0) {
               ldout(async_msgr->cct, 1) << __func__ << " read data error " << dendl;
               goto fail;
@@ -947,7 +627,7 @@ void AsyncConnection::process()
           } else if (r > 0) {
             break;
           }
-#ifdef _WIN32
+
           if (has_feature(CEPH_FEATURE_MSG_AUTH)) {
             footer = *((ceph_msg_footer*)state_buffer.c_str());
           } else {
@@ -958,18 +638,6 @@ void AsyncConnection::process()
             footer.sig = 0;
             footer.flags = old_footer.flags;
           }
-#else
-          if (has_feature(CEPH_FEATURE_MSG_AUTH)) {
-            footer = *((ceph_msg_footer*)state_buffer);
-          } else {
-            old_footer = *((ceph_msg_footer_old*)state_buffer);
-            footer.front_crc = old_footer.front_crc;
-            footer.middle_crc = old_footer.middle_crc;
-            footer.data_crc = old_footer.data_crc;
-            footer.sig = 0;
-            footer.flags = old_footer.flags;
-          }
-#endif
           int aborted = (footer.flags & CEPH_MSG_FOOTER_COMPLETE) == 0;
           ldout(async_msgr->cct, 10) << __func__ << " aborted = " << aborted << dendl;
           if (aborted) {
@@ -980,11 +648,7 @@ void AsyncConnection::process()
 
           ldout(async_msgr->cct, 20) << __func__ << " got " << front.length() << " + " << middle.length()
                               << " + " << data.length() << " byte message" << dendl;
-#ifdef _WIN32
           Message *message = decode_message(async_msgr->cct, current_header, footer, front, middle, data);
-#else
-          Message *message = decode_message(async_msgr->cct, async_msgr->crcflags, current_header, footer, front, middle, data);
-#endif
           if (!message) {
             ldout(async_msgr->cct, 1) << __func__ << " decode message failed " << dendl;
             goto fail;
@@ -993,7 +657,7 @@ void AsyncConnection::process()
           //
           //  Check the signature if one should be present.  A zero return indicates success. PLR
           //
-#ifdef _WIN32
+
           if (session_security.get() == NULL) {
             ldout(async_msgr->cct, 10) << __func__ << " No session security set" << dendl;
           } else {
@@ -1001,16 +665,6 @@ void AsyncConnection::process()
               ldout(async_msgr->cct, 0) << __func__ << "Signature check failed" << dendl;
               goto fail;
             }
-#else
-          if (session_security.get() == NULL) {
-            ldout(async_msgr->cct, 10) << __func__ << " no session security set" << dendl;
-          } else {
-            if (session_security->check_message_signature(message)) {
-              ldout(async_msgr->cct, 0) << __func__ << "Signature check failed" << dendl;
-              message->put();
-              goto fail;
-            }
-#endif
           }
           message->set_byte_throttler(policy.throttler_bytes);
           message->set_message_throttler(policy.throttler_messages);
@@ -1034,23 +688,10 @@ void AsyncConnection::process()
                     << message->get_seq() << " <= " << in_seq << " " << message << " " << *message
                     << ", discarding" << dendl;
             message->put();
-#ifdef _WIN32
             if (has_feature(CEPH_FEATURE_RECONNECT_SEQ) && async_msgr->cct->_conf->ms_die_on_old_message)
               assert(0 == "old msgs despite reconnect_seq feature");
             goto fail;
           }
-#else
-            if (has_feature(CEPH_FEATURE_RECONNECT_SEQ) && async_msgr->cct->_conf->ms_die_on_old_message)
-              assert(0 == "old msgs despite reconnect_seq feature");
-            break;
-          }
-          if (message->get_seq() > in_seq + 1) {
-            ldout(async_msgr->cct, 0) << __func__ << " missed message?  skipped from seq "
-                                      << in_seq << " to " << message->get_seq() << dendl;
-            if (async_msgr->cct->_conf->ms_die_on_skipped_message)
-              assert(0 == "skipped incoming seq");
-          }
-#endif
           message->set_connection(this);
 
           // note last received message.
@@ -1060,7 +701,6 @@ void AsyncConnection::process()
 
           // if send_message always successfully send, it may have no
           // opportunity to send seq ack. 10 is a experience value.
-#ifdef _WIN32
           if (in_seq > in_seq_acked + 10) {
             center->create_time_event(2, write_handler);
           }
@@ -1076,67 +716,30 @@ void AsyncConnection::process()
             center->create_time_event(1, EventCallbackRef(new C_handle_dispatch(async_msgr, message)));
           }
 
-#else
-          if (in_seq > in_seq_acked + 10) {
-            center->dispatch_event_external(write_handler);
-          }
-
-          state = STATE_OPEN;
-
-          async_msgr->ms_fast_preprocess(message);
-          if (async_msgr->ms_can_fast_dispatch(message)) {
-            lock.Unlock();
-            async_msgr->ms_fast_dispatch(message);
-            lock.Lock();
-          } else {
-            center->dispatch_event_external(EventCallbackRef(new C_handle_dispatch(async_msgr, message)));
-          }
-#endif
           break;
         }
-#ifdef _WIN32
+
       case STATE_OPEN_TAG_CLOSE:
         {
           ldout(async_msgr->cct,20) << __func__ << " got CLOSE" << dendl;
           _stop();
           break;
         }
-#else
-      case STATE_OPEN_TAG_CLOSE:
-        {
-          ldout(async_msgr->cct, 20) << __func__ << " got CLOSE" << dendl;
-          _stop();
-          return ;
-        }
-#endif
+
       case STATE_STANDBY:
         {
-          ldout(async_msgr->cct, 20) << __func__ << " enter STANDY" << dendl;
+          ldout(async_msgr->cct,20) << __func__ << " enter STANDY" << dendl;
 
           break;
         }
-#ifdef _WIN32
+
       case STATE_CLOSED:
         {
           center->delete_file_event(sd, EVENT_READABLE);
           ldout(async_msgr->cct, 20) << __func__ << " socket closed" << dendl;
           break;
         }
-#else
-      case STATE_CLOSED:
-        {
-          if (sd > 0)
-            center->delete_file_event(sd, EVENT_READABLE);
-          ldout(async_msgr->cct, 20) << __func__ << " socket closed" << dendl;
-          break;
-        }
 
-      case STATE_WAIT:
-        {
-          ldout(async_msgr->cct, 20) << __func__ << " enter wait state" << dendl;
-          break;
-        }
-#endif
       default:
         {
           if (_process_connection() < 0)
@@ -1237,7 +840,7 @@ int AsyncConnection::_process_connection()
         } else if (r > 0) {
           break;
         }
-#ifdef _WIN32
+
         if (memcmp(state_buffer.c_str(), CEPH_BANNER, strlen(CEPH_BANNER))) {
           ldout(async_msgr->cct, 0) << __func__ << " connect protocol error (bad banner) on peer "
                               << get_peer_addr() << dendl;
@@ -1248,18 +851,6 @@ int AsyncConnection::_process_connection()
 
         bufferlist bl;
         bl.append(state_buffer.c_str(), strlen(CEPH_BANNER));
-#else
-        if (memcmp(state_buffer, CEPH_BANNER, strlen(CEPH_BANNER))) {
-          ldout(async_msgr->cct, 0) << __func__ << " connect protocol error (bad banner) on peer "
-                              << get_peer_addr() << dendl;
-          goto fail;
-        }
-
-        ldout(async_msgr->cct, 10) << __func__ << " get banner, ready to send banner" << dendl;
-
-        bufferlist bl;
-        bl.append(state_buffer, strlen(CEPH_BANNER));
-#endif
         r = _try_send(bl);
         if (r == 0) {
           state = STATE_CONNECTING_WAIT_IDENTIFY_PEER;
@@ -1290,11 +881,7 @@ int AsyncConnection::_process_connection()
         }
 
         bufferlist bl;
-#ifdef _WIN32
         bl.append(state_buffer);
-#else
-        bl.append(state_buffer, sizeof(paddr)*2);
-#endif
         bufferlist::iterator p = bl.begin();
         try {
           ::decode(paddr, p);
@@ -1319,14 +906,6 @@ int AsyncConnection::_process_connection()
         }
 
         ldout(async_msgr->cct, 20) << __func__ << " connect peer addr for me is " << peer_addr_for_me << dendl;
-        // TODO: it's tricky that exit loop if exist AsyncMessenger waiting for
-        // mark_down. Otherwise, it will be deadlock while
-        // AsyncMessenger::mark_down_all already hold lock.
-#ifdef _WIN32
-#else
-        if (stopping.read())
-          break;
-#endif
         async_msgr->learned_addr(peer_addr_for_me);
         ::encode(async_msgr->get_myaddr(), myaddrbl);
         r = _try_send(myaddrbl);
@@ -1380,7 +959,7 @@ int AsyncConnection::_process_connection()
         r = _try_send(bl);
         if (r == 0) {
           state = STATE_CONNECTING_WAIT_CONNECT_REPLY;
-          ldout(async_msgr->cct,20) << __func__ << " connect wrote (self +) cseq, waiting for reply" << dendl;
+          ldout(async_msgr->cct,20) << __func__ << "connect wrote (self +) cseq, waiting for reply" << dendl;
         } else if (r > 0) {
           state = STATE_WAIT_SEND;
           state_after_send = STATE_CONNECTING_WAIT_CONNECT_REPLY;
@@ -1403,12 +982,8 @@ int AsyncConnection::_process_connection()
         } else if (r > 0) {
           break;
         }
-#ifdef _WIN32
-        connect_reply = *((ceph_msg_connect_reply*)state_buffer.c_str());
 
-#else
-        connect_reply = *((ceph_msg_connect_reply*)state_buffer);
-#endif
+        connect_reply = *((ceph_msg_connect_reply*)state_buffer.c_str());
         connect_reply.features = ceph_sanitize_features(connect_reply.features);
 
         ldout(async_msgr->cct, 20) << __func__ << " connect got reply tag " << (int)connect_reply.tag
@@ -1426,10 +1001,6 @@ int AsyncConnection::_process_connection()
         bufferlist authorizer_reply;
         if (connect_reply.authorizer_len) {
           ldout(async_msgr->cct, 10) << __func__ << " reply.authorizer_len=" << connect_reply.authorizer_len << dendl;
-#ifdef _WIN32
-#else
-          assert(connect_reply.authorizer_len < 4096);
-#endif
           r = read_until(connect_reply.authorizer_len, state_buffer);
           if (r < 0) {
             ldout(async_msgr->cct, 1) << __func__ << " read connect reply authorizer failed" << dendl;
@@ -1437,12 +1008,8 @@ int AsyncConnection::_process_connection()
           } else if (r > 0) {
             break;
           }
-#ifdef _WIN32
-          authorizer_reply.push_back(state_buffer);
 
-#else
-          authorizer_reply.append(state_buffer, connect_reply.authorizer_len);
-#endif
+          authorizer_reply.push_back(state_buffer);
           bufferlist::iterator iter = authorizer_reply.begin();
           if (authorizer && !authorizer->verify_reply(iter)) {
             ldout(async_msgr->cct, 0) << __func__ << " failed verifying authorize reply" << dendl;
@@ -1470,12 +1037,8 @@ int AsyncConnection::_process_connection()
         } else if (r > 0) {
           break;
         }
-#ifdef _WIN32
-        newly_acked_seq = *((uint64_t*)state_buffer.c_str());
 
-#else
-        newly_acked_seq = *((uint64_t*)state_buffer);
-#endif
+        newly_acked_seq = *((uint64_t*)state_buffer.c_str());
         ldout(async_msgr->cct, 2) << __func__ << " got newly_acked_seq " << newly_acked_seq
                             << " vs out_seq " << out_seq << dendl;
         while (newly_acked_seq > out_seq) {
@@ -1513,9 +1076,9 @@ int AsyncConnection::_process_connection()
         assert(connect_seq == connect_reply.connect_seq);
         backoff = utime_t();
         set_features((uint64_t)connect_reply.features & (uint64_t)connect_msg.features);
-        ldout(async_msgr->cct, 10) << __func__ << " connect success " << connect_seq
-                                   << ", lossy = " << policy.lossy << ", features "
-                                   << get_features() << dendl;
+        ldout(async_msgr->cct, 10) << __func__ << "connect success " << connect_seq
+                             << ", lossy = " << policy.lossy << ", features "
+                             << get_features() << dendl;
 
         // If we have an authorizer, get a new AuthSessionHandler to deal with ongoing security of the
         // connection.  PLR
@@ -1529,23 +1092,15 @@ int AsyncConnection::_process_connection()
           // We have no authorizer, so we shouldn't be applying security to messages in this AsyncConnection.  PLR
           session_security.reset();
         }
-#ifdef _WIN32
-        async_msgr->ms_deliver_handle_connect(this);
 
-#else
-        center->dispatch_event_external(connect_handler);
-#endif
+        async_msgr->ms_deliver_handle_connect(this);
         async_msgr->ms_deliver_handle_fast_connect(this);
 
         // message may in queue between last _try_send and connection ready
         // write event may already notify and we need to force scheduler again
         if (is_queued())
-#ifdef _WIN32
           center->create_time_event(1, write_handler);
 
-#else
-          center->dispatch_event_external(write_handler);
-#endif
         break;
       }
 
@@ -1601,7 +1156,6 @@ int AsyncConnection::_process_connection()
         } else if (r > 0) {
           break;
         }
-#ifdef _WIN32
 
         if (memcmp(state_buffer.c_str(), CEPH_BANNER, strlen(CEPH_BANNER))) {
           ldout(async_msgr->cct, 1) << __func__ << " accept peer sent bad banner '" << state_buffer.c_str()
@@ -1610,15 +1164,6 @@ int AsyncConnection::_process_connection()
         }
 
         addr_bl.append(state_buffer, strlen(CEPH_BANNER), sizeof(peer_addr));
-#else
-        if (memcmp(state_buffer, CEPH_BANNER, strlen(CEPH_BANNER))) {
-          ldout(async_msgr->cct, 1) << __func__ << " accept peer sent bad banner '" << state_buffer
-                                    << "' (should be '" << CEPH_BANNER << "')" << dendl;
-          goto fail;
-        }
-
-        addr_bl.append(state_buffer+strlen(CEPH_BANNER), sizeof(peer_addr));
-#endif
         {
           bufferlist::iterator ti = addr_bl.begin();
           ::decode(peer_addr, ti);
@@ -1647,12 +1192,8 @@ int AsyncConnection::_process_connection()
         } else if (r > 0) {
           break;
         }
-#ifdef _WIN32
-        connect_msg = *((ceph_msg_connect*)state_buffer.c_str());
 
-#else
-        connect_msg = *((ceph_msg_connect*)state_buffer);
-#endif
+        connect_msg = *((ceph_msg_connect*)state_buffer.c_str());
         // sanitize features
         connect_msg.features = ceph_sanitize_features(connect_msg.features);
         state = STATE_ACCEPTING_WAIT_CONNECT_MSG_AUTH;
@@ -1671,12 +1212,7 @@ int AsyncConnection::_process_connection()
           } else if (r > 0) {
             break;
           }
-#ifdef _WIN32
           authorizer_bl.push_back(state_buffer);
-
-#else
-          authorizer_bl.append(state_buffer, connect_msg.authorizer_len);
-#endif
         }
 
         ldout(async_msgr->cct, 20) << __func__ << " accept got peer connect_seq "
@@ -1708,12 +1244,8 @@ int AsyncConnection::_process_connection()
         } else if (r > 0) {
           break;
         }
-#ifdef _WIN32
+
         newly_acked_seq = *((uint64_t*)state_buffer.c_str());
-
-#else
-        newly_acked_seq = *((uint64_t*)state_buffer);
-
         ldout(async_msgr->cct, 2) << __func__ << " accept get newly_acked_seq " << newly_acked_seq << dendl;
         discard_requeued_up_to(newly_acked_seq);
         state = STATE_ACCEPTING_READY;
@@ -1730,7 +1262,7 @@ int AsyncConnection::_process_connection()
 
     default:
       {
-        lderr(async_msgr->cct) << __func__ << " bad state: " << get_state_name(state) << dendl;
+        lderr(async_msgr->cct) << __func__ << " bad state" << get_state_name(state) << dendl;
         assert(0);
       }
   }
@@ -1802,11 +1334,11 @@ int AsyncConnection::handle_connect_reply(ceph_msg_connect &connect, ceph_msg_co
   }
 
   if (reply.tag == CEPH_MSGR_TAG_SEQ) {
-    ldout(async_msgr->cct, 10) << __func__ << " got CEPH_MSGR_TAG_SEQ, reading acked_seq and writing in_seq" << dendl;
+    ldout(async_msgr->cct, 10) << __func__ << "got CEPH_MSGR_TAG_SEQ, reading acked_seq and writing in_seq" << dendl;
     state = STATE_CONNECTING_WAIT_ACK_SEQ;
   }
   if (reply.tag == CEPH_MSGR_TAG_READY) {
-    ldout(async_msgr->cct, 10) << __func__ << " got CEPH_MSGR_TAG_READY " << dendl;
+    ldout(async_msgr->cct, 10) << __func__ << "got CEPH_MSGR_TAG_READY " << dendl;
     state = STATE_CONNECTING_READY;
   }
 
@@ -1819,23 +1351,18 @@ int AsyncConnection::handle_connect_reply(ceph_msg_connect &connect, ceph_msg_co
 int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &authorizer_bl,
                                         bufferlist &authorizer_reply)
 {
-#ifdef _WIN32
   int r;
   ceph_msg_connect_reply reply;
   bufferlist reply_bl;
   uint64_t existing_seq = -1;
   bool is_reset_from_peer = false;
   char reply_tag;
-#else
-  int r = 0;
-  ceph_msg_connect_reply reply;
-  bufferlist reply_bl;
-#endif
+
   memset(&reply, 0, sizeof(reply));
   reply.protocol_version = async_msgr->get_proto_version(peer_type, false);
 
   // mismatch?
-  ldout(async_msgr->cct, 10) << __func__ << " accept my proto " << reply.protocol_version
+  ldout(async_msgr->cct,10) << __func__ << "accept my proto " << reply.protocol_version
                       << ", their proto " << connect.protocol_version << dendl;
   if (connect.protocol_version != reply.protocol_version) {
     return _reply_accept(CEPH_MSGR_TAG_BADPROTOVER, connect, reply, authorizer_reply);
@@ -1859,7 +1386,7 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
   }
   uint64_t feat_missing = policy.features_required & ~(uint64_t)connect.features;
   if (feat_missing) {
-    ldout(async_msgr->cct, 1) << __func__ << " peer missing required features "
+    ldout(async_msgr->cct, 1) << __func__ << "peer missing required features "
                         << std::hex << feat_missing << std::dec << dendl;
     return _reply_accept(CEPH_MSGR_TAG_FEATURES, connect, reply, authorizer_reply);
   }
@@ -1873,34 +1400,10 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
   }
 
   // We've verified the authorizer for this AsyncConnection, so set up the session security structure.  PLR
-  ldout(async_msgr->cct, 10) << __func__ << " accept setting up session_security." << dendl;
+  ldout(async_msgr->cct, 10) << __func__ << " accept:  setting up session_security." << dendl;
 
   // existing?
-#ifdef _WIN32
   AsyncConnectionRef existing = async_msgr->lookup_conn(peer_addr);
-#else
-  lock.Unlock();
-  AsyncConnectionRef existing = async_msgr->lookup_conn(peer_addr);
-
-  if (async_msgr->cct->_conf->ms_inject_internal_delays) {
-    ldout(msgr->cct, 10) << __func__ << " sleep for "
-                         << async_msgr->cct->_conf->ms_inject_internal_delays << dendl;
-    utime_t t;
-    t.set_from_double(async_msgr->cct->_conf->ms_inject_internal_delays);
-    t.sleep();
-  }
-
-  lock.Lock();
-  if (state != STATE_ACCEPTING_WAIT_CONNECT_MSG_AUTH) {
-    ldout(async_msgr->cct, 1) << __func__ << " state changed while accept, it must be mark_down, state="
-                              << get_state_name(state) << dendl;
-    assert(state == STATE_CLOSED);
-    goto fail;
-  }
-
-  if (existing == this)
-    existing = NULL;
-#endif
   if (existing) {
     if (connect.global_seq < existing->peer_global_seq) {
       ldout(async_msgr->cct, 10) << __func__ << " accept existing " << existing
@@ -1921,9 +1424,9 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
       goto replace;
     }
 
-    ldout(async_msgr->cct, 0) << __func__ << " accept connect_seq " << connect.connect_seq
-                              << " vs existing csq=" << existing->connect_seq << " state="
-                              << get_state_name(existing->state) << dendl;
+    ldout(async_msgr->cct, 0) << __func__ << "accept connect_seq " << connect.connect_seq
+                        << " vs existing " << existing->connect_seq
+                        << " state " << existing->state << dendl;
 
     if (connect.connect_seq == 0 && existing->connect_seq > 0) {
       ldout(async_msgr->cct,0) << __func__ << " accept peer reset, then tried to connect to us, replacing" << dendl;
@@ -1936,7 +1439,7 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
 
     if (connect.connect_seq < existing->connect_seq) {
       // old attempt, or we sent READY but they didn't get it.
-      ldout(async_msgr->cct, 10) << __func__ << " accept existing " << existing << ".cseq "
+      ldout(async_msgr->cct, 10) << __func__ << "accept existing " << existing << ".cseq "
                            << existing->connect_seq << " > " << connect.connect_seq
                            << ", RETRY_SESSION" << dendl;
       reply.connect_seq = existing->connect_seq + 1;
@@ -1971,19 +1474,13 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
                             << " == " << connect.connect_seq << ", sending WAIT" << dendl;
         assert(peer_addr > async_msgr->get_myaddr());
         // make sure our outgoing connection will follow through
-#ifdef _WIN32
         existing->_send_keepalive_or_ack();
-
-#else
-        existing->send_keepalive();
-#endif
         return _reply_accept(CEPH_MSGR_TAG_WAIT, connect, reply, authorizer_reply);
       }
     }
 
     assert(connect.connect_seq > existing->connect_seq);
     assert(connect.global_seq >= existing->peer_global_seq);
-#ifdef _WIN32
     if (policy.resetcheck &&   // RESETSESSION only used by servers; peers do not reset each other
         existing->connect_seq == 0) {
       ldout(async_msgr->cct, 0) << __func__ << "accept we reset (peer sent cseq "
@@ -1991,22 +1488,12 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
                           << existing->connect_seq << "), sending RESETSESSION" << dendl;
       return _reply_accept(CEPH_MSGR_TAG_RESETSESSION, connect, reply, authorizer_reply);
     }
-#else
-    if (policy.resetcheck &&   // RESETSESSION only used by servers; peers do not reset each other
-        existing->connect_seq == 0 && once_session_reset) {
-      ldout(async_msgr->cct, 0) << __func__ << " accept we reset (peer sent cseq "
-                          << connect.connect_seq << ", " << existing << ".cseq = "
-                          << existing->connect_seq << "), sending RESETSESSION" << dendl;
-      once_session_reset = false;
-      return _reply_accept(CEPH_MSGR_TAG_RESETSESSION, connect, reply, authorizer_reply);
-    }
-#endif
+
     // reconnect
     ldout(async_msgr->cct, 10) << __func__ << " accept peer sent cseq " << connect.connect_seq
                          << " > " << existing->connect_seq << dendl;
     goto replace;
   } // existing
-#ifdef _WIN32
   else if (policy.resetcheck && connect.connect_seq > 0) {
     // we reset, and they are opening a new session
     ldout(async_msgr->cct, 0) << __func__ << "accept we reset (peer sent cseq "
@@ -2018,30 +1505,15 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
     existing = NULL;
     goto open;
   }
-#else
-  else if (!replacing && connect.connect_seq > 0) {
-    // we reset, and they are opening a new session
-    ldout(async_msgr->cct, 0) << __func__ << " accept we reset (peer sent cseq "
-                        << connect.connect_seq << "), sending RESETSESSION" << dendl;
-    return _reply_accept(CEPH_MSGR_TAG_RESETSESSION, connect, reply, authorizer_reply);
-  } else {
-    // new session
-    ldout(async_msgr->cct, 10) << __func__ << " accept new session" << dendl;
-    existing = NULL;
-    goto open;
-  }
-#endif
   assert(0);
 
  replace:
-#ifdef _WIN32
+  // if it is a hard reset from peer, we don't need a round-trip to negotiate in/out sequence
   if ((connect.features & CEPH_FEATURE_RECONNECT_SEQ) && !is_reset_from_peer) {
     reply_tag = CEPH_MSGR_TAG_SEQ;
     existing_seq = existing->in_seq;
   }
-#endif
   ldout(async_msgr->cct, 10) << __func__ << " accept replacing " << existing << dendl;
-#ifdef _WIN32
   existing->mark_down();
 
   // In order to avoid dead lock, here need to lock in ordering.
@@ -2093,99 +1565,6 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
 
   // send READY reply
   reply.tag = (reply_tag ? reply_tag : CEPH_MSGR_TAG_READY);
-#else
-
-  if (async_msgr->cct->_conf->ms_inject_internal_delays) {
-    ldout(msgr->cct, 10) << __func__ << " sleep for "
-                         << async_msgr->cct->_conf->ms_inject_internal_delays << dendl;
-    utime_t t;
-    t.set_from_double(async_msgr->cct->_conf->ms_inject_internal_delays);
-    t.sleep();
-  }
-
-  // There is no possible that existing connection will acquire this lock
-  existing->lock.Lock();
-
-  if (existing->replacing || existing->state == STATE_CLOSED) {
-    ldout(async_msgr->cct, 1) << __func__ << " existing racing replace or mark_down happened while replacing."
-                              << " state=" << get_state_name(existing->state) << dendl;
-    reply.connect_seq = connect.connect_seq + 1;
-    r = _reply_accept(CEPH_MSGR_TAG_RETRY_SESSION, connect, reply, authorizer_reply);
-    existing->lock.Unlock();
-    if (r < 0)
-      goto fail;
-    return 0;
-  }
-
-  if (existing->policy.lossy) {
-    // disconnect from the Connection
-    existing->center->dispatch_event_external(existing->reset_handler);
-    existing->_stop();
-  } else {
-    // queue a reset on the new connection, which we're dumping for the old
-    center->dispatch_event_external(reset_handler);
-
-    // reset the in_seq if this is a hard reset from peer,
-    // otherwise we respect our original connection's value
-    if (is_reset_from_peer) {
-      existing->is_reset_from_peer = true;
-    }
-
-    // Now existing connection will be alive and the current connection will
-    // exchange socket with existing connection because we want to maintain
-    // original "connection_state"
-    if (existing->sd > 0)
-      existing->center->delete_file_event(existing->sd, EVENT_READABLE|EVENT_WRITABLE);
-    center->delete_file_event(sd, EVENT_READABLE|EVENT_WRITABLE);
-    existing->center->create_file_event(sd, EVENT_READABLE, existing->read_handler);
-
-    reply.connect_seq = connect.connect_seq + 1;
-
-    // Clean up output buffer
-    existing->outcoming_bl.clear();
-    existing->requeue_sent();
-
-    swap(existing->sd, sd);
-    existing->open_write = false;
-    existing->replacing = true;
-    existing->state_offset = 0;
-    existing->state = STATE_ACCEPTING_WAIT_CONNECT_MSG;
-    // there should exist any buffer
-    assert(recv_start == recv_end);
-
-    if (existing->_reply_accept(CEPH_MSGR_TAG_RETRY_SESSION, connect, reply, authorizer_reply) < 0) {
-      // handle error
-      existing->center->dispatch_event_external(existing->write_handler);
-    }
-
-    _stop();
-    existing->lock.Unlock();
-    return 0;
-  }
-  existing->lock.Unlock();
-
- open:
-  connect_seq = connect.connect_seq + 1;
-  peer_global_seq = connect.global_seq;
-  ldout(async_msgr->cct, 10) << __func__ << " accept success, connect_seq = "
-                             << connect_seq << " in_seq=" << in_seq << ", sending READY" << dendl;
-
-  int next_state;
-
-  // if it is a hard reset from peer, we don't need a round-trip to negotiate in/out sequence
-  if ((connect.features & CEPH_FEATURE_RECONNECT_SEQ) && !is_reset_from_peer) {
-    reply.tag = CEPH_MSGR_TAG_SEQ;
-    next_state = STATE_ACCEPTING_WAIT_SEQ;
-  } else {
-    reply.tag = CEPH_MSGR_TAG_READY;
-    next_state = STATE_ACCEPTING_READY;
-    discard_requeued_up_to(0);
-    is_reset_from_peer = false;
-    in_seq = 0;
-  }
-
-  // send READY reply
-#endif
   reply.features = policy.features_supported;
   reply.global_seq = async_msgr->get_global_seq();
   reply.connect_seq = connect_seq;
@@ -2200,19 +1579,19 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
   session_security.reset(
       get_auth_session_handler(async_msgr->cct, connect.authorizer_protocol,
                                session_key, get_features()));
-#ifdef _WIN32
+
   // notify
   async_msgr->ms_deliver_handle_accept(this);
   async_msgr->ms_deliver_handle_fast_accept(this);
 
   // ok!
   async_msgr->accept_conn(this);
-#endif
+
   reply_bl.append((char*)&reply, sizeof(reply));
 
   if (reply.authorizer_len)
     reply_bl.append(authorizer_reply.c_str(), authorizer_reply.length());
-#ifdef _WIN32
+
   int next_state;
 
   if (reply_tag == CEPH_MSGR_TAG_SEQ) {
@@ -2227,47 +1606,7 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
   if (r < 0) {
     goto fail;
   }
-#else
-  if (reply.tag == CEPH_MSGR_TAG_SEQ)
-    reply_bl.append((char*)&in_seq, sizeof(in_seq));
 
-  lock.Unlock();
-  // Because "replacing" will prevent other connections preempt this addr,
-  // it's safe that here we don't acquire Connection's lock
-  r = async_msgr->accept_conn(this);
-
-  if (async_msgr->cct->_conf->ms_inject_internal_delays) {
-    ldout(msgr->cct, 10) << __func__ << " sleep for "
-                         << async_msgr->cct->_conf->ms_inject_internal_delays << dendl;
-    utime_t t;
-    t.set_from_double(async_msgr->cct->_conf->ms_inject_internal_delays);
-    t.sleep();
-  }
-
-  lock.Lock();
-  replacing = false;
-
-  if (r < 0) {
-    ldout(async_msgr->cct, 1) << __func__ << " existing race replacing process for addr=" << peer_addr
-                              << " just fail later one(this)" << dendl;
-    goto fail_registered;
-  }
-  if (state != STATE_ACCEPTING_WAIT_CONNECT_MSG_AUTH) {
-    ldout(async_msgr->cct, 1) << __func__ << " state changed while accept_conn, it must be mark_down, state="
-                              << get_state_name(state) << dendl;
-    assert(state == STATE_CLOSED);
-    goto fail_registered;
-  }
-
-  // notify
-  center->dispatch_event_external(accept_handler);
-  async_msgr->ms_deliver_handle_fast_accept(this);
-
-
-  r = _try_send(reply_bl);
-  if (r < 0)
-    goto fail_registered;
-#endif
   if (r == 0) {
     state = next_state;
     ldout(async_msgr->cct, 2) << __func__ << " accept write reply msg done" << dendl;
@@ -2277,37 +1616,16 @@ int AsyncConnection::handle_connect_msg(ceph_msg_connect &connect, bufferlist &a
   }
 
   return 0;
-#ifdef _WIN32
-#else
- fail_registered:
-  ldout(async_msgr->cct, 10) << __func__ << " accept fault after register" << dendl;
 
-  if (async_msgr->cct->_conf->ms_inject_internal_delays) {
-    ldout(async_msgr->cct, 10) << __func__ << " sleep for "
-                               << async_msgr->cct->_conf->ms_inject_internal_delays
-                               << dendl;
-    utime_t t;
-    t.set_from_double(async_msgr->cct->_conf->ms_inject_internal_delays);
-    t.sleep();
-  }
-#endif
  fail:
-#ifdef _WIN32
-#else
-  ldout(async_msgr->cct, 10) << __func__ << " failed to accept." << dendl;
-#endif
   return -1;
 }
 
 void AsyncConnection::_connect()
 {
-  ldout(async_msgr->cct, 10) << __func__ << " csq=" << connect_seq << dendl;
+  ldout(async_msgr->cct, 10) << __func__ << " " << connect_seq << dendl;
 
   state = STATE_CONNECTING;
-#ifdef _WIN32
-#else
-  stopping.set(0);
-#endif
   // rescheduler connection in order to avoid lock dep
   // may called by external thread(send_message)
   center->dispatch_event_external(read_handler);
@@ -2315,7 +1633,7 @@ void AsyncConnection::_connect()
 
 void AsyncConnection::accept(int incoming)
 {
-  ldout(async_msgr->cct, 10) << __func__ << " sd=" << incoming << dendl;
+  ldout(async_msgr->cct, 10) << __func__ << " " << incoming << dendl;
   assert(sd < 0);
 
   sd = incoming;
@@ -2341,10 +1659,7 @@ int AsyncConnection::send_message(Message *m)
       // we want to handle fault within internal thread
       center->dispatch_event_external(write_handler);
     }
-
-  } 
-#ifdef _WIN32
-  else {
+  } else {
     out_q[m->get_priority()].push_back(m);
     if ((state == STATE_STANDBY || state == STATE_CLOSED) && !policy.server) {
       ldout(async_msgr->cct, 10) << __func__ << " state is " << get_state_name(state)
@@ -2354,25 +1669,6 @@ int AsyncConnection::send_message(Message *m)
       center->dispatch_event_external(write_handler);
     }
   }
-#else
-	else if (state == STATE_CLOSED) {
-      ldout(async_msgr->cct, 10) << __func__ << " connection closed."
-                                 << " Drop message " << m << dendl;
-  } else if (async_msgr->get_myaddr() == get_peer_addr()) { //loopback connection
-      ldout(async_msgr->cct, 20) << __func__ << " " << *m << " local" << dendl;
-      local_messages.push_back(m);
-      center->dispatch_event_external(local_deliver_handler);
-  } else {
-    out_q[m->get_priority()].push_back(m);
-    if (state == STATE_STANDBY && !policy.server) {
-      ldout(async_msgr->cct, 10) << __func__ << " state is " << get_state_name(state)
-                                 << " policy.server is false" << dendl;
-      _connect();
-    } else if (sd > 0 && !open_write) {
-      center->dispatch_event_external(write_handler);
-    }
-  }
-#endif
   return 0;
 }
 
@@ -2418,7 +1714,7 @@ void AsyncConnection::discard_requeued_up_to(uint64_t seq)
  */
 void AsyncConnection::discard_out_queue()
 {
-  ldout(async_msgr->cct, 10) << __func__ << " started" << dendl;
+  ldout(async_msgr->cct, 10) << __func__ << " " << dendl;
 
   for (list<Message*>::iterator p = sent.begin(); p != sent.end(); ++p) {
     ldout(async_msgr->cct, 20) << __func__ << " discard " << *p << dendl;
@@ -2431,10 +1727,6 @@ void AsyncConnection::discard_out_queue()
       (*r)->put();
     }
   out_q.clear();
-#ifdef _WIN32
-#else
-  outcoming_bl.clear();
-#endif
 }
 
 int AsyncConnection::randomize_out_seq()
@@ -2444,10 +1736,7 @@ int AsyncConnection::randomize_out_seq()
     // here.  We'll check it on the call.  PLR
     int seq_error = get_random_bytes((char *)&out_seq, sizeof(out_seq));
     out_seq &= SEQ_MASK;
-#ifdef _WIN32
-#else
-    lsubdout(async_msgr->cct, ms, 10) << __func__ << " randomize_out_seq " << out_seq << dendl;
-#endif
+    lsubdout(async_msgr->cct, ms, 10) << __func__ << "randomize_out_seq " << out_seq << dendl;
     return seq_error;
   } else {
     // previously, seq #'s always started at 0.
@@ -2459,27 +1748,16 @@ int AsyncConnection::randomize_out_seq()
 void AsyncConnection::fault()
 {
   if (state == STATE_CLOSED) {
-    ldout(async_msgr->cct, 10) << __func__ << " state is already " << get_state_name(state) << dendl;
-#ifdef _WIN32
-#else
-    center->dispatch_event_external(reset_handler);
-#endif
+    ldout(async_msgr->cct, 10) << __func__ << " state is already STATE_CLOSED" << dendl;
     return ;
   }
-#ifdef _WIN32
+
   if (policy.lossy && state != STATE_CONNECTING) {
     ldout(async_msgr->cct, 10) << __func__ << " on lossy channel, failing" << dendl;
     _stop();
     return ;
   }
-#else
-  if (policy.lossy && !(state >= STATE_CONNECTING && state < STATE_CONNECTING_READY)) {
-    ldout(async_msgr->cct, 10) << __func__ << " on lossy channel, failing" << dendl;
-    center->dispatch_event_external(reset_handler);
-    _stop();
-    return ;
-  }
-#endif
+
   if (sd >= 0) {
     shutdown_socket();
     center->delete_file_event(sd, EVENT_READABLE|EVENT_WRITABLE);
@@ -2488,19 +1766,13 @@ void AsyncConnection::fault()
 
   // requeue sent items
   requeue_sent();
-#ifdef _WIN32
-#else
-  recv_start = recv_end = 0;
-  state_offset = 0;
-  replacing = false;
-#endif
   outcoming_bl.clear();
   if (policy.standby && !is_queued()) {
     ldout(async_msgr->cct,0) << __func__ << " with nothing to send, going to standby" << dendl;
     state = STATE_STANDBY;
     return;
   }
-#ifdef _WIN32
+
   if (state != STATE_CONNECTING) {
     // policy maybe empty when state is in accept
     if (policy.server || (state >= STATE_ACCEPTING && state < STATE_ACCEPTING_WAIT_SEQ)) {
@@ -2525,62 +1797,25 @@ void AsyncConnection::fault()
 
   // woke up again;
   center->create_time_event(backoff, read_handler);
-
-#else
-  if (!(state >= STATE_CONNECTING && state < STATE_CONNECTING_READY)) {
-    // policy maybe empty when state is in accept
-    if (policy.server || (state >= STATE_ACCEPTING && state < STATE_ACCEPTING_WAIT_SEQ)) {
-      ldout(async_msgr->cct, 0) << __func__ << " server, going to standby" << dendl;
-      state = STATE_STANDBY;
-    } else {
-      ldout(async_msgr->cct, 0) << __func__ << " initiating reconnect" << dendl;
-      connect_seq++;
-      state = STATE_CONNECTING;
-    }
-    backoff = utime_t();
-  } else {
-    if (backoff == utime_t()) {
-      backoff.set_from_double(async_msgr->cct->_conf->ms_initial_backoff);
-    } else {
-      backoff += backoff;
-      if (backoff > async_msgr->cct->_conf->ms_max_backoff)
-        backoff.set_from_double(async_msgr->cct->_conf->ms_max_backoff);
-    }
-    state = STATE_CONNECTING;
-    ldout(async_msgr->cct, 10) << __func__ << " waiting " << backoff << dendl;
-  }
-
-  // woke up again;
-  register_time_events.insert(center->create_time_event(
-          backoff.to_nsec()/1000, EventCallbackRef(new C_time_wakeup(this))));
-#endif
 }
 
 void AsyncConnection::was_session_reset()
 {
-  ldout(async_msgr->cct,10) << __func__ << " started" << dendl;
+  ldout(async_msgr->cct,10) << __func__ << "was_session_reset" << dendl;
   discard_out_queue();
-#ifdef _WIN32
   outcoming_bl.clear();
-
-#endif
 
   center->dispatch_event_external(remote_reset_handler);
 
   if (randomize_out_seq()) {
-    lsubdout(async_msgr->cct,ms,15) << __func__ << " could not get random bytes to set seq number for session reset; set seq number to " << out_seq << dendl;
+    lsubdout(async_msgr->cct,ms,15) << __func__ << " Could not get random bytes to set seq number for session reset; set seq number to " << out_seq << dendl;
   }
 
   in_seq = 0;
   connect_seq = 0;
   in_seq_acked = 0;
-#ifdef _WIN32
-#else
-  once_session_reset = true;
-#endif
 }
 
-#ifdef _WIN32
 void AsyncConnection::_stop()
 {
   ldout(async_msgr->cct, 10) << __func__ << dendl;
@@ -2593,40 +1828,7 @@ void AsyncConnection::_stop()
   open_write = false;
   state = STATE_CLOSED;
 }
-#else
-void AsyncConnection::_stop()
-{
-  assert(lock.is_locked());
-  ldout(async_msgr->cct, 10) << __func__ << dendl;
-  if (sd > 0)
-    center->delete_file_event(sd, EVENT_READABLE|EVENT_WRITABLE);
 
-  discard_out_queue();
-  async_msgr->unregister_conn(this);
-
-  if (async_msgr->cct->_conf->ms_inject_internal_delays) {
-    ldout(msgr->cct, 10) << __func__ << " sleep for "
-                         << async_msgr->cct->_conf->ms_inject_internal_delays
-                         << dendl;
-    utime_t t;
-    t.set_from_double(async_msgr->cct->_conf->ms_inject_internal_delays);
-    t.sleep();
-  }
-
-  state = STATE_CLOSED;
-  shutdown_socket();
-  open_write = false;
-  state_offset = 0;
-  if (sd > 0)
-    ::close(sd);
-  sd = -1;
-  for (set<uint64_t>::iterator it = register_time_events.begin();
-       it != register_time_events.end(); ++it)
-    center->delete_time_event(*it);
-  // Make sure in-queue events will been processed
-  center->dispatch_event_external(EventCallbackRef(new C_clean_handler(this)));
-}
-#endif
 int AsyncConnection::_send(Message *m)
 {
   m->set_seq(++out_seq);
@@ -2648,12 +1850,8 @@ int AsyncConnection::_send(Message *m)
                          << features << " " << m << " " << *m << dendl;
 
   // encode and copy out of *m
-#ifdef _WIN32
   m->encode(features, !async_msgr->cct->_conf->ms_nocrc);
 
-#else
-  m->encode(features, async_msgr->crcflags);
-#endif
   // prepare everything
   ceph_msg_header& header = m->get_header();
   ceph_msg_footer& footer = m->get_footer();
@@ -2716,18 +1914,8 @@ int AsyncConnection::write_message(ceph_msg_header& header, ceph_msg_footer& foo
     oldheader.src.addr = get_peer_addr();
     oldheader.orig_src = oldheader.src;
     oldheader.reserved = header.reserved;
-#ifdef _WIN32
     oldheader.crc = ceph_crc32c(0, (unsigned char*)&oldheader,
                                 sizeof(oldheader) - sizeof(oldheader.crc));
-
-#else
-    if (msgr->crcflags & MSG_CRC_HEADER) {
-       oldheader.crc = ceph_crc32c(0, (unsigned char*)&oldheader,
-                                   sizeof(oldheader) - sizeof(oldheader.crc));
-    } else {
-       oldheader.crc = 0;
-    }
-#endif
     bl.append((char*)&oldheader, sizeof(oldheader));
   }
 
@@ -2737,31 +1925,14 @@ int AsyncConnection::write_message(ceph_msg_header& header, ceph_msg_footer& foo
   ceph_msg_footer_old old_footer;
   if (has_feature(CEPH_FEATURE_MSG_AUTH)) {
     bl.append((char*)&footer, sizeof(footer));
-  } 
-#ifdef _WIN32
-	else {
+  } else {
     old_footer.front_crc = footer.front_crc;
     old_footer.middle_crc = footer.middle_crc;
     old_footer.data_crc = footer.data_crc;
     old_footer.flags = footer.flags;
     bl.append((char*)&old_footer, sizeof(old_footer));
-}
-#else
-	else {
-    if (msgr->crcflags & MSG_CRC_HEADER) {
-      old_footer.front_crc = footer.front_crc;
-      old_footer.middle_crc = footer.middle_crc;
-      old_footer.data_crc = footer.data_crc;
-    } else {
-       old_footer.front_crc = old_footer.middle_crc = 0;
-    }
-    old_footer.data_crc = msgr->crcflags & MSG_CRC_DATA ? footer.data_crc : 0;
-
-    old_footer.flags = footer.flags;
-    bl.append((char*)&old_footer, sizeof(old_footer));
-
   }
-#endif
+
   // send
   ret = _try_send(bl);
   if (ret < 0)
@@ -2784,32 +1955,13 @@ void AsyncConnection::handle_ack(uint64_t seq)
   }
 }
 
-#ifdef _WIN32
 void AsyncConnection::send_keepalive()
 {
   Mutex::Locker l(lock);
   keepalive = true;
   center->dispatch_event_external(write_handler);
 }
-#else
-void AsyncConnection::send_keepalive()
-{
-  ldout(async_msgr->cct, 10) << __func__ << " started." << dendl;
-  Mutex::Locker l(lock);
-  if (state != STATE_CLOSED) {
-    keepalive = true;
-    center->dispatch_event_external(write_handler);
-  }
-}
 
-void AsyncConnection::mark_down()
-{
-  ldout(async_msgr->cct, 10) << __func__ << " started." << dendl;
-  stopping.set(1);
-  Mutex::Locker l(lock);
-  _stop();
-}
-#endif
 void AsyncConnection::_send_keepalive_or_ack(bool ack, utime_t *tp)
 {
   assert(lock.is_locked());
@@ -2841,12 +1993,7 @@ void AsyncConnection::handle_write()
   ldout(async_msgr->cct, 10) << __func__ << " started." << dendl;
   Mutex::Locker l(lock);
   bufferlist bl;
-#ifdef _WIN32
   int r;
-
-#else
-  int r = 0;
-#endif
   if (state >= STATE_OPEN && state <= STATE_OPEN_TAG_CLOSE) {
     if (keepalive) {
       _send_keepalive_or_ack();
@@ -2875,18 +2022,7 @@ void AsyncConnection::handle_write()
       bl.append((char*)&s, sizeof(s));
       ldout(async_msgr->cct, 10) << __func__ << " try send msg ack" << dendl;
       in_seq_acked = s;
-#ifdef _WIN32
       _try_send(bl);
-#else
-      r = _try_send(bl);
-    } else if (is_queued()) {
-      r = _try_send(bl);
-    }
-
-    if (r < 0) {
-      ldout(async_msgr->cct, 1) << __func__ << " send msg failed" << dendl;
-      goto fail;
-#endif
     }
   } else if (state != STATE_CONNECTING) {
     r = _try_send(bl);
@@ -2899,36 +2035,4 @@ void AsyncConnection::handle_write()
   return ;
  fail:
   fault();
-#ifdef _WIN32
-#else
-}
-
-void AsyncConnection::wakeup_from(uint64_t id)
-{
-  lock.Lock();
-  register_time_events.erase(id);
-  lock.Unlock();
-  process();
-}
-
-void AsyncConnection::local_deliver()
-{
-  ldout(async_msgr->cct, 10) << __func__ << dendl;
-  Mutex::Locker l(lock);
-  while (!local_messages.empty()) {
-    Message *m = local_messages.back();
-    local_messages.pop_back();
-    m->set_connection(this);
-    m->set_recv_stamp(ceph_clock_now(async_msgr->cct));
-    ldout(async_msgr->cct, 10) << __func__ << " " << *m << " local deliver " << dendl;
-    async_msgr->ms_fast_preprocess(m);
-    lock.Unlock();
-    if (async_msgr->ms_can_fast_dispatch(m)) {
-      async_msgr->ms_fast_dispatch(m);
-    } else {
-      msgr->ms_deliver_dispatch(m);
-    }
-    lock.Lock();
-  }
-#endif
 }

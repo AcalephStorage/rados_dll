@@ -32,26 +32,12 @@
 #define dout_subsys ceph_subsys_ms
 
 #undef dout_prefix
-#ifdef _WIN32
 #define dout_prefix *_dout << "Event "
-#else
-#define dout_prefix _event_prefix(_dout)
-ostream& EventCenter::_event_prefix(std::ostream *_dout)
-{
-  return *_dout << "Event(" << this << " owner=" << get_owner() << " nevent=" << nevent
-                << " time_id=" << time_event_next_id << ").";
-}
-#endif
+
 class C_handle_notify : public EventCallback {
  public:
   C_handle_notify() {}
   void do_request(int fd_or_id) {
-#ifdef _WIN32
-#else
-    char c[100];
-    int r = read(fd_or_id, c, 100);
-    assert(r > 0);
-#endif
   }
 };
 
@@ -88,14 +74,6 @@ int EventCenter::init(int n)
 
   notify_receive_fd = fds[0];
   notify_send_fd = fds[1];
-#ifdef _WIN32
-#else
-  r = net.set_nonblock(notify_receive_fd);
-  if (r < 0) {
-    return -1;
-  }
-#endif
-
   file_events = static_cast<FileEvent *>(malloc(sizeof(FileEvent)*n));
   memset(file_events, 0, sizeof(FileEvent)*n);
 
@@ -106,7 +84,6 @@ int EventCenter::init(int n)
 
 EventCenter::~EventCenter()
 {
-#ifdef _WIN32
   if (driver)
     delete driver;
 
@@ -114,21 +91,10 @@ EventCenter::~EventCenter()
     ::close(notify_receive_fd);
   if (notify_send_fd > 0)
     ::close(notify_send_fd);
-#else
-  delete driver;
-
-  if (file_events)
-    free(file_events);
-  if (notify_receive_fd > 0)
-    ::close(notify_receive_fd);
-  if (notify_send_fd > 0)
-    ::close(notify_send_fd);
-#endif
 }
 
 int EventCenter::create_file_event(int fd, int mask, EventCallbackRef ctxt)
 {
-#ifdef _WIN32
   int r;
   if (fd > nevent) {
     int new_size = nevent << 2;
@@ -165,55 +131,10 @@ int EventCenter::create_file_event(int fd, int mask, EventCallbackRef ctxt)
   ldout(cct, 10) << __func__ << " create event fd=" << fd << " mask=" << mask
                  << " now mask is " << event->mask << dendl;
   return 0;
-#else
-  int r = 0;
-  Mutex::Locker l(file_lock);
-  if (fd >= nevent) {
-    int new_size = nevent << 2;
-    while (fd > new_size)
-      new_size <<= 2;
-    ldout(cct, 10) << __func__ << " event count exceed " << nevent << ", expand to " << new_size << dendl;
-    r = driver->resize_events(new_size);
-    if (r < 0) {
-      lderr(cct) << __func__ << " event count is exceed." << dendl;
-      return -ERANGE;
-    }
-    FileEvent *new_events = static_cast<FileEvent *>(realloc(file_events, sizeof(FileEvent)*new_size));
-    if (!new_events) {
-      lderr(cct) << __func__ << " failed to realloc file_events" << cpp_strerror(errno) << dendl;
-      return -errno;
-    }
-    file_events = new_events;
-    memset(file_events+nevent, 0, sizeof(FileEvent)*(new_size-nevent));
-    nevent = new_size;
-  }
-
-  EventCenter::FileEvent *event = _get_file_event(fd);
-  ldout(cct, 20) << __func__ << " create event started fd=" << fd << " mask=" << mask
-                 << " original mask is " << event->mask << dendl;
-  if (event->mask == mask)
-    return 0;
-
-  r = driver->add_event(fd, event->mask, mask);
-  if (r < 0)
-    return r;
-
-  event->mask |= mask;
-  if (mask & EVENT_READABLE) {
-    event->read_cb = ctxt;
-  }
-  if (mask & EVENT_WRITABLE) {
-    event->write_cb = ctxt;
-  }
-  ldout(cct, 10) << __func__ << " create event end fd=" << fd << " mask=" << mask
-                 << " original mask is " << event->mask << dendl;
-  return 0;
-#endif
 }
 
 void EventCenter::delete_file_event(int fd, int mask)
 {
-#ifdef _WIN32
   EventCenter::FileEvent *event = _get_file_event(fd);
   if (!event->mask)
     return ;
@@ -230,38 +151,10 @@ void EventCenter::delete_file_event(int fd, int mask)
   event->mask = event->mask & (~mask);
   ldout(cct, 10) << __func__ << " delete fd=" << fd << " mask=" << mask
                  << " now mask is " << event->mask << dendl;
-#else
-  assert(fd > 0);
-  Mutex::Locker l(file_lock);
-  if (fd > nevent) {
-    ldout(cct, 1) << __func__ << " delete event fd=" << fd << " exceed nevent=" << nevent
-                  << "mask=" << mask << dendl;
-    return ;
-  }
-  EventCenter::FileEvent *event = _get_file_event(fd);
-  ldout(cct, 20) << __func__ << " delete event started fd=" << fd << " mask=" << mask
-                 << " original mask is " << event->mask << dendl;
-  if (!event->mask)
-    return ;
-
-  driver->del_event(fd, event->mask, mask);
-
-  if (mask & EVENT_READABLE && event->read_cb) {
-    event->read_cb.reset();
-  }
-  if (mask & EVENT_WRITABLE && event->write_cb) {
-    event->write_cb.reset();
-  }
-
-  event->mask = event->mask & (~mask);
-  ldout(cct, 10) << __func__ << " delete event end fd=" << fd << " mask=" << mask
-                 << " original mask is " << event->mask << dendl;
-#endif
 }
 
 uint64_t EventCenter::create_time_event(uint64_t microseconds, EventCallbackRef ctxt)
 {
-#ifdef _WIN32
   uint64_t id = time_event_next_id++;
 
   ldout(cct, 10) << __func__ << " id=" << id << " trigger after " << microseconds << "us"<< dendl;
@@ -283,59 +176,10 @@ uint64_t EventCenter::create_time_event(uint64_t microseconds, EventCallbackRef 
   event.id = id;
   event.time_cb = ctxt;
   time_events[expire].push_back(event);
-#else
-  Mutex::Locker l(time_lock);
-  uint64_t id = time_event_next_id++;
 
-  ldout(cct, 10) << __func__ << " id=" << id << " trigger after " << microseconds << "us"<< dendl;
-  EventCenter::TimeEvent event;
-  utime_t expire;
-  struct timeval tv;
-
-  if (microseconds < 5) {
-    tv.tv_sec = 0;
-    tv.tv_usec = microseconds;
-  } else {
-    expire = ceph_clock_now(cct);
-    expire.copy_to_timeval(&tv);
-    tv.tv_sec += microseconds / 1000000;
-    tv.tv_usec += microseconds % 1000000;
-  }
-  expire.set_from_timeval(&tv);
-
-  event.id = id;
-  event.time_cb = ctxt;
-  time_events[expire].push_back(event);
-  if (expire < next_time)
-    wakeup();
-#endif
   return id;
 }
-#ifdef _WIN32
-#else
-// TODO: Ineffective implementation now!
-void EventCenter::delete_time_event(uint64_t id)
-{
-  Mutex::Locker l(time_lock);
-  ldout(cct, 10) << __func__ << " id=" << id << dendl;
-  if (id >= time_event_next_id)
-    return ;
 
-
-  for (map<utime_t, list<TimeEvent> >::iterator it = time_events.begin();
-       it != time_events.end(); ++it) {
-    for (list<TimeEvent>::iterator j = it->second.begin();
-         j != it->second.end(); ++j) {
-      if (j->id == id) {
-        it->second.erase(j);
-        if (it->second.empty())
-          time_events.erase(it);
-        return ;
-      }
-    }
-  }
-}
-#endif
 void EventCenter::wakeup()
 {
   ldout(cct, 1) << __func__ << dendl;
@@ -353,7 +197,15 @@ int EventCenter::process_time_events()
   time_t now = time(NULL);
   utime_t cur = ceph_clock_now(cct);
   ldout(cct, 10) << __func__ << " cur time is " << cur << dendl;
-#ifdef _WIN32
+
+  /* If the system clock is moved to the future, and then set back to the
+   * right value, time events may be delayed in a random way. Often this
+   * means that scheduled operations will not be performed soon enough.
+   *
+   * Here we try to detect system clock skews, and force all the time
+   * events to be processed ASAP when this happens: the idea is that
+   * processing events earlier is less dangerous than delaying them
+   * indefinitely, and practice suggests it is. */
   if (now < last_time) {
     map<utime_t, list<TimeEvent> > changed;
     for (map<utime_t, list<TimeEvent> >::iterator it = time_events.begin();
@@ -383,55 +235,11 @@ int EventCenter::process_time_events()
     }
   }
 
-#else
-  time_lock.Lock();
-  /* If the system clock is moved to the future, and then set back to the
-   * right value, time events may be delayed in a random way. Often this
-   * means that scheduled operations will not be performed soon enough.
-   *
-   * Here we try to detect system clock skews, and force all the time
-   * events to be processed ASAP when this happens: the idea is that
-   * processing events earlier is less dangerous than delaying them
-   * indefinitely, and practice suggests it is. */
-  if (now < last_time) {
-    map<utime_t, list<TimeEvent> > changed;
-    for (map<utime_t, list<TimeEvent> >::iterator it = time_events.begin();
-         it != time_events.end(); ++it) {
-      changed[utime_t()].swap(it->second);
-    }
-    time_events.swap(changed);
-  }
-  last_time = now;
-
-  map<utime_t, list<TimeEvent> >::iterator prev;
-  list<TimeEvent> need_process;
-  for (map<utime_t, list<TimeEvent> >::iterator it = time_events.begin();
-       it != time_events.end(); ) {
-    prev = it;
-    if (cur >= it->first) {
-      need_process.splice(need_process.end(), it->second);
-      ++it;
-      time_events.erase(prev);
-    } else {
-      break;
-    }
-  }
-  time_lock.Unlock();
-
-  for (list<TimeEvent>::iterator it = need_process.begin();
-       it != need_process.end(); ++it) {
-    ldout(cct, 10) << __func__ << " process time event: id=" << it->id << dendl;
-    it->time_cb->do_request(it->id);
-    processed++;
-  }
-#endif
   return processed;
 }
 
 int EventCenter::process_events(int timeout_microseconds)
 {
-  // Must set owner before looping
-#ifdef _WIN32
   struct timeval tv;
   int numevents;
   bool trigger_time = false;
@@ -505,98 +313,13 @@ int EventCenter::process_events(int timeout_microseconds)
     }
     lock.Unlock();
   }
-
-#else
-  assert(owner);
-  struct timeval tv;
-  int numevents;
-  bool trigger_time = false;
-
-  utime_t period, shortest, now = ceph_clock_now(cct);
-  now.copy_to_timeval(&tv);
-  if (timeout_microseconds > 0) {
-    tv.tv_sec += timeout_microseconds / 1000000;
-    tv.tv_usec += timeout_microseconds % 1000000;
-  }
-  shortest.set_from_timeval(&tv);
-
-  {
-    Mutex::Locker l(time_lock);
-    map<utime_t, list<TimeEvent> >::iterator it = time_events.begin();
-    if (it != time_events.end() && shortest >= it->first) {
-      ldout(cct, 10) << __func__ << " shortest is " << shortest << " it->first is " << it->first << dendl;
-      shortest = it->first;
-      trigger_time = true;
-      if (shortest > now) {
-        period = shortest - now;
-        period.copy_to_timeval(&tv);
-      } else {
-        tv.tv_sec = 0;
-        tv.tv_usec = 0;
-      }
-    } else {
-      tv.tv_sec = timeout_microseconds / 1000000;
-      tv.tv_usec = timeout_microseconds % 1000000;
-    }
-  }
-
-  ldout(cct, 10) << __func__ << " wait second " << tv.tv_sec << " usec " << tv.tv_usec << dendl;
-  vector<FiredFileEvent> fired_events;
-  next_time = shortest;
-  numevents = driver->event_wait(fired_events, &tv);
-  for (int j = 0; j < numevents; j++) {
-    int rfired = 0;
-    FileEvent *event;
-    {
-      Mutex::Locker l(file_lock);
-      event = _get_file_event(fired_events[j].fd);
-    }
-
-    /* note the event->mask & mask & ... code: maybe an already processed
-    * event removed an element that fired and we still didn't
-    * processed, so we check if the event is still valid. */
-    if (event->mask & fired_events[j].mask & EVENT_READABLE) {
-      rfired = 1;
-      event->read_cb->do_request(fired_events[j].fd);
-    }
-
-    if (event->mask & fired_events[j].mask & EVENT_WRITABLE) {
-      if (!rfired || event->read_cb != event->write_cb)
-        event->write_cb->do_request(fired_events[j].fd);
-    }
-
-    ldout(cct, 20) << __func__ << " event_wq process is " << fired_events[j].fd << " mask is " << fired_events[j].mask << dendl;
-  }
-
-  if (trigger_time)
-    numevents += process_time_events();
-
-  {
-    external_lock.Lock();
-    while (!external_events.empty()) {
-      EventCallbackRef e = external_events.front();
-      external_events.pop_front();
-      external_lock.Unlock();
-      if (e)
-        e->do_request(0);
-      external_lock.Lock();
-    }
-    external_lock.Unlock();
-  }
-
   return numevents;
 }
 
 void EventCenter::dispatch_event_external(EventCallbackRef e)
 {
-#ifdef _WIN32
   lock.Lock();
   external_events.push_back(e);
   lock.Unlock();
-#else
-  external_lock.Lock();
-  external_events.push_back(e);
-  external_lock.Unlock();
-#endif
   wakeup();
 }

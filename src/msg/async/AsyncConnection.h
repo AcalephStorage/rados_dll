@@ -16,23 +16,19 @@
 
 #ifndef CEPH_MSG_ASYNCCONNECTION_H
 #define CEPH_MSG_ASYNCCONNECTION_H
-#ifdef _WIN32
-#else
-#include <pthread.h>
-#include <climits>
-#endif
+
 #include <list>
 #include <map>
 using namespace std;
 
-#include "auth/AuthSessionHandler.h"
 #include "common/Mutex.h"
 #include "include/buffer.h"
-#include "msg/Connection.h"
-#include "msg/Messenger.h"
 
-#include "Event.h"
+#include "auth/AuthSessionHandler.h"
+#include "msg/Connection.h"
 #include "net_handler.h"
+#include "Event.h"
+#include "msg/Messenger.h"
 
 class AsyncMessenger;
 
@@ -44,9 +40,7 @@ class AsyncMessenger;
  * sequence, try to reconnect peer endpoint.
  */
 class AsyncConnection : public Connection {
-#ifdef _WIN32
   const static uint64_t IOV_LEN = 1024;
-#endif
 
   int read_bulk(int fd, char *buf, int len);
   int do_sendmsg(struct msghdr &msg, int len, bool more);
@@ -54,11 +48,7 @@ class AsyncConnection : public Connection {
   // the main usage is avoid error happen outside messenger threads
   int _try_send(bufferlist bl, bool send=true);
   int _send(Message *m);
-#ifdef _WIN32
   int read_until(uint64_t needed, bufferptr &p);
-#else
-  int read_until(uint64_t needed, char *p);
-#endif
   int _process_connection();
   void _connect();
   void _stop();
@@ -117,12 +107,8 @@ class AsyncConnection : public Connection {
   ostream& _conn_prefix(std::ostream *_dout);
 
   bool is_connected() {
-#ifdef _WIN32
+    // FIXME?
     return true;
-#else
-    Mutex::Locker l(lock);
-    return state >= STATE_OPEN && state <= STATE_OPEN_TAG_CLOSE;
-#endif
   }
 
   // Only call when AsyncConnection first construct
@@ -137,21 +123,16 @@ class AsyncConnection : public Connection {
   int send_message(Message *m);
 
   void send_keepalive();
-#ifdef _WIN32
   void mark_down() {
     Mutex::Locker l(lock);
     _stop();
   }
-#else
-  void mark_down();
-#endif
   void mark_disposable() {
     Mutex::Locker l(lock);
     policy.lossy = true;
   }
 
  private:
-#ifdef _WIN32
   enum {
     STATE_NONE,
     STATE_OPEN,
@@ -188,45 +169,7 @@ class AsyncConnection : public Connection {
     STATE_WAIT,       // just wait for racing connection
   };
 
-#else
-  enum {
-    STATE_NONE,
-    STATE_OPEN,
-    STATE_OPEN_KEEPALIVE2,
-    STATE_OPEN_KEEPALIVE2_ACK,
-    STATE_OPEN_TAG_ACK,
-    STATE_OPEN_MESSAGE_HEADER,
-    STATE_OPEN_MESSAGE_THROTTLE_MESSAGE,
-    STATE_OPEN_MESSAGE_THROTTLE_BYTES,
-    STATE_OPEN_MESSAGE_READ_FRONT,
-    STATE_OPEN_MESSAGE_READ_MIDDLE,
-    STATE_OPEN_MESSAGE_READ_DATA_PREPARE,
-    STATE_OPEN_MESSAGE_READ_DATA,
-    STATE_OPEN_MESSAGE_READ_FOOTER_AND_DISPATCH,
-    STATE_OPEN_TAG_CLOSE,
-    STATE_WAIT_SEND,
-    STATE_CONNECTING,
-    STATE_CONNECTING_WAIT_BANNER,
-    STATE_CONNECTING_WAIT_IDENTIFY_PEER,
-    STATE_CONNECTING_SEND_CONNECT_MSG,
-    STATE_CONNECTING_WAIT_CONNECT_REPLY,
-    STATE_CONNECTING_WAIT_CONNECT_REPLY_AUTH,
-    STATE_CONNECTING_WAIT_ACK_SEQ,
-    STATE_CONNECTING_READY,
-    STATE_ACCEPTING,
-    STATE_ACCEPTING_WAIT_BANNER_ADDR,
-    STATE_ACCEPTING_WAIT_CONNECT_MSG,
-    STATE_ACCEPTING_WAIT_CONNECT_MSG_AUTH,
-    STATE_ACCEPTING_WAIT_SEQ,
-    STATE_ACCEPTING_READY,
-    STATE_STANDBY,
-    STATE_CLOSED,
-    STATE_WAIT,       // just wait for racing connection
-  };
-  static const int TCP_PREFETCH_MIN_SIZE;
-#endif
   static const char *get_state_name(int state) {
-#ifdef _WIN32
       const char* const statenames[] = {"STATE_NONE",
                                         "STATE_OPEN",
                                         "STATE_OPEN_KEEPALIVE2",
@@ -261,39 +204,6 @@ class AsyncConnection : public Connection {
                                         "STATE_CLOSED",
                                         "STATE_WAIT",
                                         "STATE_FAULT"};
-#else
-      const char* const statenames[] = {"STATE_NONE",
-                                        "STATE_OPEN",
-                                        "STATE_OPEN_KEEPALIVE2",
-                                        "STATE_OPEN_KEEPALIVE2_ACK",
-                                        "STATE_OPEN_TAG_ACK",
-                                        "STATE_OPEN_MESSAGE_HEADER",
-                                        "STATE_OPEN_MESSAGE_THROTTLE_MESSAGE",
-                                        "STATE_OPEN_MESSAGE_THROTTLE_BYTES",
-                                        "STATE_OPEN_MESSAGE_READ_FRONT",
-                                        "STATE_OPEN_MESSAGE_READ_MIDDLE",
-                                        "STATE_OPEN_MESSAGE_READ_DATA_PREPARE",
-                                        "STATE_OPEN_MESSAGE_READ_DATA",
-                                        "STATE_OPEN_MESSAGE_READ_FOOTER_AND_DISPATCH",
-                                        "STATE_OPEN_TAG_CLOSE",
-                                        "STATE_WAIT_SEND",
-                                        "STATE_CONNECTING",
-                                        "STATE_CONNECTING_WAIT_BANNER",
-                                        "STATE_CONNECTING_WAIT_IDENTIFY_PEER",
-                                        "STATE_CONNECTING_SEND_CONNECT_MSG",
-                                        "STATE_CONNECTING_WAIT_CONNECT_REPLY",
-                                        "STATE_CONNECTING_WAIT_CONNECT_REPLY_AUTH",
-                                        "STATE_CONNECTING_WAIT_ACK_SEQ",
-                                        "STATE_CONNECTING_READY",
-                                        "STATE_ACCEPTING",
-                                        "STATE_ACCEPTING_WAIT_BANNER_ADDR",
-                                        "STATE_ACCEPTING_WAIT_CONNECT_MSG",
-                                        "STATE_ACCEPTING_WAIT_CONNECT_MSG_AUTH",
-                                        "STATE_ACCEPTING_WAIT_SEQ",
-                                        "STATE_ACCEPTING_READY",
-                                        "STATE_STANDBY",
-                                        "STATE_CLOSED",
-                                        "STATE_WAIT"};
       return statenames[state];
   }
 
@@ -310,10 +220,6 @@ class AsyncConnection : public Connection {
   Messenger::Policy policy;
   map<int, list<Message*> > out_q;  // priority queue for outbound msgs
   list<Message*> sent;
-#ifdef _WIN32
-#else
-  list<Message*> local_messages;    // local deliver
-#endif
   Mutex lock;
   utime_t backoff;         // backoff time
   bool open_write;
@@ -321,29 +227,9 @@ class AsyncConnection : public Connection {
   EventCallbackRef write_handler;
   EventCallbackRef reset_handler;
   EventCallbackRef remote_reset_handler;
-#ifdef _WIN32
-#else
-  EventCallbackRef connect_handler;
-  EventCallbackRef fast_connect_handler;
-  EventCallbackRef accept_handler;
-  EventCallbackRef fast_accept_handler;
-  EventCallbackRef stop_handler;
-  EventCallbackRef signal_handler;
-  EventCallbackRef local_deliver_handler;
-#endif
   bool keepalive;
-#ifdef _WIN32
   struct iovec msgvec[IOV_LEN];
-#else
-  struct iovec msgvec[IOV_MAX];
-  char *recv_buf;
-  uint32_t recv_max_prefetch;
-  uint32_t recv_start;
-  uint32_t recv_end;
-  Mutex stop_lock; // used to protect `mark_down_cond`
-  Cond stop_cond;
-  set<uint64_t> register_time_events; // need to delete it if stop
-#endif
+
   // Tis section are temp variables used by state transition
 
   // Open state
@@ -362,25 +248,9 @@ class AsyncConnection : public Connection {
   // Accepting state
   entity_addr_t socket_addr;
   CryptoKey session_key;
-#ifdef _WIN32
-#else
-  bool replacing;    // when replacing process happened, we will reply connect
-                     // side with RETRY tag and accept side will clear replaced
-                     // connection. So when connect side reissue connect_msg,
-                     // there won't exists conflicting connection so we use
-                     // "replacing" to skip RESETSESSION to avoid detect wrong
-                     // presentation
-  bool once_session_reset;
-  bool is_reset_from_peer;
-  atomic_t stopping;
-#endif
-  // used only for local state, it will be overwrite when state transition
-#ifdef _WIN32
-  bufferptr state_buffer;
 
-#else
-  char *state_buffer;
-#endif
+  // used only for local state, it will be overwrite when state transition
+  bufferptr state_buffer;
   // used only by "read_until"
   uint64_t state_offset;
   bufferlist outcoming_bl;
@@ -392,24 +262,6 @@ class AsyncConnection : public Connection {
   // used by eventcallback
   void handle_write();
   void process();
-#ifdef _WIN32
-#else
-  void wakeup_from(uint64_t id);
-  void local_deliver();
-  void stop() {
-    center->dispatch_event_external(reset_handler);
-    mark_down();
-  }
-  void cleanup_handler() {
-    read_handler.reset();
-    write_handler.reset();
-    reset_handler.reset();
-    remote_reset_handler.reset();
-    connect_handler.reset();
-    accept_handler.reset();
-    local_deliver_handler.reset();
-  }
-#endif
 }; /* AsyncConnection */
 
 typedef boost::intrusive_ptr<AsyncConnection> AsyncConnectionRef;
