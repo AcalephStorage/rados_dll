@@ -19,11 +19,13 @@ Vagrant.configure(2) do |config|
   # using a specific IP.
   config.vm.network 'private_network', ip: "192.168.73.#{VM_IP}"
 
-  # Mount the "vagrant" folder at "/vagrant" with all permission bits open
-  config.vm.synced_folder '.', '/vagrant', owner: 'vagrant', group: 'vagrant', mount_options: ['dmode=777,fmode=777']
+  # # Mount the "vagrant" folder at "/vagrant" with all permission bits open
+  # config.vm.synced_folder '.', '/vagrant', owner: 'vagrant', group: 'vagrant', mount_options: ['dmode=777,fmode=777']
 
   config.vm.provider 'virtualbox' do |vbox|
     vbox.name = VM_NAME
+    vbox.memory = 2048
+    vbox.cpus = 2
   end
 
   config.vm.provision 'ansible' do |ansible|
