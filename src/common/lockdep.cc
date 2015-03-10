@@ -36,7 +36,7 @@ CEPH_HASH_NAMESPACE_END
 #endif
 
 /******* Constants **********/
-#define lockdep_dout(v) lsubdout(g_lockdep_ceph_ctx, lockdep, v)
+//#define lockdep_dout(v) lsubdout(g_lockdep_ceph_ctx, lockdep, v)
 #define MAX_LOCKS  2000   // increase me as needed
 #define BACKTRACE_SKIP 2
 
@@ -75,7 +75,7 @@ void lockdep_unregister_ceph_context(CephContext *cct)
 
   pthread_mutex_lock(&lockdep_mutex);
   if (cct == g_lockdep_ceph_ctx) {
-    lockdep_dout(0) << "lockdep stop" << dendl;
+//    lockdep_dout(0) << "lockdep stop" << dendl;
     // this cct is going away; shut it down!
     g_lockdep = false;
     g_lockdep_ceph_ctx = NULL;
@@ -94,21 +94,19 @@ void lockdep_unregister_ceph_context(CephContext *cct)
 }
 
 int lockdep_dump_locks()
-{//not working
-
+{
   pthread_mutex_lock(&lockdep_mutex);
-  
 
   for (ceph::unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();p != held.end();++p) 
   {
-    lockdep_dout(0) << "--- thread " << p->first << " ---" << dendl;
+//    lockdep_dout(0) << "--- thread " << p->first << " ---" << dendl;
     for (map<int,BackTrace*>::iterator q = p->second.begin();
-	 q != p->second.end();
-	 ++q) {
-      lockdep_dout(0) << "  * " << lock_names[q->first] << "\n";
-      if (q->second)
-	q->second->print(*_dout);
-      *_dout << dendl;
+      q != p->second.end();
+	    ++q) 
+    {
+        // lockdep_dout(0) << "  * " << lock_names[q->first] << "\n";
+        if (q->second) q->second->print(*_dout);
+        *_dout << dendl;
     }
   }
 
@@ -135,10 +133,10 @@ int lockdep_register(const char *name)
     id = last_id++;
     lock_ids[name] = id;
     lock_names[id] = name;
-    lockdep_dout(10) << "registered '" << name << "' as " << id << dendl;
+    // lockdep_dout(10) << "registered '" << name << "' as " << id << dendl;
   } else {
     id = p->second;
-    lockdep_dout(20) << "had '" << name << "' as " << id << dendl;
+    // lockdep_dout(20) << "had '" << name << "' as " << id << dendl;
   }
 
   pthread_mutex_unlock(&lockdep_mutex);
@@ -153,7 +151,7 @@ static bool does_follow(int a, int b)
 {
 
   if (follows[a][b]) {
-    lockdep_dout(0) << "\n";
+    // lockdep_dout(0) << "\n";
     *_dout << "------------------------------------" << "\n";
     *_dout << "existing dependency " << lock_names[a] << " (" << a << ") -> "
            << lock_names[b] << " (" << b << ") at:\n";
@@ -165,7 +163,7 @@ static bool does_follow(int a, int b)
   for (int i=0; i<MAX_LOCKS; i++) {
     if (follows[a][i] &&
 	does_follow(i, b)) {
-      lockdep_dout(0) << "existing intermediate dependency " << lock_names[a]
+      // lockdep_dout(0) << "existing intermediate dependency " << lock_names[a]
           << " (" << a << ") -> " << lock_names[i] << " (" << i << ") at:\n";
       follows[a][i]->print(*_dout);
       *_dout << dendl;
@@ -184,7 +182,7 @@ int lockdep_will_lock(const char *name, int id)
   if (id < 0) id = lockdep_register(name);
 
   pthread_mutex_lock(&lockdep_mutex);
-  lockdep_dout(20) << "_will_lock " << name << " (" << id << ")" << dendl;
+  // lockdep_dout(20) << "_will_lock " << name << " (" << id << ")" << dendl;
 
   // check dependency graph
   map<int, BackTrace *> &m = held[p];
@@ -192,7 +190,7 @@ int lockdep_will_lock(const char *name, int id)
        p != m.end();
        ++p) {
     if (p->first == id) {
-      lockdep_dout(0) << "\n";
+      // lockdep_dout(0) << "\n";
       *_dout << "recursive lock of " << name << " (" << id << ")\n";
       BackTrace *bt = new BackTrace(BACKTRACE_SKIP);
       bt->print(*_dout);
@@ -210,25 +208,25 @@ int lockdep_will_lock(const char *name, int id)
       // did we just create a cycle?
       BackTrace *bt = new BackTrace(BACKTRACE_SKIP);
       if (does_follow(id, p->first)) {
-	lockdep_dout(0) << "new dependency " << lock_names[p->first]
+	// lockdep_dout(0) << "new dependency " << lock_names[p->first]
 		<< " (" << p->first << ") -> " << name << " (" << id << ")"
 		<< " creates a cycle at\n";
 	bt->print(*_dout);
 	*_dout << dendl;
 
-	lockdep_dout(0) << "btw, i am holding these locks:" << dendl;
+	// lockdep_dout(0) << "btw, i am holding these locks:" << dendl;
 	for (map<int, BackTrace *>::iterator q = m.begin();
 	     q != m.end();
 	     ++q) {
-	  lockdep_dout(0) << "  " << lock_names[q->first] << " (" << q->first << ")" << dendl;
+	  // lockdep_dout(0) << "  " << lock_names[q->first] << " (" << q->first << ")" << dendl;
 	  if (q->second) {
-	    lockdep_dout(0) << " ";
+	    // lockdep_dout(0) << " ";
 	    q->second->print(*_dout);
 	    *_dout << dendl;
 	  }
 	}
 
-	lockdep_dout(0) << "\n" << dendl;
+	// lockdep_dout(0) << "\n" << dendl;
 
 	// don't add this dependency, or we'll get aMutex. cycle in the graph, and
 	// does_follow() won't terminate.
@@ -236,7 +234,7 @@ int lockdep_will_lock(const char *name, int id)
 	assert(0);  // actually, we should just die here.
       } else {
 	follows[p->first][id] = bt;
-	lockdep_dout(10) << lock_names[p->first] << " -> " << name << " at" << dendl;
+	// lockdep_dout(10) << lock_names[p->first] << " -> " << name << " at" << dendl;
 	//bt->print(*_dout);
       }
     }
@@ -256,7 +254,7 @@ int lockdep_locked(const char *name, int id, bool force_backtrace)
   if (id < 0) id = lockdep_register(name);
 
   pthread_mutex_lock(&lockdep_mutex);
-  lockdep_dout(20) << "_locked " << name << dendl;
+  // lockdep_dout(20) << "_locked " << name << dendl;
   if (g_lockdep >= 2 || force_backtrace)
     held[p][id] = new BackTrace(BACKTRACE_SKIP);
   else
@@ -279,7 +277,7 @@ int lockdep_will_unlock(const char *name, int id)
   }
 
   pthread_mutex_lock(&lockdep_mutex);
-  lockdep_dout(20) << "_will_unlock " << name << dendl;
+  // lockdep_dout(20) << "_will_unlock " << name << dendl;
 
   // don't assert.. lockdep may be enabled at any point in time
   //assert(held.count(p));
