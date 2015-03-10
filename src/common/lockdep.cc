@@ -64,7 +64,7 @@ void lockdep_register_ceph_context(CephContext *cct)
   pthread_mutex_lock(&lockdep_mutex);
   if (g_lockdep_ceph_ctx == NULL) {
     g_lockdep_ceph_ctx = cct;
-    lockdep_dout(0) << "lockdep start" << dendl;
+    // lockdep_dout(0) << "lockdep start" << dendl;
   }
   pthread_mutex_unlock(&lockdep_mutex);
 
@@ -75,7 +75,7 @@ void lockdep_unregister_ceph_context(CephContext *cct)
 
   pthread_mutex_lock(&lockdep_mutex);
   if (cct == g_lockdep_ceph_ctx) {
-//    lockdep_dout(0) << "lockdep stop" << dendl;
+    // lockdep_dout(0) << "lockdep stop" << dendl;
     // this cct is going away; shut it down!
     g_lockdep = false;
     g_lockdep_ceph_ctx = NULL;
@@ -188,15 +188,15 @@ int lockdep_will_lock(const char *name, int id)
        ++p) {
     if (p->first == id) {
       // lockdep_dout(0) << "\n";
-      *_dout << "recursive lock of " << name << " (" << id << ")\n";
-      BackTrace *bt = new BackTrace(BACKTRACE_SKIP);
-      bt->print(*_dout);
-      if (p->second) {
-      	*_dout << "\npreviously locked at\n";
-      	p->second->print(*_dout);
-      }
-      delete bt;
-      *_dout << dendl;
+      // *_dout << "recursive lock of " << name << " (" << id << ")\n";
+      // BackTrace *bt = new BackTrace(BACKTRACE_SKIP);
+      // bt->print(*_dout);
+      // if (p->second) {
+      // 	*_dout << "\npreviously locked at\n";
+      // 	p->second->print(*_dout);
+      // }
+      // delete bt;
+      // *_dout << dendl;
       assert(0);
     }
     else if (!follows[p->first][id]) {
@@ -208,21 +208,21 @@ int lockdep_will_lock(const char *name, int id)
         // lockdep_dout(0) << "new dependency " << lock_names[p->first]
     		// << " (" << p->first << ") -> " << name << " (" << id << ")"
     		// << " creates a cycle at\n";
-      	bt->print(*_dout);
-      	*_dout << dendl;
+      	// bt->print(*_dout);
+      	// *_dout << dendl;
 
       	// lockdep_dout(0) << "btw, i am holding these locks:" << dendl;
-      	for (map<int, BackTrace *>::iterator q = m.begin();
-      	     q != m.end();
-      	     ++q) 
-        {
-      	  // lockdep_dout(0) << "  " << lock_names[q->first] << " (" << q->first << ")" << dendl;
-      	  if (q->second) {
-      	    // lockdep_dout(0) << " ";
-      	    q->second->print(*_dout);
-      	    *_dout << dendl;
-      	  }
-      	}
+      	// for (map<int, BackTrace *>::iterator q = m.begin();
+      	//      q != m.end();
+      	//      ++q) 
+        // {
+      	//   lockdep_dout(0) << "  " << lock_names[q->first] << " (" << q->first << ")" << dendl;
+      	//   if (q->second) {
+      	//     // lockdep_dout(0) << " ";
+      	//     q->second->print(*_dout);
+      	//     *_dout << dendl;
+      	//   }
+      	// }
 
       	// lockdep_dout(0) << "\n" << dendl;
 
@@ -233,13 +233,13 @@ int lockdep_will_lock(const char *name, int id)
       } else {
       	follows[p->first][id] = bt;
       	// lockdep_dout(10) << lock_names[p->first] << " -> " << name << " at" << dendl;
-      	//bt->print(*_dout);
+      	// bt->print(*_dout);
       }
     }
   }
 
   pthread_mutex_unlock(&lockdep_mutex);
-#endif
+
   return id;
 }
 
