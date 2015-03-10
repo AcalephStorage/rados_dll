@@ -97,18 +97,18 @@ int lockdep_dump_locks()
 {
   pthread_mutex_lock(&lockdep_mutex);
 
-  for (ceph::unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();p != held.end();++p) 
-  {
-//    lockdep_dout(0) << "--- thread " << p->first << " ---" << dendl;
-    for (map<int,BackTrace*>::iterator q = p->second.begin();
-      q != p->second.end();
-	    ++q) 
-    {
-        // lockdep_dout(0) << "  * " << lock_names[q->first] << "\n";
-        if (q->second) q->second->print(*_dout);
-        *_dout << dendl;
-    }
-  }
+  // for (ceph::unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();p != held.end();++p) 
+  // {
+  //  lockdep_dout(0) << "--- thread " << p->first << " ---" << dendl;
+  //   for (map<int,BackTrace*>::iterator q = p->second.begin();
+  //     q != p->second.end();
+	 //    ++q) 
+  //   {
+  //       lockdep_dout(0) << "  * " << lock_names[q->first] << "\n";
+  //       if (q->second) q->second->print(*_dout);
+  //       *_dout << dendl;
+  //   }
+  // }
 
   pthread_mutex_unlock(&lockdep_mutex);
 
