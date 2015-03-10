@@ -54,7 +54,13 @@ static lockdep_stopper_t lockdep_stopper;
 static ceph::unordered_map<const char *, int> lock_ids;
 static map<int, const char *> lock_names;
 static int last_id = 0;
+#ifdef _WIN32
+// pthread_t in mingw pthreads library is a struct, so we use the raw void * part of it
+typedef void* void_p;
+static ceph::unordered_map<void_p, map<int,BackTrace*> > held;
+#else
 static ceph::unordered_map<pthread_t, map<int,BackTrace*> > held;
+#endif
 static BackTrace *follows[MAX_LOCKS][MAX_LOCKS];       // follows[a][b] means b taken after a
 
 /******* Functions **********/
@@ -149,14 +155,13 @@ int lockdep_register(const char *name)
 // does b follow a?
 static bool does_follow(int a, int b)
 {
-
-  if (follows[a][b]) {
+if (follows[a][b]) {
     // lockdep_dout(0) << "\n";
-    *_dout << "------------------------------------" << "\n";
-    *_dout << "existing dependency " << lock_names[a] << " (" << a << ") -> "
-           << lock_names[b] << " (" << b << ") at:\n";
-    follows[a][b]->print(*_dout);
-    *_dout << dendl;
+    // *_dout << "------------------------------------" << "\n";
+    // *_dout << "existing dependency " << lock_names[a] << " (" << a << ") -> "
+    //        << lock_names[b] << " (" << b << ") at:\n";
+    // follows[a][b]->print(*_dout);
+    // *_dout << dendl;
     return true;
   }
 
@@ -164,8 +169,8 @@ static bool does_follow(int a, int b)
     if (follows[a][i] && does_follow(i, b)) {
       // lockdep_dout(0) << "existing intermediate dependency " << lock_names[a]
       // << " (" << a << ") -> " << lock_names[i] << " (" << i << ") at:\n";
-      follows[a][i]->print(*_dout);
-      *_dout << dendl;
+      // follows[a][i]->print(*_dout);
+      // *_dout << dendl;
       return true;
     }
   }
@@ -175,7 +180,11 @@ static bool does_follow(int a, int b)
 
 int lockdep_will_lock(const char *name, int id)
 {
+  #ifdef _WIN32
+  void_p p = pthread_self().p;
+  #else  
   pthread_t p = pthread_self();
+  #endif  
   if (id < 0) id = lockdep_register(name);
 
   pthread_mutex_lock(&lockdep_mutex);
@@ -244,10 +253,12 @@ int lockdep_will_lock(const char *name, int id)
 }
 
 int lockdep_locked(const char *name, int id, bool force_backtrace)
-{//not working
-#ifdef _WIN32
-#else
+{
+  #ifdef _WIN32
+  void_p p = pthread_self().p;
+  #else  
   pthread_t p = pthread_self();
+  #endif  
 
   if (id < 0) id = lockdep_register(name);
 
@@ -258,15 +269,17 @@ int lockdep_locked(const char *name, int id, bool force_backtrace)
   else
     held[p][id] = 0;
   pthread_mutex_unlock(&lockdep_mutex);
-#endif
+
   return id;
 }
 
 int lockdep_will_unlock(const char *name, int id)
-{//not working
-#ifdef _WIN32
-#else
+{
+  #ifdef _WIN32
+  void_p p = pthread_self().p;
+  #else  
   pthread_t p = pthread_self();
+  #endif  
 
   if (id < 0) {
     //id = lockdep_register(name);
@@ -284,7 +297,7 @@ int lockdep_will_unlock(const char *name, int id)
   delete held[p][id];
   held[p].erase(id);
   pthread_mutex_unlock(&lockdep_mutex);
-#endif
+
   return id;
 }
 
