@@ -19,6 +19,7 @@
 #include "lockdep.h"
 #include "crush/hash.h"
 #include <map>
+#include <pthread.h>
 
 #include "include/unordered_map.h"
 #include "include/hash_namespace.h"
@@ -27,11 +28,11 @@
 CEPH_HASH_NAMESPACE_START
   template<>
     struct hash<pthread_t>
-    {
+  {
       size_t
-      operator()(pthread_t __x) const
-      { return (uintptr_t)__x; }
-    };
+     operator()(pthread_t __x) const
+     { return (uintptr_t)__x; }
+   };
 CEPH_HASH_NAMESPACE_END
 #endif
 
@@ -99,18 +100,18 @@ int lockdep_dump_locks()
   pthread_mutex_lock(&lockdep_mutex);
   
 
-  for (ceph::unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();p != held.end();++p) 
-  {
-    lockdep_dout(0) << "--- thread " << p->first << " ---" << dendl;
-    for (map<int,BackTrace*>::iterator q = p->second.begin();
-	 q != p->second.end();
-	 ++q) {
-      lockdep_dout(0) << "  * " << lock_names[q->first] << "\n";
-      if (q->second)
-	q->second->print(*_dout);
-      *_dout << dendl;
-    }
-  }
+//  for (ceph::unordered_map<pthread_t, map<int,BackTrace*> >::iterator p = held.begin();p != held.end();++p) 
+//  {
+  //  lockdep_dout(0) << "--- thread " << p->first << " ---" << dendl;
+//    for (map<int,BackTrace*>::iterator q = p->second.begin();
+//	 q != p->second.end();
+//	 ++q) {
+  //    lockdep_dout(0) << "  * " << lock_names[q->first] << "\n";
+  //    if (q->second)
+	//q->second->print(*_dout);
+  //    *_dout << dendl;
+  //  }
+  //}
 
   pthread_mutex_unlock(&lockdep_mutex);
 
@@ -184,64 +185,64 @@ int lockdep_will_lock(const char *name, int id)
   if (id < 0) id = lockdep_register(name);
 
   pthread_mutex_lock(&lockdep_mutex);
-  lockdep_dout(20) << "_will_lock " << name << " (" << id << ")" << dendl;
-
+//  lockdep_dout(20) << "_will_lock " << name << " (" << id << ")" << dendl;
+/*
   // check dependency graph
   map<int, BackTrace *> &m = held[p];
   for (map<int, BackTrace *>::iterator p = m.begin();
        p != m.end();
        ++p) {
-    if (p->first == id) {
-      lockdep_dout(0) << "\n";
-      *_dout << "recursive lock of " << name << " (" << id << ")\n";
+    //if (p->first == id) {
+    //  lockdep_dout(0) << "\n";
+    //  *_dout << "recursive lock of " << name << " (" << id << ")\n";
       BackTrace *bt = new BackTrace(BACKTRACE_SKIP);
-      bt->print(*_dout);
-      if (p->second) {
-	*_dout << "\npreviously locked at\n";
-	p->second->print(*_dout);
+    //  bt->print(*_dout);
+    //  if (p->second) {
+	//*_dout << "\npreviously locked at\n";
+	//p->second->print(*_dout);
       }
       delete bt;
-      *_dout << dendl;
+    //  *_dout << dendl;
       assert(0);
     }
-    else if (!follows[p->first][id]) {
+  else if (!follows[p->first][id]) {
       // new dependency
 
       // did we just create a cycle?
       BackTrace *bt = new BackTrace(BACKTRACE_SKIP);
-      if (does_follow(id, p->first)) {
-	lockdep_dout(0) << "new dependency " << lock_names[p->first]
-		<< " (" << p->first << ") -> " << name << " (" << id << ")"
-		<< " creates a cycle at\n";
-	bt->print(*_dout);
-	*_dout << dendl;
+    //  if (does_follow(id, p->first)) {
+	//lockdep_dout(0) << "new dependency " << lock_names[p->first]
+	//	<< " (" << p->first << ") -> " << name << " (" << id << ")"
+	//	<< " creates a cycle at\n";
+	//bt->print(*_dout);
+	//*_dout << dendl;
 
-	lockdep_dout(0) << "btw, i am holding these locks:" << dendl;
-	for (map<int, BackTrace *>::iterator q = m.begin();
-	     q != m.end();
-	     ++q) {
-	  lockdep_dout(0) << "  " << lock_names[q->first] << " (" << q->first << ")" << dendl;
-	  if (q->second) {
-	    lockdep_dout(0) << " ";
-	    q->second->print(*_dout);
-	    *_dout << dendl;
-	  }
-	}
+	//lockdep_dout(0) << "btw, i am holding these locks:" << dendl;
+	//for (map<int, BackTrace *>::iterator q = m.begin();
+	//     q != m.end();
+	//     ++q) {
+	  //lockdep_dout(0) << "  " << lock_names[q->first] << " (" << q->first << ")" << dendl;
+	  //if (q->second) {
+	   // lockdep_dout(0) << " ";
+	   // q->second->print(*_dout);
+	   // *_dout << dendl;
+	 // }
+	//}
 
-	lockdep_dout(0) << "\n" << dendl;
+	//lockdep_dout(0) << "\n" << dendl;
 
 	// don't add this dependency, or we'll get aMutex. cycle in the graph, and
 	// does_follow() won't terminate.
 
-	assert(0);  // actually, we should just die here.
-      } else {
-	follows[p->first][id] = bt;
-	lockdep_dout(10) << lock_names[p->first] << " -> " << name << " at" << dendl;
+	//assert(0);  // actually, we should just die here.
+  //    } else {
+	//follows[p->first][id] = bt;
+	//lockdep_dout(10) << lock_names[p->first] << " -> " << name << " at" << dendl;
 	//bt->print(*_dout);
       }
     }
   }
-
+*/
   pthread_mutex_unlock(&lockdep_mutex);
 #endif
   return id;
@@ -269,26 +270,27 @@ int lockdep_locked(const char *name, int id, bool force_backtrace)
 int lockdep_will_unlock(const char *name, int id)
 {//not working
 #ifdef _WIN32
+  void * p = pthread_t_self().p;
 #else
   pthread_t p = pthread_self();
-
+#endif
   if (id < 0) {
-    //id = lockdep_register(name);
+    id = lockdep_register(name);
     assert(id == -1);
     return id;
   }
 
   pthread_mutex_lock(&lockdep_mutex);
-  lockdep_dout(20) << "_will_unlock " << name << dendl;
+  //lockdep_dout(20) << "_will_unlock " << name << dendl;
 
   // don't assert.. lockdep may be enabled at any point in time
   //assert(held.count(p));
   //assert(held[p].count(id));
 
-  delete held[p][id];
-  held[p].erase(id);
+  //delete held[p][id];
+  //held[p].erase(id);
   pthread_mutex_unlock(&lockdep_mutex);
-#endif
+
   return id;
 }
 
