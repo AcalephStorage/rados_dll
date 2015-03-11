@@ -19,7 +19,7 @@ struct BackTrace {
 
   BackTrace(int s) : skip(s) {
 #ifdef _WIN32
-size = 0;
+    size = 0;
 #else
     size = backtrace(array, max);
     strings = backtrace_symbols(array, size);
