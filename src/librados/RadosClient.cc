@@ -193,30 +193,36 @@ int librados::RadosClient::ping_monitor(const string mon_id, string *result)
 
 int librados::RadosClient::connect()
 {
+  printf("librados::RadosClient::connect()\n");
   common_init_finish(cct);
+
   int err;
   uint64_t nonce;
 
+  printf("RadosClient::connect state:");
   // already connected?
-  if (state == CONNECTING)
-  //  return -EINPROGRESS;
-  
-  if (state == CONNECTED)
+  if (state == CONNECTING) {
+    printf("already CONNECTING\n");
+    return -EINPROGRESS;
+  }
+  if (state == CONNECTED) {
+    printf("CONNECTED\n");
     return -EISCONN;
+  }
+  printf("<- CONNECTING\n");
   state = CONNECTING;
-  
-printf("5\n");
+
   // get monmap
   err = monclient.build_initial_monmap();
+  printf("RadosClient::connect err: %d\n", err);
   if (err < 0)
     goto out;
-printf("8\n");
+
   err = -ENOMEM;
   nonce = getpid() + (1000000 * (uint64_t)rados_instance.inc());
-printf("3\n");
   messenger = Messenger::create(cct, cct->_conf->ms_type, entity_name_t::CLIENT(-1),
 				"radosclient", nonce);
-
+  printf("RadosClient::connect messenger: %p\n", messenger);
   if (!messenger)
     goto out;
 
@@ -225,8 +231,11 @@ printf("3\n");
   // how to decompose the reply data into its consituent pieces.
   messenger->set_default_policy(Messenger::Policy::lossy_client(0, CEPH_FEATURE_OSDREPLYMUX));
 
+  std::cout << "RadosClient::connect starting msgr at " << messenger->get_myaddr() << std::endl;
+
   ldout(cct, 1) << "starting msgr at " << messenger->get_myaddr() << dendl;
 
+  printf("RadosClient::connect starting objecter\n");
   ldout(cct, 1) << "starting objecter" << dendl;
 
   err = -ENOMEM;
@@ -234,54 +243,59 @@ printf("3\n");
 			  &finisher,
 			  cct->_conf->rados_mon_op_timeout,
 			  cct->_conf->rados_osd_op_timeout);
+  printf("RadosClient::connect objecter: %p\n", objecter);
   if (!objecter)
     goto out;
   objecter->set_balanced_budget();
-  printf("89\n");
+
+  printf("RadosClient::connect monclient.set_messenger(%p);\n", messenger);
   monclient.set_messenger(messenger);
 
   objecter->init();
   messenger->add_dispatcher_tail(objecter);
   messenger->add_dispatcher_tail(this);
-  printf("90\n");
+
   messenger->start();
 
+  printf("RadosClient::connect setting wanted keys\n");
   ldout(cct, 1) << "setting wanted keys" << dendl;
   monclient.set_want_keys(CEPH_ENTITY_TYPE_MON | CEPH_ENTITY_TYPE_OSD);
+  printf("RadosClient::connect calling monclient init\n");
   ldout(cct, 1) << "calling monclient init" << dendl;
   err = monclient.init();
-  printf("91\n");
+  printf("RadosClient::connect monclient.init() -> %d\n", err);
   if (err) {
-    printf("init error\n");
     ldout(cct, 0) << conf->name << " initialization error " << cpp_strerror(-err) << dendl;
     shutdown();
     goto out;
   }
-  printf("92\n");
+
   err = monclient.authenticate(conf->client_mount_timeout);
+  printf("RadosClient::connect monclient.authenticate() -> %d\n", err);
   if (err) {
     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;
-    printf("fail\n");
     shutdown();
     goto out;
   }
+  std::cout << "RadosClient::connect messenger->set_myname(" << entity_name_t::CLIENT(monclient.get_global_id()) << ")" << std::endl;
   messenger->set_myname(entity_name_t::CLIENT(monclient.get_global_id()));
 
+  printf("RadosClient::connect objecter->set_client_incarnation(0);");
   objecter->set_client_incarnation(0);
-
+  printf("RadosClient::connect objecter->start();");
   objecter->start();
-
+  printf("RadosClient::connect lock.Lock();");
   lock.Lock();
-
+  printf("RadosClient::connect timer.init();");
   timer.init();
-
+  printf("RadosClient::connect monclient.renew_subs();");
   monclient.renew_subs();
-
+  printf("RadosClient::connect finisher.start();");
   finisher.start();
 
   state = CONNECTED;
   instance_id = monclient.get_global_id();
-
+  std::cout << "instance_id: " << instance_id << std::endl;
   lock.Unlock();
 
   ldout(cct, 1) << "init done" << dendl;
