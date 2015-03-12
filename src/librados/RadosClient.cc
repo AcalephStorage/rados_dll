@@ -258,7 +258,7 @@ printf("3\n");
     goto out;
   }
   printf("92\n");
-  err = monclient.authenticate(conf->client_mount_timeout);
+  //err = monclient.authenticate(conf->client_mount_timeout);
   if (err) {
     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;
     printf("fail\n");
