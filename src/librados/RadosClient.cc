@@ -270,9 +270,11 @@ int librados::RadosClient::connect()
     goto out;
   }
 
+  printf("RadosClient::connect monclient.authenticate(%f)...\n", conf->client_mount_timeout);
   err = monclient.authenticate(conf->client_mount_timeout);
   printf("RadosClient::connect monclient.authenticate() -> %d\n", err);
   if (err) {
+    std::cout << conf->name << " authentication error " << cpp_strerror(-err) << std::endl;
     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;
     shutdown();
     goto out;
@@ -374,19 +376,18 @@ librados::RadosClient::~RadosClient()
 
 int librados::RadosClient::create_ioctx(const char *name, IoCtxImpl **io)
 {
-  printf("1.1.4.1\n");
+  printf("librados::RadosClient::create_ioctx(%s, %p)\n", name, *io);
   int64_t poolid = lookup_pool(name);
-  printf("poolid: %2\n", poolid);
-  printf("1.1.4.2\n");
+  printf("lookup_pool(%s) -> %" PRId64 "\n", name, poolid);
   if (poolid < 0) {
     // Make sure we have the latest map
-    printf("1.1.4.3\n");
     int r = wait_for_latest_osdmap();
+    printf("wait_for_latest_osdmap() -> %d\n", r);
     if (r < 0)
       return r;
-    printf("1.1.4.4\n");
+
     poolid = lookup_pool(name);
-    printf("poolid: %2\n", poolid);
+    printf("poolid: %" PRId64 "\n", poolid);
     printf("1.1.4.5\n");
     if (poolid < 0) {
       return (int)poolid;
@@ -459,6 +460,7 @@ bool librados::RadosClient::_dispatch(Message *m)
 
 int librados::RadosClient::wait_for_osdmap()
 {
+  printf("librados::RadosClient::wait_for_osdmap\n");
   assert(!lock.is_locked_by_me());
   printf("1.1.4.1.1.1\n");
   if (state != CONNECTED) {
@@ -466,8 +468,11 @@ int librados::RadosClient::wait_for_osdmap()
   }
   printf("1.1.4.1.1.2\n");
   bool need_map = false;
+  printf("librados::RadosClient::wait_for_osdmap: about to call objecter->get_osdmap_read()\n");
+  printf("objecter: %p\n", objecter);
   const OSDMap *osdmap = objecter->get_osdmap_read();
-  printf("1.1.4.1.1.3\n");
+  printf("osdmap: %p\n", osdmap);
+  printf("osdmap->get_epoch: %d\n", osdmap->get_epoch());
   if (osdmap->get_epoch() == 0) {
     need_map = true;
   }
@@ -475,8 +480,10 @@ int librados::RadosClient::wait_for_osdmap()
   objecter->put_osdmap_read();
 
   if (need_map) {
+    printf("need_map\n");
     Mutex::Locker l(lock);
-  printf("1.1.4.1.1.5\n");
+
+    printf("cct->_conf->rados_mon_op_timeout: %f\n", cct->_conf->rados_mon_op_timeout);
     utime_t timeout;
     if (cct->_conf->rados_mon_op_timeout > 0)
       timeout.set_from_double(cct->_conf->rados_mon_op_timeout);
