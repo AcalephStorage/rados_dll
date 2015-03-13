@@ -78,6 +78,7 @@ class MonMap {
   }
 
   void add(const string &name, const entity_addr_t &addr) {
+    std::cout << "MonMap::add(" << name << ", " << addr << ")" << std::endl;
     assert(mon_addr.count(name) == 0);
     assert(addr_name.count(addr) == 0);
     mon_addr[name] = addr;

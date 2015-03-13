@@ -15,6 +15,11 @@
 #ifndef CEPH_OBJECTER_H
 #define CEPH_OBJECTER_H
 
+#include <list>
+#include <map>
+#include <memory>
+#include <sstream>
+
 #include "include/types.h"
 #include "include/buffer.h"
 
@@ -26,10 +31,6 @@
 #include "common/RWLock.h"
 #include "include/rados/rados_types.hpp"
 
-#include <list>
-#include <map>
-#include <memory>
-#include <sstream>
 using namespace std;
 
 class Context;
