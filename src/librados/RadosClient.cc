@@ -271,15 +271,14 @@ int librados::RadosClient::connect()
     shutdown();
     goto out;
   }
-<<<<<<< HEAD
-  printf("92\n");
+
   //err = monclient.authenticate(conf->client_mount_timeout);
-=======
+
 
   printf("RadosClient::connect monclient.authenticate(%f)...\n", conf->client_mount_timeout);
   err = monclient.authenticate(conf->client_mount_timeout);
   printf("RadosClient::connect monclient.authenticate() -> %d\n", err);
->>>>>>> fbe26d0e8721a8c87b843d2f9f058b812da9a01f
+
   if (err) {
     std::cout << conf->name << " authentication error " << cpp_strerror(-err) << std::endl;
     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;

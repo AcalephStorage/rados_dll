@@ -20,6 +20,14 @@
 #include <limits.h>
 //#include <poll.h>
 #define SHUT_RDWR SD_BOTH
+#include "acconfig.h"
+
+#include "common/pipe.h"
+#include "include/compat.h"
+
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "msg/Message.h"
 #include "Pipe.h"
@@ -27,6 +35,8 @@
 
 #include "common/debug.h"
 #include "common/errno.h"
+
+#define F_SETFD 2
 
 // Below included to get encode_encrypt(); That probably should be in Crypto.h, instead
 
@@ -2598,4 +2608,44 @@ int Pipe::tcp_write(const char *buf, int len)
     //lgeneric_dout(cct, DBL) << "tcp_write did " << did << ", " << len << " left" << dendl;
   }
   return 0;
+}
+int pipe_cloexec(int pipefd[2])
+{
+  int ret;
+  u_long* FD_CLOEXEC;
+
+#if defined(HAVE_PIPE2) && defined(O_CLOEXEC)
+  ret = pipe2(pipefd, O_CLOEXEC);
+  if (ret == -1)
+    return -errno;
+  return 0;
+#else
+  //ret = pipe(pipefd);
+  //if (ret == -1)
+  //  return -errno;
+
+  /*
+   * The old-fashioned, race-condition prone way that we have to fall
+   * back on if O_CLOEXEC does not exist.
+   */
+  ret = ioctlsocket(pipefd[0], F_SETFD, FD_CLOEXEC);
+  if (ret == -1) {
+    ret = -errno;
+    goto out;
+  }
+
+  ret = ioctlsocket(pipefd[1], F_SETFD, FD_CLOEXEC);
+  if (ret == -1) {
+    ret = -errno;
+    goto out;
+  }
+
+  return 0;
+
+out:
+  VOID_TEMP_FAILURE_RETRY(close(pipefd[0]));
+  VOID_TEMP_FAILURE_RETRY(close(pipefd[1]));
+
+  return ret;
+#endif
 }

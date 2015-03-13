@@ -368,7 +368,7 @@ CephContext::CephContext(uint32_t module_type_)
     _module_type(module_type_),
     _service_thread(NULL),
     _log_obs(NULL),
-    //by ketor _admin_socket(NULL),
+    _admin_socket(NULL),
     _perf_counters_collection(NULL),
     _perf_counters_conf_obs(NULL),
     //by ketor _heartbeat_map(NULL),
@@ -406,8 +406,9 @@ CephContext::CephContext(uint32_t module_type_)
   _perf_counters_collection = new PerfCountersCollection(this);
 #ifdef _WIN32
   _admin_hook = new CephContextHook(this);
-#else
   _admin_socket = new AdminSocket(this);
+#else
+ 
   _heartbeat_map = new HeartbeatMap(this);
 
   _admin_hook = new CephContextHook(this);
@@ -513,11 +514,10 @@ void CephContext::start_service_thread()
   _conf->call_all_observers();
 
   // start admin socket
-#ifdef _WIN32
-#else
+
   if (_conf->admin_socket.length())
     _admin_socket->init(_conf->admin_socket);
-#endif
+
 }
 
 void CephContext::reopen_logs()
@@ -553,13 +553,12 @@ PerfCountersCollection *CephContext::get_perfcounters_collection()
 {
   return _perf_counters_collection;
 }
-#ifdef _WIN32
-#else
+
 AdminSocket *CephContext::get_admin_socket()
 {
   return _admin_socket;
 }
-#endif
+
 
 CryptoHandler *CephContext::get_crypto_handler(int type)
 {

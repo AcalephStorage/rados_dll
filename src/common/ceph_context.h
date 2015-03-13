@@ -29,10 +29,9 @@
 #include "common/cmdparse.h"
 #include "include/Spinlock.h"
 
-#ifdef _WIN32
-#else
+
 class AdminSocket;
-#endif
+
 
 class CephContextServiceThread;
 class PerfCountersCollection;
@@ -100,6 +99,7 @@ public:
   /* Get the PerfCountersCollection of this CephContext */
   PerfCountersCollection *get_perfcounters_collection();
 #ifdef _WIN32
+    AdminSocket *get_admin_socket();
 #else
   ceph::HeartbeatMap *get_heartbeat_map() {
     return _heartbeat_map;
@@ -158,10 +158,9 @@ private:
   md_config_obs_t *_log_obs;
 
   /* The admin socket associated with this context */
-#ifdef _WIN32
-#else
+
   AdminSocket *_admin_socket;
-#endif
+
   /* lock which protects service thread creation, destruction, etc. */
   ceph_spinlock_t _service_thread_lock;
 

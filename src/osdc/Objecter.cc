@@ -259,15 +259,15 @@ void Objecter::init()
   }
 
   m_request_state_hook = new RequestStateHook(this);
-  //by ketor AdminSocket* admin_socket = cct->get_admin_socket();
-  //int ret = admin_socket->register_command("objecter_requests",
-  //      				   "objecter_requests",
-  //      				   m_request_state_hook,
-  //      				   "show in-progress osd requests");
-  //if (ret < 0) {
-  //  lderr(cct) << "error registering admin socket command: "
-  //             << cpp_strerror(-ret) << dendl;
-  //}
+  AdminSocket* admin_socket = cct->get_admin_socket();
+  int ret = admin_socket->register_command("objecter_requests",
+        				   "objecter_requests",
+        				   m_request_state_hook,
+        				   "show in-progress osd requests");
+  if (ret < 0) {
+    lderr(cct) << "error registering admin socket command: "
+               << cpp_strerror(-ret) << dendl;
+  }
 
   timer_lock.Lock();
   timer.init();
@@ -386,8 +386,8 @@ void Objecter::shutdown()
   }
 
   if (m_request_state_hook) {
-    //by ketor AdminSocket* admin_socket = cct->get_admin_socket();
-    //by ketor admin_socket->unregister_command("objecter_requests");
+    AdminSocket* admin_socket = cct->get_admin_socket();
+    admin_socket->unregister_command("objecter_requests");
     delete m_request_state_hook;
     m_request_state_hook = NULL;
   }

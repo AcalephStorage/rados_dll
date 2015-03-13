@@ -67,10 +67,13 @@ CLIBS    =
 ../$(BUILD)/%.o:msg/simple/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
 
+../$(BUILD)/%.o:json_spirit/%.cpp
+	$(CPP) -c $(CFLAGS) $^ -o $@
+
 OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/snap_set_diff.o ../$(BUILD)/librados.o ../$(BUILD)/IoCtxImpl.o ../$(BUILD)/RadosClient.o ../$(BUILD)/RadosXattrIter.o \
 ../$(BUILD)/Objecter.o ../$(BUILD)/MonClient.o ../$(BUILD)/CrushWrapper.o  ../$(BUILD)/MonMap.o \
-  ../$(BUILD)/mdstypes.o ../$(BUILD)/assert.o ../$(BUILD)/Pipe.o \
- ../$(BUILD)/MDSMap.o ../$(BUILD)/ceph_argparse.o ../$(BUILD)/OSDMap.o \
+  ../$(BUILD)/mdstypes.o ../$(BUILD)/assert.o ../$(BUILD)/Pipe.o ../$(BUILD)/admin_socket.o \
+ ../$(BUILD)/MDSMap.o ../$(BUILD)/ceph_argparse.o ../$(BUILD)/OSDMap.o ../$(BUILD)/admin_socket_client.o \
 ../$(BUILD)/entity_name.o  ../$(BUILD)/ceph_context.o ../$(BUILD)/CephxClientHandler.o \
 ../$(BUILD)/Message.o ../$(BUILD)/common_init.o ../$(BUILD)/osd_types.o ../$(BUILD)/Messenger.o \
 ../$(BUILD)/RotatingKeyRing.o ../$(BUILD)/CephxProtocol.o ../$(BUILD)/CephxSessionHandler.o ../$(BUILD)/global_context.o \
@@ -79,7 +82,7 @@ OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/snap_set_diff.o ../$(BUILD)/librados.o .
 ../$(BUILD)/Timer.o  ../$(BUILD)/BackTrace.o ../$(BUILD)/hex.o ../$(BUILD)/crush.o \
 ../$(BUILD)/Finisher.o ../$(BUILD)/Throttle.o ../$(BUILD)/ceph_fs.o ../$(BUILD)/mapper.o \
 ../$(BUILD)/ceph_frag.o ../$(BUILD)/config.o ../$(BUILD)/MonCap.o  ../$(BUILD)/Filer.o \
-../$(BUILD)/types.o  ../$(BUILD)/Crypto.o ../$(BUILD)/str_map.o \
+../$(BUILD)/types.o  ../$(BUILD)/Crypto.o ../$(BUILD)/str_map.o ../$(BUILD)/json_spirit_reader.o ../$(BUILD)/json_spirit_writer.o \
 ../$(BUILD)/errno.o  ../$(BUILD)/snap_types.o ../$(BUILD)/Striper.o  \
 ../$(BUILD)/buffer.o ../$(BUILD)/Mutex.o ../$(BUILD)/hash.o ../$(BUILD)/ObjectCacher.o \
 ../$(BUILD)/lockdep.o ../$(BUILD)/perf_counters.o ../$(BUILD)/Clock.o \

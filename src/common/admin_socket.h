@@ -20,6 +20,7 @@
 
 #include <string>
 #include <map>
+#include <fcntl.h>
 #include "include/buffer.h"
 #include "common/cmdparse.h"
 

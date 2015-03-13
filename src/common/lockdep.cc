@@ -251,6 +251,7 @@ int lockdep_will_lock(const char *name, int id)
 int lockdep_locked(const char *name, int id, bool force_backtrace)
 {//not working
 #ifdef _WIN32
+ 
 #else
   pthread_t p = pthread_self();
 
@@ -270,7 +271,7 @@ int lockdep_locked(const char *name, int id, bool force_backtrace)
 int lockdep_will_unlock(const char *name, int id)
 {//not working
 #ifdef _WIN32
-  void * p = pthread_t_self().p;
+  void * p = pthread_self().p;
 #else
   pthread_t p = pthread_self();
 #endif

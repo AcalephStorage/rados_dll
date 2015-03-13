@@ -26,19 +26,22 @@
 #include "common/safe_io.h"
 #include "common/version.h"
 #include "common/Formatter.h"
+#include <ws2tcpip.h>
 
 #include <errno.h>
 #include <fcntl.h>
 #include <map>
-#include <poll.h>
+//#include <sys/poll.h>
+#include <winsock2.h>
+#include <winsock.h>
 #include <set>
 #include <sstream>
 #include <stdint.h>
 #include <string.h>
 #include <string>
-#include <sys/socket.h>
+//#include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/un.h>
+//#include <sys/un.h>
 #include <unistd.h>
 
 #include "include/compat.h"
@@ -47,6 +50,7 @@
 #undef dout_prefix
 #define dout_prefix *_dout << "asok(" << (void*)m_cct << ") "
 
+#define F_SETFD 0
 
 using std::ostringstream;
 
@@ -153,15 +157,15 @@ std::string AdminSocket::bind_and_listen(const std::string &sock_path, int *fd)
 {
   ldout(m_cct, 5) << "bind_and_listen " << sock_path << dendl;
 
-  struct sockaddr_un address;
-  if (sock_path.size() > sizeof(address.sun_path) - 1) {
+  struct sockaddr_in address;
+  /*if (sock_path.size() > sizeof(address.sun_path) - 1) {
     ostringstream oss;
     oss << "AdminSocket::bind_and_listen: "
 	<< "The UNIX domain socket path " << sock_path << " is too long! The "
 	<< "maximum length on this system is "
 	<< (sizeof(address.sun_path) - 1);
     return oss.str();
-  }
+  }*/
   int sock_fd = socket(PF_UNIX, SOCK_STREAM, 0);
   if (sock_fd < 0) {
     int err = errno;
@@ -170,20 +174,21 @@ std::string AdminSocket::bind_and_listen(const std::string &sock_path, int *fd)
 	<< "failed to create socket: " << cpp_strerror(err);
     return oss.str();
   }
-  int r = fcntl(sock_fd, F_SETFD, FD_CLOEXEC);
-  if (r < 0) {
+  u_long* FD_CLOEXEC;
+  int r = ioctlsocket(sock_fd, F_SETFD, FD_CLOEXEC);
+  /*if (r < 0) {
     r = errno;
     VOID_TEMP_FAILURE_RETRY(::close(sock_fd));
     ostringstream oss;
     oss << "AdminSocket::bind_and_listen: failed to fcntl on socket: " << cpp_strerror(r);
     return oss.str();
-  }
-  memset(&address, 0, sizeof(struct sockaddr_un));
-  address.sun_family = AF_UNIX;
-  snprintf(address.sun_path, sizeof(address.sun_path),
-	   "%s", sock_path.c_str());
+  }*/
+  memset(&address, 0, sizeof(struct sockaddr_in));
+  address.sin_family = AF_UNIX;
+  //snprintf(address.sun_path, sizeof(address.sun_path),
+	//   "%s", sock_path.c_str());
   if (bind(sock_fd, (struct sockaddr*)&address,
-	   sizeof(struct sockaddr_un)) != 0) {
+	   sizeof(struct sockaddr_in)) != 0) {
     int err = errno;
     if (err == EADDRINUSE) {
       AdminSocketClient client(sock_path);
@@ -196,7 +201,7 @@ std::string AdminSocket::bind_and_listen(const std::string &sock_path, int *fd)
 	ldout(m_cct, 20) << "unlink stale file " << sock_path << dendl;
 	VOID_TEMP_FAILURE_RETRY(unlink(sock_path.c_str()));
 	if (bind(sock_fd, (struct sockaddr*)&address,
-		 sizeof(struct sockaddr_un)) == 0) {
+		 sizeof(struct sockaddr_in)) == 0) {
 	  err = 0;
 	} else {
 	  err = errno;
@@ -228,15 +233,15 @@ std::string AdminSocket::bind_and_listen(const std::string &sock_path, int *fd)
 void* AdminSocket::entry()
 {
   ldout(m_cct, 5) << "entry start" << dendl;
-  while (true) {
-    struct pollfd fds[2];
-    memset(fds, 0, sizeof(fds));
-    fds[0].fd = m_sock_fd;
-    fds[0].events = POLLIN | POLLRDBAND;
-    fds[1].fd = m_shutdown_rd_fd;
-    fds[1].events = POLLIN | POLLRDBAND;
+  //while (true) {
+    //struct pollfd fds[2];
+    //memset(fds, 0, sizeof(fds));
+    //fds[0].fd = m_sock_fd;
+    //fds[0].events = POLLIN | POLLRDBAND;
+    //fds[1].fd = m_shutdown_rd_fd;
+    //fds[1].events = POLLIN | POLLRDBAND;
 
-    int ret = poll(fds, 2, -1);
+    /*int ret = poll(fds, 2, -1);
     if (ret < 0) {
       int err = errno;
       if (err == EINTR) {
@@ -254,15 +259,15 @@ void* AdminSocket::entry()
     if (fds[1].revents & POLLIN) {
       // Parent wants us to shut down
       return PFL_SUCCESS;
-    }
-  }
+    }*/
+  //}
   ldout(m_cct, 5) << "entry exit" << dendl;
 }
 
 
 bool AdminSocket::do_accept()
 {
-  struct sockaddr_un address;
+  struct sockaddr_in address;
   socklen_t address_length = sizeof(address);
   ldout(m_cct, 30) << "AdminSocket: calling accept" << dendl;
   int connection_fd = accept(m_sock_fd, (struct sockaddr*) &address,
@@ -328,12 +333,12 @@ bool AdminSocket::do_accept()
     ldout(m_cct, 0) << "AdminSocket: " << errss << dendl;
     return false;
   }
-  cmd_getval(m_cct, cmdmap, "format", format);
+  /*cmd_getval(m_cct, cmdmap, "format", format);
   if (format != "json" && format != "json-pretty" &&
       format != "xml" && format != "xml-pretty")
     format = "json-pretty";
   cmd_getval(m_cct, cmdmap, "prefix", c);
-
+  */
   m_lock.Lock();
   map<string,AdminSocketHook*>::iterator p;
   string match = c;
@@ -448,7 +453,7 @@ class HelpHook : public AdminSocketHook {
 public:
   HelpHook(AdminSocket *as) : m_as(as) {}
   bool call(string command, cmdmap_t &cmdmap, string format, bufferlist& out) {
-    Formatter *f = Formatter::create(format, "json-pretty", "json-pretty");
+    Formatter *f = new_formatter(format);
     f->open_object_section("help");
     for (map<string,string>::iterator p = m_as->m_help.begin();
 	 p != m_as->m_help.end();

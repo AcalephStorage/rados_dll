@@ -244,6 +244,7 @@ class DispatchQueue;
     void writer();
     void unlock_maybe_reap();
 
+
     int randomize_out_seq();
 
     int read_message(Message **pm,
@@ -391,6 +392,7 @@ class DispatchQueue;
      * @return 0 for success, or -1 on error
      */
     int tcp_write(const char *buf, int len);
+    int pipe_cloexec(int pipefd[2]);
 
   };
 
