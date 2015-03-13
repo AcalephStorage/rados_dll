@@ -203,7 +203,9 @@ int librados::RadosClient::connect()
   // already connected?
   if (state == CONNECTING) {
     printf("already CONNECTING\n");
-    return -EINPROGRESS;
+    // No EINPROGRESS in mingw sockets, so for now return EISCON
+    // return -EINPROGRESS;
+    return -EISCONN;
   }
   if (state == CONNECTED) {
     printf("CONNECTED\n");
