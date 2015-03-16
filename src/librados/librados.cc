@@ -2215,6 +2215,7 @@ extern "C" int rados_create(rados_t *pcluster, const char * const id)
 extern "C" int rados_create2(rados_t *pcluster, const char *const clustername,
 			     const char * const name, uint64_t flags)
 {
+  printf("rados_create2(%p, %s, %s, %d)\n", pcluster, clustername, name, flags);
   tracepoint(librados, rados_create2_enter, clustername, name, flags);
   // client is assumed, but from_str will override
   CephInitParameters iparams(CEPH_ENTITY_TYPE_CLIENT);

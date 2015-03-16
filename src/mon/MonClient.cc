@@ -643,7 +643,7 @@ void MonClient::_reopen_session(int rank, string name)
     delete version_requests.begin()->second;
     version_requests.erase(version_requests.begin());
   }
-printf("3.1\n");
+  printf("3.1\n");
   // adjust timeouts if necessary
   if (had_a_connection) {
     reopen_interval_multiplier *= cct->_conf->mon_client_hunt_interval_backoff;
@@ -652,21 +652,21 @@ printf("3.1\n");
       reopen_interval_multiplier =
           cct->_conf->mon_client_hunt_interval_max_multiple;
   }
-printf("3.2\n");
+  printf("3.2\n");
   // restart authentication handshake
   state = MC_STATE_NEGOTIATING;
   hunting = true;
-printf("3.3\n");
+  printf("3.3\n");
   // send an initial keepalive to ensure our timestamp is valid by the
   // time we are in an OPENED state (by sequencing this before
   // authentication).
   cur_con->send_keepalive();
-printf("3.4\n");
+  printf("3.4\n");
   MAuth *m = new MAuth;
   m->protocol = 0;
   printf("3.4.1\n");
   m->monmap_epoch = monmap.get_epoch();
-printf("3.5\n");
+  printf("3.5\n");
   __u8 struct_v = 1;
   printf("3.5.0.1\n");
 //  ::encode(struct_v, m->auth_payload);
