@@ -7,7 +7,7 @@ LIB = lib
 CC        = gcc -lws2_32 -D__USE_FILE_OFFSET64 -DHAVE_CONFIG_H -I. -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -fno-strict-aliasing -fsigned-char -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -g -DPIC
 CPP       = g++ -lws2_32 -D__USE_FILE_OFFSET64 -DHAVE_CONFIG_H -I. -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -fno-strict-aliasing -fsigned-char -Wno-invalid-offsetof -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -g -DPIC
 
-PTHREAD=pthreadgc2
+PTHREAD=pthreadgce2
 
 # Change the following directories according to your environment
 INCLUDE_BASE=C:/MinGW
@@ -66,7 +66,6 @@ CLIBS    =
 	$(CPP) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:msg/simple/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
-
 ../$(BUILD)/%.o:json_spirit/%.cpp
 	$(CPP) -c $(CFLAGS) $^ -o $@
 
@@ -98,17 +97,24 @@ OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/snap_set_diff.o ../$(BUILD)/librados.o .
 ../$(BUILD)/msg_types.o ../$(BUILD)/SubsystemMap.o ../$(BUILD)/uuid.o \
 ../$(BUILD)/HitSet.o  ../$(BUILD)/Log.o ../$(BUILD)/PrebufferedStreambuf.o ../$(BUILD)/version.o \
 ../$(BUILD)/Accepter.o ../$(BUILD)/DispatchQueue.o  ../$(BUILD)/PipeConnection.o ../$(BUILD)/dout.o \
-../$(BUILD)/AuthSessionHandler.o ../$(BUILD)/histogram.o ../$(BUILD)/ceph_hash.o ../$(BUILD)/addr_parsing.o
+../$(BUILD)/AuthSessionHandler.o ../$(BUILD)/histogram.o ../$(BUILD)/ceph_hash.o ../$(BUILD)/addr_parsing.o ../$(BUILD)/cmdparse.o
 
-ALL: ../bin/rados_client.exe 
+ALL: ../bin/rados_client.exe
+
 ../bin/rados.dll:$(OBJECTS)
+<<<<<<< HEAD
 	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0 -lboost_system-mgw48-mt-1_57 -lboost_system-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_context-mgw48-mt-1_57 -lboost_context-mgw48-mt-d-1_57 -lboost_filesystem-mgw48-mt-1_57 -lboost_filesystem-mgw48-mt-d-1_57 -lboost_iostreams-mgw48-mt-1_57 -lboost_iostreams-mgw48-mt-d-1_57 -lboost_log-mgw48-mt-1_57 -lboost_log-mgw48-mt-d-1_57 -lboost_signals-mgw48-mt-1_57 -lboost_signals-mgw48-mt-d-1_57 -lboost_thread-mgw48-mt-1_57 -lboost_thread-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57 
+=======
+	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -unicode -lws2_32 -l$(PTHREAD) -lgio-2.0 -lglib-2.0 -lgobject-2.0 \
+	-lboost_thread-mgw48-mt-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_log-mgw48-mt-1_57 -lboost_system-mgw48-mt-1_57
+>>>>>>> 191a0a9c087caf392841aeeed3e6177fba7b6ee4
 	@echo "**************************************************************"
 	@echo "MAKE "$@" FINISH"
 	@echo "**************************************************************"
 
 ../bin/rados_client.exe:../$(BUILD)/rados_client.o ../bin/rados.dll
-	$(CPP) $(CFLAGS) $(CLIBS) -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0 -unicode
+	$(CPP) $(CFLAGS) $(CLIBS) -o $@ $^ -unicode -lws2_32 -l$(PTHREAD) -lgio-2.0 -lglib-2.0 -lgobject-2.0 \
+	-lboost_thread-mgw48-mt-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_log-mgw48-mt-1_57 -lboost_system-mgw48-mt-1_57
 	@echo "**************************************************************"
 	@echo "MAKE "$@" FINISH"
 	@echo "**************************************************************"

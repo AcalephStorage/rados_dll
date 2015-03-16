@@ -279,13 +279,13 @@ public:
     public:
       // constructor.  position.
       iterator() :
-	bl(0), ls(0), off(0), p_off(0) {}
+      	bl(0), ls(0), off(0), p_off(0) {}
       iterator(list *l, unsigned o=0) : 
-	bl(l), ls(&bl->_buffers), off(0), p(ls->begin()), p_off(0) {
-	advance(o);
-      }
+      	bl(l), ls(&bl->_buffers), off(0), p(ls->begin()), p_off(0) {
+        	advance(o);
+        }
       iterator(list *l, unsigned o, std::list<ptr>::iterator ip, unsigned po) : 
-	bl(l), ls(&bl->_buffers), off(o), p(ip), p_off(po) { }
+        bl(l), ls(&bl->_buffers), off(o), p(ip), p_off(po) { }
 
       iterator(const iterator& other) : bl(other.bl),
 					ls(other.ls),
@@ -294,14 +294,14 @@ public:
 					p_off(other.p_off) {}
 
       iterator& operator=(const iterator& other) {
-	if (this != &other) {
-	  bl = other.bl;
-	  ls = other.ls;
-	  off = other.off;
-	  p = other.p;
-	  p_off = other.p_off;
-	}
-	return *this;
+      	if (this != &other) {
+      	  bl = other.bl;
+      	  ls = other.ls;
+      	  off = other.off;
+      	  p = other.p;
+      	  p_off = other.p_off;
+      	}
+      	return *this;
       }
 
       /// get current iterator offset in buffer::list
@@ -312,8 +312,8 @@ public:
 
       /// true if iterator is at the end of the buffer::list
       bool end() {
-	return p == ls->end();
-	//return off == bl->length();
+      	return p == ls->end();
+      	//return off == bl->length();
       }
 
       void advance(int o);

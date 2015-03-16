@@ -447,21 +447,21 @@ void MonClient::shutdown()
 
 int MonClient::authenticate(double timeout)
 {
-
+  printf("MonClient::authenticate(%f)\n", timeout);
   Mutex::Locker lock(monc_lock);
-  printf("1\n");
+  printf("MonClient::authenticate state: %d\n", state);
   if (state == MC_STATE_HAVE_SESSION) {
-      printf("2\n");
     ldout(cct, 5) << "already authenticated" << dendl;
     return 0;
   }
 
+  printf("MonClient::authenticate monmap.get_epoch(): %d\n", monmap.get_epoch());
   _sub_want("monmap", monmap.get_epoch() ? monmap.get_epoch() + 1 : 0, 0);
-    printf("3\n");
+  printf("MonClient::authenticate cur_mon.empty() %d\n", cur_mon.empty());
   if (cur_mon.empty())
     _reopen_session();
-  printf("4\n");
   utime_t until = ceph_clock_now(cct);
+
   printf("4.1\n");
   until += timeout;
   printf("4.2\n");
@@ -469,10 +469,20 @@ int MonClient::authenticate(double timeout)
     printf("4.3\n");
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;
     std::cout << "timeout: "<< until <<std::endl;
+
+  printf("MonClient::authenticate ceph_clock_now(%p) -> %d\n", &cct, until);
+  until += timeout;
+  printf("MonClient::authenticate until: %d\n", until);
+  if (timeout > 0.0) {
+    ldout(cct, 10) << "authenticate will time out at " << until << dendl;
+    std::cout << "authenticate will time out at " << until << std::endl;
+  }
+
   while (state != MC_STATE_HAVE_SESSION && !authenticate_err) {
     if (timeout > 0.0) {
       printf("4.4\n");
       int r = auth_cond.WaitUntil(monc_lock, until);
+
       printf("%d\n", until);
       printf("4.5\n");
       if (r == ETIMEDOUT) {
@@ -480,20 +490,29 @@ int MonClient::authenticate(double timeout)
 	ldout(cct, 0) << "authenticate timed out after " << timeout << dendl;
 	authenticate_err = -r;
     printf("5\n");
+
+      printf("MonClient::authenticate auth_cond.WaitUntil(monc_lock, until) -> %d\n", r);
+      if (r == ETIMEDOUT) {
+      	ldout(cct, 0) << "authenticate timed out after " << timeout << dendl;
+        std::cout << "authenticate timed out after " << timeout << std::endl;
+      	authenticate_err = -r;
+        printf("5\n");
+
       }
     } else {
       printf("4.7\n");
       auth_cond.Wait(monc_lock);
-
     }
   }
   printf("6\n");
   if (state == MC_STATE_HAVE_SESSION) {
     ldout(cct, 5) << "authenticate success, global_id " << global_id << dendl;
+    std::cout << "authenticate success, global_id " << global_id << std::endl;
   }
   printf("7\n");
   if (authenticate_err < 0 && no_keyring_disabled_cephx) {
     lderr(cct) << "authenticate NOTE: no keyring found; disabled cephx authentication" << dendl;
+    std::cout << "authenticate NOTE: no keyring found; disabled cephx authentication" << std::endl;
   }
   printf("8\n");
   return authenticate_err;
@@ -652,7 +671,7 @@ void MonClient::_reopen_session(int rank, string name)
     delete version_requests.begin()->second;
     version_requests.erase(version_requests.begin());
   }
-printf("3.1\n");
+  printf("3.1\n");
   // adjust timeouts if necessary
   if (had_a_connection) {
     reopen_interval_multiplier *= cct->_conf->mon_client_hunt_interval_backoff;
@@ -661,23 +680,27 @@ printf("3.1\n");
       reopen_interval_multiplier =
           cct->_conf->mon_client_hunt_interval_max_multiple;
   }
-printf("3.2\n");
+  printf("3.2\n");
   // restart authentication handshake
   state = MC_STATE_NEGOTIATING;
   hunting = true;
-printf("3.3\n");
+  printf("3.3\n");
   // send an initial keepalive to ensure our timestamp is valid by the
   // time we are in an OPENED state (by sequencing this before
   // authentication).
   cur_con->send_keepalive();
-printf("3.4\n");
+  printf("3.4\n");
   MAuth *m = new MAuth;
   m->protocol = 0;
   printf("3.4.1\n");
   m->monmap_epoch = monmap.get_epoch();
-printf("3.5\n");
+  printf("m->monmap_epoch: %d\n", m->monmap_epoch);
+  printf("3.5\n");
   __u8 struct_v = 1;
   printf("3.5.0.1\n");
+
+  printf("m->auth_payload: %p\n", &m->auth_payload);
+
   ::encode(struct_v, m->auth_payload);
   printf("3.5.1\n");
   ::encode(auth_supported->get_supported_set(), m->auth_payload);
@@ -688,10 +711,10 @@ printf("3.5\n");
   printf("3.5.4\n");
   std::cout << "auth_payload: " << m->auth_payload << std::endl;
   _send_mon_message(m, true);
-printf("reopen 4\n");
+  printf("reopen 4\n");
   if (!sub_have.empty())
     _renew_subs();
-printf("reopen 5\n");
+  printf("reopen 5\n");
 }
 
 
