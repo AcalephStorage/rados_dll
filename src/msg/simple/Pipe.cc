@@ -37,6 +37,7 @@
 #include "common/errno.h"
 
 #define F_SETFD 2
+#define FD_CLOEXEC 1
 
 // Below included to get encode_encrypt(); That probably should be in Crypto.h, instead
 
@@ -863,6 +864,16 @@ void Pipe::set_socket_options()
 
 int Pipe::connect()
 {
+  WSADATA wsa;
+  int retval;
+  retval = WSAStartup(MAKEWORD(2,2),&wsa);
+  printf("\nInitialising Winsock...");
+    //if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
+   // {
+        //printf("Failed. Error Code : %d",WSAGetLastError());
+        //return 1;
+    //}
+  
   bool got_bad_auth = false;
 
   ldout(msgr->cct,10) << "connect " << connect_seq << dendl;
@@ -2612,7 +2623,7 @@ int Pipe::tcp_write(const char *buf, int len)
 int pipe_cloexec(int pipefd[2])
 {
   int ret;
-  u_long* FD_CLOEXEC;
+
 
 #if defined(HAVE_PIPE2) && defined(O_CLOEXEC)
   ret = pipe2(pipefd, O_CLOEXEC);
@@ -2628,13 +2639,13 @@ int pipe_cloexec(int pipefd[2])
    * The old-fashioned, race-condition prone way that we have to fall
    * back on if O_CLOEXEC does not exist.
    */
-  ret = ioctlsocket(pipefd[0], F_SETFD, FD_CLOEXEC);
+  ret = socket(pipefd[0], F_SETFD, FD_CLOEXEC);
   if (ret == -1) {
     ret = -errno;
     goto out;
   }
 
-  ret = ioctlsocket(pipefd[1], F_SETFD, FD_CLOEXEC);
+  ret = socket(pipefd[1], F_SETFD, FD_CLOEXEC);
   if (ret == -1) {
     ret = -errno;
     goto out;

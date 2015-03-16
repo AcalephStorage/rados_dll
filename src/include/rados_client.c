@@ -3,9 +3,11 @@
 #include <stdlib.h>
 #include "rados/librados.h"
 
+
 // Testing
 int main (int argc, const char ** argv)
 {
+
 
     /* Declare the cluster handle and required arguments. */
     rados_t cluster;
@@ -26,7 +28,7 @@ int main (int argc, const char ** argv)
 
 
     /* Read a Ceph configuration file to configure the cluster handle. */
-    err = rados_conf_read_file(cluster, "/vagrant/etc/ceph/ceph.conf");
+    err = rados_conf_read_file(cluster, "ceph.conf");
     if (err < 0) {
         fprintf(stderr, "%s: cannot read config file: %s\n", argv[0], strerror(-err));
         exit(EXIT_FAILURE);
@@ -44,6 +46,8 @@ int main (int argc, const char ** argv)
     }
 
     /* Connect to the cluster */
+       //   MAuth *m = new MAuth;
+
 
     err = rados_connect(cluster);
     if (err < 0) {

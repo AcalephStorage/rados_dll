@@ -462,18 +462,27 @@ int MonClient::authenticate(double timeout)
     _reopen_session();
   printf("4\n");
   utime_t until = ceph_clock_now(cct);
+  printf("4.1\n");
   until += timeout;
+  printf("4.2\n");
   if (timeout > 0.0)
+    printf("4.3\n");
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;
+    std::cout << "timeout: "<< until <<std::endl;
   while (state != MC_STATE_HAVE_SESSION && !authenticate_err) {
     if (timeout > 0.0) {
+      printf("4.4\n");
       int r = auth_cond.WaitUntil(monc_lock, until);
+      printf("%d\n", until);
+      printf("4.5\n");
       if (r == ETIMEDOUT) {
+        printf("4.6\n");
 	ldout(cct, 0) << "authenticate timed out after " << timeout << dendl;
 	authenticate_err = -r;
     printf("5\n");
       }
     } else {
+      printf("4.7\n");
       auth_cond.Wait(monc_lock);
 
     }
@@ -669,14 +678,15 @@ printf("3.4\n");
 printf("3.5\n");
   __u8 struct_v = 1;
   printf("3.5.0.1\n");
-//  ::encode(struct_v, m->auth_payload);
+  ::encode(struct_v, m->auth_payload);
   printf("3.5.1\n");
-//  ::encode(auth_supported->get_supported_set(), m->auth_payload);
+  ::encode(auth_supported->get_supported_set(), m->auth_payload);
   printf("3.5.2\n");
-//  ::encode(entity_name, m->auth_payload);
+  ::encode(entity_name, m->auth_payload);
   printf("3.5.3\n");
-//  ::encode(global_id, m->auth_payload);
+  ::encode(global_id, m->auth_payload);
   printf("3.5.4\n");
+  std::cout << "auth_payload: " << m->auth_payload << std::endl;
   _send_mon_message(m, true);
 printf("reopen 4\n");
   if (!sub_have.empty())

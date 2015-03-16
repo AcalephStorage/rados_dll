@@ -591,8 +591,8 @@ inline void decode(std::map<T,U*>& m, bufferlist::iterator& p)
     decode(k, p);
     m[k] = new U(p);
   }
-  }*/
-
+  }
+*/
 // map
 template<class T, class U>
 inline void encode(const std::map<T,U>& m, bufferlist& bl)

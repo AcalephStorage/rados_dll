@@ -620,7 +620,7 @@ buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
     //return new raw_mmap_pages(len);
     //return new raw_posix_aligned(len, align);
 //#else
-//    return new raw_hack_aligned(len, align);
+    return new raw_hack_aligned(len, align);
 //#endif
   }
 #else
@@ -1756,8 +1756,7 @@ int buffer::list::write_file(const char *fn, int mode)
 
 int buffer::list::write_fd(int fd) const
 {
-#ifdef _WIN32
-#else
+/*
   if (can_zero_copy())
     return write_fd_zero_copy(fd);
 
@@ -1807,9 +1806,9 @@ int buffer::list::write_fd(int fd) const
       iovlen = 0;
       bytes = 0;
     }
-  }
+  }*/
   return 0;
-#endif
+
 }
 
 int buffer::list::write_fd_zero_copy(int fd) const

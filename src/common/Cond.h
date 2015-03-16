@@ -63,15 +63,21 @@ class Cond {
     // make sure this cond is used with one mutex only
     assert(waiter_mutex == NULL || waiter_mutex == &mutex);
     waiter_mutex = &mutex;
+    printf("wait one\n");
+
 
     assert(mutex.is_locked());
-
+    printf("wait 2\n");
     struct timespec ts;
     when.to_timespec(&ts);
-
+    printf("wait 3\n");
     mutex._pre_unlock();
+    printf("wait 4\n");
     int r = pthread_cond_timedwait(&_c, &mutex._m, &ts);
+    printf("wait 5\n");
     mutex._post_lock();
+    printf("wait 6\n");
+    printf("%d\n", r);
 
     return r;
   }

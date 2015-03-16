@@ -17,7 +17,7 @@
 #include <errno.h>
 #include <iostream>
 #include <fstream>
-#include <poll.h>
+//#include <poll.h>
 
 #include "AsyncMessenger.h"
 
@@ -26,6 +26,8 @@
 #include "common/errno.h"
 #include "auth/Crypto.h"
 #include "include/Spinlock.h"
+#include <Winsock2.h>
+
 
 #define dout_subsys ceph_subsys_ms
 #undef dout_prefix
@@ -75,6 +77,13 @@ int Processor::bind(const entity_addr_t &bind_addr, const set<int>& avoid_ports)
 {
   const md_config_t *conf = msgr->cct->_conf;
   // bind to a socket
+  //WSADATA wsa;
+   //printf("\nInitialising Winsock...");
+   // if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
+    //{
+        //printf("Failed. Error Code : %d",WSAGetLastError());
+        //return 1;
+    //}
   ldout(msgr->cct, 10) << __func__ << dendl;
 
   int family;

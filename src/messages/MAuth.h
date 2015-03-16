@@ -46,10 +46,15 @@ public:
       monmap_epoch = 0;
   }
   void encode_payload(uint64_t features) {
+    printf("3.5.0.1.0.1\n");
     paxos_encode();
+    printf("3.5.0.1.1\n");
     ::encode(protocol, payload);
+    printf("3.5.0.1.2\n");
     ::encode(auth_payload, payload);
+    printf("3.5.0.1.3\n");
     ::encode(monmap_epoch, payload);
+    printf("3.5.0.1.4\n");
   }
   bufferlist& get_auth_payload() { return auth_payload; }
 };

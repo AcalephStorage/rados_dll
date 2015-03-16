@@ -50,7 +50,8 @@
 #undef dout_prefix
 #define dout_prefix *_dout << "asok(" << (void*)m_cct << ") "
 
-#define F_SETFD 0
+#define F_SETFD 2
+#define FD_CLOEXEC 1
 
 using std::ostringstream;
 
@@ -156,7 +157,17 @@ std::string AdminSocket::create_shutdown_pipe(int *pipe_rd, int *pipe_wr)
 std::string AdminSocket::bind_and_listen(const std::string &sock_path, int *fd)
 {
   ldout(m_cct, 5) << "bind_and_listen " << sock_path << dendl;
-
+    WSADATA wsa;
+  int retval;
+  retval = WSAStartup(MAKEWORD(2,2),&wsa);
+  printf("\nInitialising Winsock...");
+  //WSADATA wsa;
+  //printf("\nInitialising Winsock...");
+    //if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
+    //{
+        //printf("Failed. Error Code : %d",WSAGetLastError());
+        //return 1;
+    //}
   struct sockaddr_in address;
   /*if (sock_path.size() > sizeof(address.sun_path) - 1) {
     ostringstream oss;
@@ -166,7 +177,7 @@ std::string AdminSocket::bind_and_listen(const std::string &sock_path, int *fd)
 	<< (sizeof(address.sun_path) - 1);
     return oss.str();
   }*/
-  int sock_fd = socket(PF_UNIX, SOCK_STREAM, 0);
+  int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (sock_fd < 0) {
     int err = errno;
     ostringstream oss;
@@ -174,8 +185,8 @@ std::string AdminSocket::bind_and_listen(const std::string &sock_path, int *fd)
 	<< "failed to create socket: " << cpp_strerror(err);
     return oss.str();
   }
-  u_long* FD_CLOEXEC;
-  int r = ioctlsocket(sock_fd, F_SETFD, FD_CLOEXEC);
+  
+  //int r = socket(sock_fd, F_SETFD, FD_CLOEXEC);
   /*if (r < 0) {
     r = errno;
     VOID_TEMP_FAILURE_RETRY(::close(sock_fd));
@@ -184,7 +195,7 @@ std::string AdminSocket::bind_and_listen(const std::string &sock_path, int *fd)
     return oss.str();
   }*/
   memset(&address, 0, sizeof(struct sockaddr_in));
-  address.sin_family = AF_UNIX;
+  address.sin_family = AF_INET;
   //snprintf(address.sun_path, sizeof(address.sun_path),
 	//   "%s", sock_path.c_str());
   if (bind(sock_fd, (struct sockaddr*)&address,
@@ -476,6 +487,7 @@ public:
   GetdescsHook(AdminSocket *as) : m_as(as) {}
   bool call(string command, cmdmap_t &cmdmap, string format, bufferlist& out) {
     int cmdnum = 0;
+    void * p = pthread_self().p;
     JSONFormatter jf(false);
     jf.open_object_section("command_descriptions");
     for (map<string,string>::iterator p = m_as->m_descs.begin();
