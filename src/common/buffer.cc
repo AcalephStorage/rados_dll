@@ -615,19 +615,6 @@ class buffer::raw_mmap_pages : public buffer::raw {
     return new raw_static(buf, len);
   }
 
-#ifdef _WIN32
-buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
-//#ifndef __CYGWIN__
-    //return new raw_mmap_pages(len);
-    //return new raw_posix_aligned(len, align);
-//#else
-    return new raw_hack_aligned(len, align);
-//#endif
-  }
-#else
-
-
-
   buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
     printf("buffer::create_aligned(%u, %u)\n", len, align);
     #if defined(__CYGWIN__) || defined(_WIN32)
