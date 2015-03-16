@@ -19,7 +19,7 @@
 #include "include/types.h"
 #include "osd/osd_types.h"
 #include "common/TrackedOp.h"
-#include "common/WorkQueue.h"
+//by ketor #include "common/WorkQueue.h"
 #include "ObjectMap.h"
 
 #include <errno.h>
@@ -27,11 +27,11 @@
 #include <vector>
 #include <map>
 
-#if defined(DARWIN) || defined(__FreeBSD__)
-#include <sys/statvfs.h>
-#else
-#include <sys/vfs.h>    /* or <sys/statfs.h> */
-#endif /* DARWIN */
+//by ketor #if defined(DARWIN) || defined(__FreeBSD__)
+//#include <sys/statvfs.h>
+//#else
+//#include <sys/vfs.h>    /* or <sys/statfs.h> */
+//#endif /* DARWIN */
 
 #define OPS_PER_PTR 32
 
@@ -336,57 +336,92 @@ public:
    * A and B.
    *
    */
+#define OP_NOP            0
+#define OP_TOUCH          9   // cid oid
+#define OP_WRITE         10  // cid oid offset len bl
+#define OP_ZERO          11  // cid oid offset len
+#define OP_TRUNCATE      12  // cid oid len
+#define OP_REMOVE        13  // cid oid
+#define OP_SETATTR       14  // cid oid attrname bl
+#define OP_SETATTRS      15  // cid oid attrset
+#define OP_RMATTR        16  // cid oid attrname
+#define OP_CLONE         17  // cid oid newoid
+#define OP_CLONERANGE    18  // cid oid newoid offset len
+#define OP_CLONERANGE2   30  // cid oid newoid srcoff len dstoff
+#define OP_TRIMCACHE     19  // cid oid offset len  **DEPRECATED**
+#define OP_MKCOLL        20  // cid
+#define OP_RMCOLL        21  // cid
+#define OP_COLL_ADD      22  // cid oldcid oid
+#define OP_COLL_REMOVE   23  // cid oid
+#define OP_COLL_SETATTR  24  // cid attrname bl
+#define OP_COLL_RMATTR   25  // cid attrname
+#define OP_COLL_SETATTRS  26  // cid attrset
+#define OP_COLL_MOVE     8   // newcid oldcid oid
+#define OP_STARTSYNC     27  // start a sync 
+#define OP_RMATTRS       28  // cid oid
+#define OP_COLL_RENAME        29  // cid newcid
+#define OP_OMAP_CLEAR  31   // cid
+#define OP_OMAP_SETKEYS  32 // cid attrset
+#define OP_OMAP_RMKEYS  33  // cid keyset
+#define OP_OMAP_SETHEADER  34 // cid header
+#define OP_SPLIT_COLLECTION  35 // cid bits destination
+#define OP_SPLIT_COLLECTION2 36  /* cid, bits, destination
+				    doesn't create the destination */
+#define OP_OMAP_RMKEYRANGE  37  // cid oid firstkey lastkey
+#define OP_COLL_MOVE_RENAME  38  // oldcid, oldoid, newcid, newoid
+    
+#define OP_SETALLOCHINT   39  // cid, oid, object_size, write_size
+#define OP_COLL_HINT      40 // cid, type, bl
+
   class Transaction {
   public:
-    enum {
-      OP_NOP =          0,
-      OP_TOUCH =        9,   // cid, oid
-      OP_WRITE =        10,  // cid, oid, offset, len, bl
-      OP_ZERO =         11,  // cid, oid, offset, len
-      OP_TRUNCATE =     12,  // cid, oid, len
-      OP_REMOVE =       13,  // cid, oid
-      OP_SETATTR =      14,  // cid, oid, attrname, bl
-      OP_SETATTRS =     15,  // cid, oid, attrset
-      OP_RMATTR =       16,  // cid, oid, attrname
-      OP_CLONE =        17,  // cid, oid, newoid
-      OP_CLONERANGE =   18,  // cid, oid, newoid, offset, len
-      OP_CLONERANGE2 =  30,  // cid, oid, newoid, srcoff, len, dstoff
+//    enum {
+//      OP_NOP =          0,
+//      OP_TOUCH =        9,   // cid, oid
+//      OP_WRITE =        10,  // cid, oid, offset, len, bl
+//      OP_ZERO =         11,  // cid, oid, offset, len
+//      OP_TRUNCATE =     12,  // cid, oid, len
+//      OP_REMOVE =       13,  // cid, oid
+//      OP_SETATTR =      14,  // cid, oid, attrname, bl
+//      OP_SETATTRS =     15,  // cid, oid, attrset
+//      OP_RMATTR =       16,  // cid, oid, attrname
+//      OP_CLONE =        17,  // cid, oid, newoid
+//      OP_CLONERANGE =   18,  // cid, oid, newoid, offset, len
+//      OP_CLONERANGE2 =  30,  // cid, oid, newoid, srcoff, len, dstoff
+//
+//      OP_TRIMCACHE =    19,  // cid, oid, offset, len  **DEPRECATED**
+//
+//      OP_MKCOLL =       20,  // cid
+//      OP_RMCOLL =       21,  // cid
+//      OP_COLL_ADD =     22,  // cid, oldcid, oid
+//      OP_COLL_REMOVE =  23,  // cid, oid
+//      OP_COLL_SETATTR = 24,  // cid, attrname, bl
+//      OP_COLL_RMATTR =  25,  // cid, attrname
+//      OP_COLL_SETATTRS = 26,  // cid, attrset
+//      OP_COLL_MOVE =    8,   // newcid, oldcid, oid
+//
+//      OP_STARTSYNC =    27,  // start a sync
+//
+//      OP_RMATTRS =      28,  // cid, oid
+//      OP_COLL_RENAME =       29,  // cid, newcid
+//
+//      OP_OMAP_CLEAR = 31,   // cid
+//      OP_OMAP_SETKEYS = 32, // cid, attrset
+//      OP_OMAP_RMKEYS = 33,  // cid, keyset
+//      OP_OMAP_SETHEADER = 34, // cid, header
+//      OP_SPLIT_COLLECTION = 35, // cid, bits, destination
+//      OP_SPLIT_COLLECTION2 = 36, /* cid, bits, destination
+//				    doesn't create the destination */
+//      OP_OMAP_RMKEYRANGE = 37,  // cid, oid, firstkey, lastkey
+//      OP_COLL_MOVE_RENAME = 38,   // oldcid, oldoid, newcid, newoid
+//
+//      OP_SETALLOCHINT = 39,  // cid, oid, object_size, write_size
+//    };
 
-      OP_TRIMCACHE =    19,  // cid, oid, offset, len  **DEPRECATED**
-
-      OP_MKCOLL =       20,  // cid
-      OP_RMCOLL =       21,  // cid
-      OP_COLL_ADD =     22,  // cid, oldcid, oid
-      OP_COLL_REMOVE =  23,  // cid, oid
-      OP_COLL_SETATTR = 24,  // cid, attrname, bl
-      OP_COLL_RMATTR =  25,  // cid, attrname
-      OP_COLL_SETATTRS = 26,  // cid, attrset
-      OP_COLL_MOVE =    8,   // newcid, oldcid, oid
-
-      OP_STARTSYNC =    27,  // start a sync
-
-      OP_RMATTRS =      28,  // cid, oid
-      OP_COLL_RENAME =       29,  // cid, newcid
-
-      OP_OMAP_CLEAR = 31,   // cid
-      OP_OMAP_SETKEYS = 32, // cid, attrset
-      OP_OMAP_RMKEYS = 33,  // cid, keyset
-      OP_OMAP_SETHEADER = 34, // cid, header
-      OP_SPLIT_COLLECTION = 35, // cid, bits, destination
-      OP_SPLIT_COLLECTION2 = 36, /* cid, bits, destination
-				    doesn't create the destination */
-      OP_OMAP_RMKEYRANGE = 37,  // cid, oid, firstkey, lastkey
-      OP_COLL_MOVE_RENAME = 38,   // oldcid, oldoid, newcid, newoid
-
-      OP_SETALLOCHINT = 39,  // cid, oid, object_size, write_size
-      OP_COLL_HINT = 40, // cid, type, bl
-    };
-
-    // Transaction hint type
-    enum {
-      COLL_HINT_EXPECTED_NUM_OBJECTS = 1,
-    };
-
+    //enum {
+      #define COLL_HINT_EXPECTED_NUM_OBJECTS 1
+    //};
+	
     struct Op {
       __le32 op;
       __le32 cid;
@@ -557,6 +592,7 @@ public:
       case OP_WRITE:
       case OP_ZERO:
       case OP_TRUNCATE:
+      case OP_CLONERANGE2:
       case OP_SETALLOCHINT:
         assert(op->cid < cm.size());
         assert(op->oid < om.size());
@@ -564,7 +600,6 @@ public:
         op->oid = om[op->oid];
         break;
 
-      case OP_CLONERANGE2:
       case OP_CLONE:
         assert(op->cid < cm.size());
         assert(op->oid < om.size());
@@ -623,13 +658,13 @@ public:
       list<bufferptr> list = bl.buffers();
       std::list<bufferptr>::iterator p;
 
-      for(p = list.begin(); p != list.end(); ++p) {
+      for(p = list.begin(); p != list.end(); p++) {
         assert(p->length() % sizeof(Op) == 0);
 
         char* raw_p = p->c_str();
         char* raw_end = raw_p + p->length();
         while (raw_p < raw_end) {
-          _update_op(reinterpret_cast<Op*>(raw_p), cm, om);
+          _update_op((Op*)raw_p, cm, om);
           raw_p += sizeof(Op);
         }
       }
@@ -655,7 +690,7 @@ public:
       map<coll_t, __le32>::iterator coll_index_p;
       for (coll_index_p = other.coll_index.begin();
            coll_index_p != other.coll_index.end();
-           ++coll_index_p) {
+           coll_index_p++) {
         cm[coll_index_p->second] = _get_coll_id(coll_index_p->first);
       }
 
@@ -663,25 +698,18 @@ public:
       map<ghobject_t, __le32>::iterator object_index_p;
       for (object_index_p = other.object_index.begin();
            object_index_p != other.object_index.end();
-           ++object_index_p) {
+           object_index_p++) {
         om[object_index_p->second] = _get_object_id(object_index_p->first);
-      }      
+      }
 
-      //the other.op_bl SHOULD NOT be changes during append operation,
-      //we use additional bufferlist to avoid this problem
-      bufferptr other_op_bl_ptr(other.op_bl.length());
-      other.op_bl.copy(0, other.op_bl.length(), other_op_bl_ptr.c_str());
-      bufferlist other_op_bl;
-      other_op_bl.append(other_op_bl_ptr);
-
-      //update other_op_bl with cm & om
+      //update other.op_bl with cm & om
       //When the other is appended to current transaction, all coll_index and
       //object_index in other.op_buffer should be updated by new index of the
       //combined transaction
-      _update_op_bl(other_op_bl, cm, om);
+      _update_op_bl(other.op_bl, cm, om);
 
       //append op_bl
-      op_bl.append(other_op_bl);
+      op_bl.append(other.op_bl);
       //append data_bl
       data_bl.append(other.data_bl);
     }
@@ -792,14 +820,14 @@ public:
         map<coll_t, __le32>::iterator coll_index_p;
         for (coll_index_p = t->coll_index.begin();
              coll_index_p != t->coll_index.end();
-             ++coll_index_p) {
+             coll_index_p++) {
           colls[coll_index_p->second] = coll_index_p->first;
         }
 
         map<ghobject_t, __le32>::iterator object_index_p;
         for (object_index_p = t->object_index.begin();
              object_index_p != t->object_index.end();
-             ++object_index_p) {
+             object_index_p++) {
           objects[object_index_p->second] = object_index_p->first;
         }
       }
@@ -814,7 +842,7 @@ public:
       Op* decode_op() {
         assert(ops > 0);
 
-        Op* op = reinterpret_cast<Op*>(op_buffer_p);
+        Op* op =  (Op*)op_buffer_p;
         op_buffer_p += sizeof(Op);
         ops--;
 
@@ -880,7 +908,7 @@ private:
       op_ptr.set_offset(op_ptr.offset() + sizeof(Op));
 
       char* p = ptr.c_str();
-      return reinterpret_cast<Op*>(p);
+      return (Op*)p;
     }
     __le32 _get_coll_id(const coll_t& coll) {
       map<coll_t, __le32>::iterator c = coll_index.find(coll);
@@ -1551,8 +1579,7 @@ public:
         uint32_t largest_data_off = data.largest_data_off;
         uint32_t largest_data_off_in_tbl = data.largest_data_off_in_tbl;
         bool tolerate_collection_add_enoent = false;
-	uint32_t fadvise_flags = data.fadvise_flags;
-        ENCODE_START(8, 5, bl);
+        ENCODE_START(7, 5, bl);
         ::encode(ops, bl);
         ::encode(pad_unused_bytes, bl);
         ::encode(largest_data_len, bl);
@@ -1560,11 +1587,10 @@ public:
         ::encode(largest_data_off_in_tbl, bl);
         ::encode(tbl, bl);
         ::encode(tolerate_collection_add_enoent, bl);
-	::encode(fadvise_flags, bl);
         ENCODE_FINISH(bl);
       } else {
         //layout: data_bl + op_bl + coll_index + object_index + data
-        ENCODE_START(9, 9, bl);
+        ENCODE_START(8, 5, bl);
         ::encode(data_bl, bl);
         ::encode(op_bl, bl);
         ::encode(coll_index, bl);
@@ -1574,29 +1600,9 @@ public:
       }
     }
     void decode(bufferlist::iterator &bl) {
-      DECODE_START_LEGACY_COMPAT_LEN(9, 5, 5, bl);
+      DECODE_START_LEGACY_COMPAT_LEN(8, 5, 5, bl);
       DECODE_OLDEST(2);
-
-      bool decoded = false;
-      if (struct_v < 8) {
-	decode8_5(bl, struct_v);
-	use_tbl = true;
-	decoded = true;
-      }	else if (struct_v == 8) {
-	bufferlist::iterator bl2 = bl;
-	try {
-	  decode8_5(bl, struct_v);
-	  use_tbl = true;
-	  decoded = true;
-	} catch (...) {
-	  bl = bl2;
-	  decoded = false;
-	}
-      }
-
-      /* Actual version should be 9, but some version 9
-       * transactions ended up with version 8 */
-      if (!decoded && struct_v >= 8) {
+      if (struct_v == 8) {
         ::decode(data_bl, bl);
         ::decode(op_bl, bl);
         ::decode(coll_index, bl);
@@ -1605,19 +1611,20 @@ public:
         use_tbl = false;
         coll_id = coll_index.size();
         object_id = object_index.size();
-	decoded = true;
+      } else {
+        decode7_5(bl, struct_v);
+        use_tbl = true;
       }
-
-      assert(decoded);
       DECODE_FINISH(bl);
     }
-    void decode8_5(bufferlist::iterator &bl, __u8 struct_v) {
+    void decode7_5(bufferlist::iterator &bl, __u8 struct_v) {
       uint64_t _ops = 0;
       uint64_t _pad_unused_bytes = 0;
       uint32_t _largest_data_len = 0;
       uint32_t _largest_data_off = 0;
       uint32_t _largest_data_off_in_tbl = 0;
       uint32_t _fadvise_flags = 0;
+      bool tolerate_collection_add_enoent = false;
 
       ::decode(_ops, bl);
       ::decode(_pad_unused_bytes, bl);
@@ -1628,7 +1635,6 @@ public:
       }
       ::decode(tbl, bl);
       if (struct_v >= 7) {
-	bool tolerate_collection_add_enoent = false;
 	::decode(tolerate_collection_add_enoent, bl);
       }
       if (struct_v >= 8) {
@@ -1681,40 +1687,40 @@ public:
   }
   unsigned apply_transactions(Sequencer *osr, list<Transaction*>& tls, Context *ondisk=0);
 
-  int queue_transaction_and_cleanup(Sequencer *osr, Transaction* t,
-				    ThreadPool::TPHandle *handle = NULL) {
-    list<Transaction *> tls;
-    tls.push_back(t);
-    return queue_transactions(osr, tls, new C_DeleteTransaction(t),
-	                      NULL, NULL, TrackedOpRef(), handle);
-  }
+//by ketor  int queue_transaction_and_cleanup(Sequencer *osr, Transaction* t,
+//				    ThreadPool::TPHandle *handle = NULL) {
+//    list<Transaction *> tls;
+//    tls.push_back(t);
+//    return queue_transactions(osr, tls, new C_DeleteTransaction(t),
+//	                      NULL, NULL, TrackedOpRef(), handle);
+//  }
 
-  int queue_transaction(Sequencer *osr, Transaction *t, Context *onreadable, Context *ondisk=0,
-				Context *onreadable_sync=0,
-				TrackedOpRef op = TrackedOpRef(),
-				ThreadPool::TPHandle *handle = NULL) {
-    list<Transaction*> tls;
-    tls.push_back(t);
-    return queue_transactions(osr, tls, onreadable, ondisk, onreadable_sync,
-	                      op, handle);
-  }
+//by ketor  int queue_transaction(Sequencer *osr, Transaction *t, Context *onreadable, Context *ondisk=0,
+//				Context *onreadable_sync=0,
+//				TrackedOpRef op = TrackedOpRef(),
+//				ThreadPool::TPHandle *handle = NULL) {
+//    list<Transaction*> tls;
+//    tls.push_back(t);
+//    return queue_transactions(osr, tls, onreadable, ondisk, onreadable_sync,
+//	                      op, handle);
+//  }
 
-  int queue_transactions(Sequencer *osr, list<Transaction*>& tls,
-			 Context *onreadable, Context *ondisk=0,
-			 Context *onreadable_sync=0,
-			 TrackedOpRef op = TrackedOpRef(),
-			 ThreadPool::TPHandle *handle = NULL) {
-    assert(!tls.empty());
-    tls.back()->register_on_applied(onreadable);
-    tls.back()->register_on_commit(ondisk);
-    tls.back()->register_on_applied_sync(onreadable_sync);
-    return queue_transactions(osr, tls, op, handle);
-  }
+//by ketor  int queue_transactions(Sequencer *osr, list<Transaction*>& tls,
+//			 Context *onreadable, Context *ondisk=0,
+//			 Context *onreadable_sync=0,
+//			 TrackedOpRef op = TrackedOpRef(),
+//			 ThreadPool::TPHandle *handle = NULL) {
+//    assert(!tls.empty());
+//    tls.back()->register_on_applied(onreadable);
+//    tls.back()->register_on_commit(ondisk);
+//    tls.back()->register_on_applied_sync(onreadable_sync);
+//    return queue_transactions(osr, tls, op, handle);
+//  }
 
-  virtual int queue_transactions(
-    Sequencer *osr, list<Transaction*>& tls,
-    TrackedOpRef op = TrackedOpRef(),
-    ThreadPool::TPHandle *handle = NULL) = 0;
+//by ketor  virtual int queue_transactions(
+//    Sequencer *osr, list<Transaction*>& tls,
+//    TrackedOpRef op = TrackedOpRef(),
+//    ThreadPool::TPHandle *handle = NULL) = 0;
 
 
   int queue_transactions(

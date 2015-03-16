@@ -5,11 +5,31 @@
 #include "Messenger.h"
 
 #include "msg/simple/SimpleMessenger.h"
+#ifdef _WIN32
+#else
 #include "msg/async/AsyncMessenger.h"
 #ifdef HAVE_XIO
 #include "msg/xio/XioMessenger.h"
 #endif
+#endif
 
+#ifdef _WIN32
+Messenger *Messenger::create(CephContext *cct, const string &type,
+                             entity_name_t name, string lname,
+                             uint64_t nonce)
+{
+  int r = -1;
+  if (type == "random")
+    r = rand() % 2;
+  if (r == 0 || type == "simple")
+    return new SimpleMessenger(cct, name, lname, nonce);
+//  else if ((r == 1 || type == "async") &&
+//	   cct->check_experimental_feature_enabled("ms-type-async"))
+//    return new AsyncMessenger(cct, name, lname, nonce);
+//  lderr(cct) << "unrecognized ms_type '" << type << "'" << dendl;
+  return NULL;
+}
+#else
 Messenger *Messenger::create(CephContext *cct, const string &type,
 			     entity_name_t name, string lname,
 			     uint64_t nonce)
@@ -45,3 +65,4 @@ int Messenger::get_default_crc_flags(md_config_t * conf)
     r |= MSG_CRC_HEADER;
   return r;
 }
+#endif

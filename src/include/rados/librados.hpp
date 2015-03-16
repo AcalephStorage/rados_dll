@@ -8,8 +8,8 @@
 #include <set>
 #include <vector>
 #include <utility>
-#include "memory.h"
-#include "buffer.h"
+#include "include/memory.h"
+#include "include/buffer.h"
 
 #include "librados.h"
 #include "rados_types.hpp"
@@ -215,6 +215,7 @@ namespace librados
    * These are per-op flags which may be different among
    * ops added to an ObjectOperation.
    */
+
   enum ObjectOperationFlags {
     OP_EXCL =   LIBRADOS_OP_FLAG_EXCL,
     OP_FAILOK = LIBRADOS_OP_FLAG_FAILOK,

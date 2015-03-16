@@ -10,7 +10,14 @@ extern "C" {
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
-
+#ifdef _WIN32
+typedef unsigned long long nlink_t;
+typedef unsigned long long uid_t;
+typedef unsigned long long gid_t;
+typedef unsigned short mode_t;
+typedef unsigned long long blksize_t;
+typedef unsigned long long blkcnt_t;
+#endif
 struct statlite {
   dev_t         st_dev;      /* device */
   ino_t         st_ino;      /* inode */
@@ -25,9 +32,12 @@ struct statlite {
   off_t         st_size;     /* total size, in bytes         */
   blksize_t     st_blksize;  /* blocksize for filesystem I/O */
   blkcnt_t      st_blocks;   /* number of blocks allocated   */
+#ifdef _WIN32
+#else
   struct timespec st_atim;            /* Time of last access.  */
   struct timespec st_mtim;            /* Time of last modification.  */
   struct timespec st_ctim;            /* Time of last status change.  */
+#endif
   //time_t        st_atime;    /* time of last access          */
   //time_t        st_mtime;    /* time of last modification    */
   //time_t        st_ctime;    /* time of last change          */

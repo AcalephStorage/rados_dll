@@ -19,9 +19,11 @@
 #include "msg/Message.h"
 #include "mds/MDSMap.h"
 #include "include/ceph_features.h"
-
+#ifdef _WIN32
+#include "include/uuid.h"
+#else
 #include <uuid/uuid.h>
-
+#endif
 class MMDSMap : public Message {
  public:
   /*

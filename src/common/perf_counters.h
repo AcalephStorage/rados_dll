@@ -95,8 +95,12 @@ public:
   utime_t tget(int idx) const;
 
   void reset();
+#ifdef _WIN32
+  void dump_formatted(ceph::Formatter *f, bool schema);
+#else
   void dump_formatted(ceph::Formatter *f, bool schema,
       const std::string &counter = "");
+#endif
   pair<uint64_t, uint64_t> get_tavg_ms(int idx) const;
 
   const std::string& get_name() const;
@@ -204,11 +208,15 @@ public:
   void remove(class PerfCounters *l);
   void clear();
   bool reset(const std::string &name);
+#ifdef _WIN32
+  void dump_formatted(ceph::Formatter *f, bool schema);
+#else
   void dump_formatted(
       ceph::Formatter *f,
       bool schema,
       const std::string &logger = "",
       const std::string &counter = "");
+#endif
 private:
   CephContext *m_cct;
 

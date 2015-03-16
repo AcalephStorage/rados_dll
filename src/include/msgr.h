@@ -1,10 +1,12 @@
 #ifndef CEPH_MSGR_H
 #define CEPH_MSGR_H
-
+#ifdef _WIN32
+#include <ws2tcpip.h> // for struct sockaddr_storage
+#else
 #ifndef __KERNEL__
 #include <sys/socket.h> // for struct sockaddr_storage
 #endif
-
+#endif
 /*
  * Data types for message passing layer used by Ceph.
  */
@@ -57,6 +59,9 @@ struct ceph_entity_name {
 #define CEPH_ENTITY_TYPE_ANY    0xFF
 
 extern const char *ceph_entity_type_name(int type);
+#ifdef _WIN32
+#define _SS_MAXSIZE 128                 /* Maximum size. */
+#endif
 
 /*
  * entity_addr -- network address

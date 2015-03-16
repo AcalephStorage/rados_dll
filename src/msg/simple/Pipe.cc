@@ -12,12 +12,22 @@
  * 
  */
 
-#include <sys/socket.h>
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <sys/uio.h>
+//#include <sys/socket.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+//#include <netinet/tcp.h>
+//#include <sys/uio.h>
 #include <limits.h>
-#include <poll.h>
+//#include <poll.h>
+#define SHUT_RDWR SD_BOTH
+#include "acconfig.h"
+
+#include "common/pipe.h"
+#include "include/compat.h"
+
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "msg/Message.h"
 #include "Pipe.h"
@@ -25,6 +35,9 @@
 
 #include "common/debug.h"
 #include "common/errno.h"
+
+#define F_SETFD 2
+#define FD_CLOEXEC 1
 
 // Below included to get encode_encrypt(); That probably should be in Crypto.h, instead
 
@@ -60,14 +73,14 @@ ostream& Pipe::_pipe_prefix(std::ostream *_dout) {
 /*
  * On BSD SO_NOSIGPIPE can be set via setsockopt to block SIGPIPE.
  */
-#ifndef MSG_NOSIGNAL
-# define MSG_NOSIGNAL 0
-# ifdef SO_NOSIGPIPE
-#  define CEPH_USE_SO_NOSIGPIPE
-# else
-#  error "Cannot block SIGPIPE!"
-# endif
-#endif
+//by ketor #ifndef MSG_NOSIGNAL
+//# define MSG_NOSIGNAL 0
+//# ifdef SO_NOSIGPIPE
+//#  define CEPH_USE_SO_NOSIGPIPE
+//# else
+//#  error "Cannot block SIGPIPE!"
+//# endif
+//#endif
 
 /**************************************
  * Pipe
@@ -288,7 +301,7 @@ int Pipe::accept()
   int removed; // single-use down below
 
   // this should roughly mirror pseudocode at
-  //  http://ceph.com/wiki/Messaging_protocol
+  //  http://ceph.newdream.net/wiki/Messaging_protocol
   int reply_tag = 0;
   uint64_t existing_seq = -1;
 
@@ -831,7 +844,7 @@ void Pipe::set_socket_options()
   }
   if (msgr->cct->_conf->ms_tcp_rcvbuf) {
     int size = msgr->cct->_conf->ms_tcp_rcvbuf;
-    int r = ::setsockopt(sd, SOL_SOCKET, SO_RCVBUF, (void*)&size, sizeof(size));
+    int r = ::setsockopt(sd, SOL_SOCKET, SO_RCVBUF, (/*by ketor void*/char*)&size, sizeof(size));
     if (r < 0)  {
       r = -errno;
       ldout(msgr->cct,0) << "couldn't set SO_RCVBUF to " << size << ": " << cpp_strerror(r) << dendl;
@@ -847,31 +860,20 @@ void Pipe::set_socket_options()
     ldout(msgr->cct,0) << "couldn't set SO_NOSIGPIPE: " << cpp_strerror(r) << dendl;
   }
 #endif
-
-  int prio = msgr->get_socket_priority();
-  if (prio >= 0) {
-    int r;
-#ifdef IPTOS_CLASS_CS6
-    int iptos = IPTOS_CLASS_CS6;
-    r = ::setsockopt(sd, IPPROTO_IP, IP_TOS, &iptos, sizeof(iptos));
-    if (r < 0) {
-      ldout(msgr->cct,0) << "couldn't set IP_TOS to " << iptos
-                         << ": " << cpp_strerror(errno) << dendl;
-    }
-#endif
-    // setsockopt(IPTOS_CLASS_CS6) sets the priority of the socket as 0.
-    // See http://goo.gl/QWhvsD and http://goo.gl/laTbjT
-    // We need to call setsockopt(SO_PRIORITY) after it.
-    r = ::setsockopt(sd, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(prio));
-    if (r < 0) {
-      ldout(msgr->cct,0) << "couldn't set SO_PRIORITY to " << prio
-                         << ": " << cpp_strerror(errno) << dendl;
-    }
-  }
 }
 
 int Pipe::connect()
 {
+  WSADATA wsa;
+  int retval;
+  retval = WSAStartup(MAKEWORD(2,2),&wsa);
+  printf("\nInitialising Winsock...");
+    //if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
+   // {
+        //printf("Failed. Error Code : %d",WSAGetLastError());
+        //return 1;
+    //}
+  
   bool got_bad_auth = false;
 
   ldout(msgr->cct,10) << "connect " << connect_seq << dendl;
@@ -1795,7 +1797,7 @@ void Pipe::writer()
 			      << " " << m << " " << *m << dendl;
 
 	// encode and copy out of *m
-	m->encode(features, msgr->crcflags);
+	m->encode(features, !msgr->cct->_conf->ms_nocrc);
 
 	// prepare everything
 	ceph_msg_header& header = m->get_header();
@@ -1897,14 +1899,12 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
   
   ceph_msg_header header; 
   ceph_msg_footer footer;
-  __u32 header_crc = 0;
-
+  __u32 header_crc;
+  
   if (connection_state->has_feature(CEPH_FEATURE_NOSRCADDR)) {
     if (tcp_read((char*)&header, sizeof(header)) < 0)
       return -1;
-    if (msgr->crcflags & MSG_CRC_HEADER) {
-      header_crc = ceph_crc32c(0, (unsigned char *)&header, sizeof(header) - sizeof(header.crc));
-    }
+    header_crc = ceph_crc32c(0, (unsigned char *)&header, sizeof(header) - sizeof(header.crc));
   } else {
     ceph_msg_header_old oldheader;
     if (tcp_read((char*)&oldheader, sizeof(oldheader)) < 0)
@@ -1913,10 +1913,8 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
     memcpy(&header, &oldheader, sizeof(header));
     header.src = oldheader.src.name;
     header.reserved = oldheader.reserved;
-    if (msgr->crcflags & MSG_CRC_HEADER) {
-      header.crc = oldheader.crc;
-      header_crc = ceph_crc32c(0, (unsigned char *)&oldheader, sizeof(oldheader) - sizeof(oldheader.crc));
-    }
+    header.crc = oldheader.crc;
+    header_crc = ceph_crc32c(0, (unsigned char *)&oldheader, sizeof(oldheader) - sizeof(oldheader.crc));
   }
 
   ldout(msgr->cct,20) << "reader got envelope type=" << header.type
@@ -1927,7 +1925,7 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
            << dendl;
 
   // verify header crc
-  if ((msgr->crcflags & MSG_CRC_HEADER) && header_crc != header.crc) {
+  if (header_crc != header.crc) {
     ldout(msgr->cct,0) << "reader got bad header crc " << header_crc << " != " << header.crc << dendl;
     return -1;
   }
@@ -2071,7 +2069,7 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
 
   ldout(msgr->cct,20) << "reader got " << front.length() << " + " << middle.length() << " + " << data.length()
 	   << " byte message" << dendl;
-  message = decode_message(msgr->cct, msgr->crcflags, header, footer, front, middle, data);
+  message = decode_message(msgr->cct, header, footer, front, middle, data);
   if (!message) {
     ret = -EINVAL;
     goto out_dethrottle;
@@ -2128,51 +2126,96 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
 
 int Pipe::do_sendmsg(struct msghdr *msg, int len, bool more)
 {
-  while (len > 0) {
-    if (0) { // sanity
-      int l = 0;
-      for (unsigned i=0; i<msg->msg_iovlen; i++)
-	l += msg->msg_iov[i].iov_len;
-      assert(l == len);
-    }
+  char buf[80];
 
-    int r = ::sendmsg(sd, msg, MSG_NOSIGNAL | (more ? MSG_MORE : 0));
-    if (r == 0) 
-      ldout(msgr->cct,10) << "do_sendmsg hmm do_sendmsg got r==0!" << dendl;
-    if (r < 0) { 
-      ldout(msgr->cct,1) << "do_sendmsg error " << cpp_strerror(errno) << dendl;
-      return -1;
+//  while (len > 0) {
+//    if (0) { // sanity
+//      int l = 0;
+//      for (unsigned i=0; i<msg->msg_iovlen; i++)
+//        l += msg->msg_iov[i].iov_len;
+//      assert(l == len);
+//    }
+    ldout(msgr->cct,0) << "..............do_sendmsg NOW" << dendl;
+    char* msg_buf = (char*)malloc(len);
+    if(msg_buf==NULL)
+    {
+            ldout(msgr->cct,0) << "do_sendmsg malloc ERROR" << dendl;
+            return -1;
     }
-    if (state == STATE_CLOSED) {
-      ldout(msgr->cct,10) << "do_sendmsg oh look, state == CLOSED, giving up" << dendl;
-      errno = EINTR;
-      return -1; // close enough
-    }
-
-    len -= r;
-    if (len == 0) break;
     
-    // hrmph.  trim r bytes off the front of our message.
-    ldout(msgr->cct,20) << "do_sendmsg short write did " << r << ", still have " << len << dendl;
-    while (r > 0) {
-      if (msg->msg_iov[0].iov_len <= (size_t)r) {
-	// lose this whole item
-	//ldout(msgr->cct,30) << "skipping " << msg->msg_iov[0].iov_len << ", " << (msg->msg_iovlen-1) << " v, " << r << " left" << dendl;
-	r -= msg->msg_iov[0].iov_len;
-	msg->msg_iov++;
-	msg->msg_iovlen--;
-      } else {
-	// partial!
-	//ldout(msgr->cct,30) << "adjusting " << msg->msg_iov[0].iov_len << ", " << msg->msg_iovlen << " v, " << r << " left" << dendl;
-	msg->msg_iov[0].iov_base = (char *)msg->msg_iov[0].iov_base + r;
-	msg->msg_iov[0].iov_len -= r;
-	break;
-      }
-    }
-  }
+    int l = 0;
+    char* msg_buf_off = msg_buf;
+    for (unsigned i=0; i<msg->msg_iovlen; i++)
+        {
+                memcpy(msg_buf_off, msg->msg_iov[i].iov_base, msg->msg_iov[i].iov_len);
+                msg_buf_off+=msg->msg_iov[i].iov_len;
+                assert(msg_buf_off<=msg_buf+len);
+        }
+        
+        #define MSG_BLOCK_SIZE 256*1024*1024
+        
+        msg_buf_off = msg_buf;
+        while (len > 0) {
+                int send_len_this_time = MIN(len, MSG_BLOCK_SIZE);
+                //int send_len_this_time = len;
+                while(send_len_this_time > 0)
+                {
+                        int r = ::send( sd, msg_buf_off, send_len_this_time, 0 );
+                        //ldout(msgr->cct,0) << "do_sendmsg NOW in while (send_len_this_time > 0) send_len_this_time = " << send_len_this_time << " r=" << r << dendl;
+                        if (r < 0) {
+                                ldout(msgr->cct,0) << "do_sendmsg ERROR " << strerror_r(errno, buf, sizeof(buf)) << dendl;
+                                free(msg_buf);
+                                return r;
+                        }
+                        if (state == STATE_CLOSED) {
+                                ldout(msgr->cct,0) << "do_sendmsg oh look, state == CLOSED, giving up" << dendl;
+                                errno = EINTR;
+                                free(msg_buf);
+                                return -1; // close enough
+                        }
+                        send_len_this_time -= r;
+                        msg_buf_off += r;
+                }
+                
+                len -= MIN(len, MSG_BLOCK_SIZE);
+        }
+        free(msg_buf);
+        msg_buf=NULL;
+    ldout(msgr->cct,0) << "do_sendmsg OK " << dendl;
+    
+    //int r = ::sendmsg(sd, msg, MSG_NOSIGNAL);
+    //ldout(msgr->cct,0) << ",,,,,,,,,,,,,,,,,do_sendmsg size=" << r << dendl;
+    //if (r == 0) 
+    //  ldout(msgr->cct,0) << "????????????????do_sendmsg hmm do_sendmsg got r==0!" << dendl;
+    //if (r < 0) { 
+    //  ldout(msgr->cct,0) << "!!!!!!!!!!!!!!!!do_sendmsg error " << strerror_r(errno, buf, sizeof(buf)) << dendl;
+    //  return -1;
+    //}
+
+
+//    len -= r;
+//    if (len == 0) break;
+    
+//    // hrmph.  trim r bytes off the front of our message.
+//    ldout(msgr->cct,20) << "do_sendmsg short write did " << r << ", still have " << len << dendl;
+//    while (r > 0) {
+//      if (msg->msg_iov[0].iov_len <= (size_t)r) {
+//        // lose this whole item
+//        //ldout(msgr->cct,30) << "skipping " << msg->msg_iov[0].iov_len << ", " << (msg->msg_iovlen-1) << " v, " << r << " left" << dendl;
+//        r -= msg->msg_iov[0].iov_len;
+//        msg->msg_iov++;
+//        msg->msg_iovlen--;
+//      } else {
+//        // partial!
+//        //ldout(msgr->cct,30) << "adjusting " << msg->msg_iov[0].iov_len << ", " << msg->msg_iovlen << " v, " << r << " left" << dendl;
+//        msg->msg_iov[0].iov_base = (char *)msg->msg_iov[0].iov_base + r;
+//        msg->msg_iov[0].iov_len -= r;
+//        break;
+//      }
+//    }
+//  }
   return 0;
 }
-
 
 int Pipe::write_ack(uint64_t seq)
 {
@@ -2267,12 +2310,8 @@ int Pipe::write_message(ceph_msg_header& header, ceph_msg_footer& footer, buffer
     oldheader.src.addr = connection_state->get_peer_addr();
     oldheader.orig_src = oldheader.src;
     oldheader.reserved = header.reserved;
-    if (msgr->crcflags & MSG_CRC_HEADER) {
-	oldheader.crc = ceph_crc32c(0, (unsigned char*)&oldheader,
-				    sizeof(oldheader) - sizeof(oldheader.crc));
-    } else {
-	oldheader.crc = 0;
-    }
+    oldheader.crc = ceph_crc32c(0, (unsigned char*)&oldheader,
+				sizeof(oldheader) - sizeof(oldheader.crc));
     msgvec[msg.msg_iovlen].iov_base = (char*)&oldheader;
     msgvec[msg.msg_iovlen].iov_len = sizeof(oldheader);
     msglen += sizeof(oldheader);
@@ -2335,13 +2374,9 @@ int Pipe::write_message(ceph_msg_header& header, ceph_msg_footer& footer, buffer
     msglen += sizeof(footer);
     msg.msg_iovlen++;
   } else {
-    if (msgr->crcflags & MSG_CRC_HEADER) {
-      old_footer.front_crc = footer.front_crc;
-      old_footer.middle_crc = footer.middle_crc;
-    } else {
-	old_footer.front_crc = old_footer.middle_crc = 0;
-    }
-    old_footer.data_crc = msgr->crcflags & MSG_CRC_DATA ? footer.data_crc : 0;
+    old_footer.front_crc = footer.front_crc;   
+    old_footer.middle_crc = footer.middle_crc;   
+    old_footer.data_crc = footer.data_crc;   
     old_footer.flags = footer.flags;   
     msgvec[msg.msg_iovlen].iov_base = (char*)&old_footer;
     msgvec[msg.msg_iovlen].iov_len = sizeof(old_footer);
@@ -2397,37 +2432,43 @@ int Pipe::tcp_read_wait()
 {
   if (sd < 0)
     return -1;
-  struct pollfd pfd;
-  short evmask;
-  pfd.fd = sd;
-  pfd.events = POLLIN;
-#if defined(__linux__)
-  pfd.events |= POLLRDHUP;
-#endif
+//  struct pollfd pfd;
+//  short evmask;
+//  pfd.fd = sd;
+//  //pfd.events = POLLIN;
+//
+//  if (poll(&pfd, 1, msgr->timeout) <= 0)
+//    return -1;
+//
+//  //evmask = POLLERR | POLLHUP | POLLNVAL;
+//
+//  if (pfd.revents & evmask)
+//    return -1;
+//
+//  if (!(pfd.revents & POLLIN))
+//    return -1;
 
-  if (has_pending_data())
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(sd, &fds);
+    struct timeval tv = {msgr->cct->_conf->ms_tcp_read_timeout, 0};
+    
+    int ret=::select(0, &fds, NULL, NULL, &tv);
+    if(ret == SOCKET_ERROR)
+            return -1;
+    if(ret<=0)
+        return -1;
+        
     return 0;
-
-  if (poll(&pfd, 1, msgr->timeout) <= 0)
-    return -1;
-
-  evmask = POLLERR | POLLHUP | POLLNVAL;
-#if defined(__linux__)
-  evmask |= POLLRDHUP;
-#endif
-  if (pfd.revents & evmask)
-    return -1;
-
-  if (!(pfd.revents & POLLIN))
-    return -1;
-
-  return 0;
 }
+
 
 int Pipe::do_recv(char *buf, size_t len, int flags)
 {
 again:
   int got = ::recv( sd, buf, len, flags );
+  if(got == SOCKET_ERROR)
+    return -1;
   if (got < 0) {
     if (errno == EAGAIN || errno == EINTR) {
       goto again;
@@ -2489,15 +2530,39 @@ int Pipe::buffered_recv(char *buf, size_t len, int flags)
   return total_recv;
 }
 
+//int Pipe::tcp_read_nonblocking(char *buf, int len)
+//{
+//  //int got = buffered_recv(buf, len, MSG_DONTWAIT );
+//  int got = buffered_recv(buf, len, 0 );
+//  if (got < 0) {
+//    ldout(msgr->cct, 10) << __func__ << " socket " << sd << " returned "
+//                         << got << " " << cpp_strerror(errno) << dendl;
+//    return -1;
+//  }
+//  if (got == 0) {
+//    /* poll() said there was data, but we didn't read any - peer
+//     * sent a FIN.  Maybe POLLRDHUP signals this, but this is
+//     * standard socket behavior as documented by Stevens.
+//     */
+//    return -1;
+//  }
+//  return got;
+//}
+
 int Pipe::tcp_read_nonblocking(char *buf, int len)
 {
-  int got = buffered_recv(buf, len, MSG_DONTWAIT );
+again:
+  //int got = ::recv( sd, buf, len, MSG_DONTWAIT );
+  int got = ::recv( sd, buf, len, 0 );
   if (got < 0) {
-    ldout(msgr->cct, 10) << __func__ << " socket " << sd << " returned "
-		         << got << " " << cpp_strerror(errno) << dendl;
-    return -1;
-  }
-  if (got == 0) {
+    if (errno == EAGAIN || errno == EINTR) {
+      goto again;
+    } else {
+      ldout(msgr->cct, 10) << "tcp_read_nonblocking socket " << sd << " returned "
+                     << got << " errno " << errno << " " << cpp_strerror(errno) << dendl;
+      return -1;
+    }
+  } else if (got == 0) {
     /* poll() said there was data, but we didn't read any - peer
      * sent a FIN.  Maybe POLLRDHUP signals this, but this is
      * standard socket behavior as documented by Stevens.
@@ -2511,12 +2576,9 @@ int Pipe::tcp_write(const char *buf, int len)
 {
   if (sd < 0)
     return -1;
-  struct pollfd pfd;
-  pfd.fd = sd;
-  pfd.events = POLLOUT | POLLHUP | POLLNVAL | POLLERR;
-#if defined(__linux__)
-  pfd.events |= POLLRDHUP;
-#endif
+//  struct pollfd pfd;
+//  pfd.fd = sd;
+//  //pfd.events = POLLOUT | POLLHUP | POLLNVAL | POLLERR;
 
   if (msgr->cct->_conf->ms_inject_socket_failures && sd >= 0) {
     if (rand() % msgr->cct->_conf->ms_inject_socket_failures == 0) {
@@ -2525,19 +2587,31 @@ int Pipe::tcp_write(const char *buf, int len)
     }
   }
 
-  if (poll(&pfd, 1, -1) < 0)
-    return -1;
+//  if (poll(&pfd, 1, -1) < 0)
+//    return -1;
+//
+//  if (!(pfd.revents & POLLOUT))
+//    return -1;
 
-  if (!(pfd.revents & POLLOUT))
-    return -1;
-
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(sd, &fds);
+    
+    int ret=::select(0, NULL, &fds, NULL, NULL);
+    if(ret == SOCKET_ERROR)
+            return -1;
+    if(ret < 0)
+        return -1;
+    
   //lgeneric_dout(cct, DBL) << "tcp_write writing " << len << dendl;
   assert(len > 0);
   while (len > 0) {
-    int did = ::send( sd, buf, len, MSG_NOSIGNAL );
+    int did = ::send( sd, buf, len, 0 );
+    if(did == SOCKET_ERROR)
+            return -1;
     if (did < 0) {
-      //lgeneric_dout(cct, 1) << "tcp_write error did = " << did << " " << cpp_strerror(errno) << dendl;
-      //lgeneric_derr(cct, 1) << "tcp_write error did = " << did << " " << cpp_strerror(errno) << dendl;
+      //lgeneric_dout(cct, 1) << "tcp_write error did = " << did << "  errno " << errno << " " << strerror(errno) << dendl;
+      //lgeneric_derr(cct, 1) << "tcp_write error did = " << did << "  errno " << errno << " " << strerror(errno) << dendl;
       return did;
     }
     len -= did;
@@ -2545,4 +2619,44 @@ int Pipe::tcp_write(const char *buf, int len)
     //lgeneric_dout(cct, DBL) << "tcp_write did " << did << ", " << len << " left" << dendl;
   }
   return 0;
+}
+int pipe_cloexec(int pipefd[2])
+{
+  int ret;
+
+
+#if defined(HAVE_PIPE2) && defined(O_CLOEXEC)
+  ret = pipe2(pipefd, O_CLOEXEC);
+  if (ret == -1)
+    return -errno;
+  return 0;
+#else
+  //ret = pipe(pipefd);
+  //if (ret == -1)
+  //  return -errno;
+
+  /*
+   * The old-fashioned, race-condition prone way that we have to fall
+   * back on if O_CLOEXEC does not exist.
+   */
+  ret = socket(pipefd[0], F_SETFD, FD_CLOEXEC);
+  if (ret == -1) {
+    ret = -errno;
+    goto out;
+  }
+
+  ret = socket(pipefd[1], F_SETFD, FD_CLOEXEC);
+  if (ret == -1) {
+    ret = -errno;
+    goto out;
+  }
+
+  return 0;
+
+out:
+  VOID_TEMP_FAILURE_RETRY(close(pipefd[0]));
+  VOID_TEMP_FAILURE_RETRY(close(pipefd[1]));
+
+  return ret;
+#endif
 }

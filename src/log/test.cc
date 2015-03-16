@@ -187,7 +187,8 @@ TEST(Log, ManyGather)
   log.flush();
   log.stop();
 }
-
+#ifdef _WIN32
+#else
 void do_segv()
 {
   SubsystemMap subs;
@@ -209,3 +210,4 @@ TEST(Log, InternalSegv)
 {
   ASSERT_DEATH(do_segv(), ".*");
 }
+#endif

@@ -16,6 +16,9 @@
 #ifndef CEPH_THREAD_H
 #define CEPH_THREAD_H
 
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
 #include <pthread.h>
 #include <sys/types.h>
 

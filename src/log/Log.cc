@@ -4,8 +4,10 @@
 #include "Log.h"
 
 #include <errno.h>
+#ifdef _WIN32
+#else
 #include <syslog.h>
-
+#endif
 #include <iostream>
 #include <sstream>
 
@@ -34,6 +36,43 @@ static void log_on_exit(void *p)
   delete (Log **)p;// Delete allocated pointer (not Log object, the pointer only!)
 }
 
+#ifdef _WIN32
+Log::Log(SubsystemMap *s)
+  : m_indirect_this(NULL),
+    m_subs(s),
+    m_new(), m_recent(),
+    m_fd(-1),
+    m_syslog_log(-2), m_syslog_crash(-2),
+    m_stderr_log(1), m_stderr_crash(-1),
+    m_stop(false),
+    m_max_new(DEFAULT_MAX_NEW),
+    m_max_recent(DEFAULT_MAX_RECENT),
+    m_inject_segv(false)
+{
+  m_queue_mutex_holder.p = NULL;
+  m_queue_mutex_holder.x = 0;
+  m_flush_mutex_holder.p = NULL;
+  m_flush_mutex_holder.x = 0;
+  int ret;
+
+  ret = pthread_mutex_init(&m_flush_mutex, NULL);
+  assert(ret == 0);
+
+  ret = pthread_mutex_init(&m_queue_mutex, NULL);
+  assert(ret == 0);
+
+  ret = pthread_cond_init(&m_cond_loggers, NULL);
+  assert(ret == 0);
+
+  ret = pthread_cond_init(&m_cond_flusher, NULL);
+  assert(ret == 0);
+
+  // kludge for prealloc testing
+  if (false)
+    for (int i=0; i < PREALLOC; i++)
+      m_recent.enqueue(new Entry);
+}
+#else
 Log::Log(SubsystemMap *s)
   : m_indirect_this(NULL),
     m_subs(s),
@@ -67,7 +106,7 @@ Log::Log(SubsystemMap *s)
     for (int i=0; i < PREALLOC; i++)
       m_recent.enqueue(new Entry);
 }
-
+#endif
 Log::~Log()
 {
   if (m_indirect_this) {
@@ -144,8 +183,11 @@ void Log::set_stderr_level(int log, int crash)
 void Log::submit_entry(Entry *e)
 {
   pthread_mutex_lock(&m_queue_mutex);
+#ifdef _WIN32
+  m_queue_mutex_holder.p = pthread_self().p;
+#else
   m_queue_mutex_holder = pthread_self();
-
+#endif
   if (m_inject_segv)
     *(int *)(0) = 0xdead;
 
@@ -155,7 +197,11 @@ void Log::submit_entry(Entry *e)
 
   m_new.enqueue(e);
   pthread_cond_signal(&m_cond_flusher);
+#ifdef _WIN32
+  m_queue_mutex_holder.p = 0;
+#else
   m_queue_mutex_holder = 0;
+#endif
   pthread_mutex_unlock(&m_queue_mutex);
 }
 
@@ -175,7 +221,29 @@ Entry *Log::create_entry(int level, int subsys)
     return e;
   }
 }
+#ifdef _WIN32
+void Log::flush()
+{
+  pthread_mutex_lock(&m_flush_mutex);
+  m_flush_mutex_holder.p = pthread_self().p;
+  pthread_mutex_lock(&m_queue_mutex);
+  m_queue_mutex_holder.p = pthread_self().p;
+  EntryQueue t;
+  t.swap(m_new);
+  pthread_cond_broadcast(&m_cond_loggers);
+  m_queue_mutex_holder.p = 0;
+  pthread_mutex_unlock(&m_queue_mutex);
+  _flush(&t, &m_recent, false);
 
+  // trim
+  while (m_recent.m_len > m_max_recent) {
+    delete m_recent.dequeue();
+  }
+
+  m_flush_mutex_holder.p = 0;
+  pthread_mutex_unlock(&m_flush_mutex);
+}
+#else
 void Log::flush()
 {
   pthread_mutex_lock(&m_flush_mutex);
@@ -197,7 +265,7 @@ void Log::flush()
   m_flush_mutex_holder = 0;
   pthread_mutex_unlock(&m_flush_mutex);
 }
-
+#endif
 void Log::_flush(EntryQueue *t, EntryQueue *requeue, bool crash)
 {
   Entry *e;
@@ -216,9 +284,14 @@ void Log::_flush(EntryQueue *t, EntryQueue *requeue, bool crash)
       if (crash)
 	buflen += snprintf(buf, sizeof(buf), "%6d> ", -t->m_len);
       buflen += e->m_stamp.sprintf(buf + buflen, sizeof(buf)-buflen);
+#ifdef _WIN32
+      buflen += snprintf(buf + buflen, sizeof(buf)-buflen, " %lx %2d ",
+			(unsigned long)e->m_thread.p/*by ketor*/, e->m_prio);
+
+#else
       buflen += snprintf(buf + buflen, sizeof(buf)-buflen, " %lx %2d ",
 			(unsigned long)e->m_thread, e->m_prio);
-
+#endif
       // FIXME: this is slow
       string s = e->get_str();
 
@@ -233,7 +306,11 @@ void Log::_flush(EntryQueue *t, EntryQueue *requeue, bool crash)
       }
 
       if (do_syslog) {
+#ifdef _WIN32
+printf("%s%s\n", buf, s.c_str());
+#else
 	syslog(LOG_USER, "%s%s", buf, s.c_str());
+#endif
       }
 
       if (do_stderr) {
@@ -255,14 +332,63 @@ void Log::_log_message(const char *s, bool crash)
       cerr << "problem writing to " << m_log_file << ": " << cpp_strerror(r) << std::endl;
   }
   if ((crash ? m_syslog_crash : m_syslog_log) >= 0) {
+#ifdef _WIN32
+	printf("%s\n", s);
+#else
     syslog(LOG_USER, "%s", s);
+#endif
   }
   
   if ((crash ? m_stderr_crash : m_stderr_log) >= 0) {
     cerr << s << std::endl;
   }
 }
+#ifdef _WIN32
+void Log::dump_recent()
+{
+  pthread_mutex_lock(&m_flush_mutex);
+  m_flush_mutex_holder.p = pthread_self().p;
 
+  pthread_mutex_lock(&m_queue_mutex);
+  m_queue_mutex_holder.p = pthread_self().p;
+
+  EntryQueue t;
+  t.swap(m_new);
+
+  m_queue_mutex_holder.p = 0;
+  pthread_mutex_unlock(&m_queue_mutex);
+  _flush(&t, &m_recent, false);
+
+  EntryQueue old;
+  _log_message("--- begin dump of recent events ---", true);
+  _flush(&m_recent, &old, true);  
+
+  char buf[4096];
+  _log_message("--- logging levels ---", true);
+  for (vector<Subsystem>::iterator p = m_subs->m_subsys.begin();
+       p != m_subs->m_subsys.end();
+       ++p) {
+    snprintf(buf, sizeof(buf), "  %2d/%2d %s", p->log_level, p->gather_level, p->name.c_str());
+    _log_message(buf, true);
+  }
+
+  sprintf(buf, "  %2d/%2d (syslog threshold)", m_syslog_log, m_syslog_crash);
+  _log_message(buf, true);
+  sprintf(buf, "  %2d/%2d (stderr threshold)", m_stderr_log, m_stderr_crash);
+  _log_message(buf, true);
+  sprintf(buf, "  max_recent %9d", m_max_recent);
+  _log_message(buf, true);
+  sprintf(buf, "  max_new    %9d", m_max_new);
+  _log_message(buf, true);
+  sprintf(buf, "  log_file %s", m_log_file.c_str());
+  _log_message(buf, true);
+
+  _log_message("--- end dump of recent events ---", true);
+
+  m_flush_mutex_holder.p = 0;
+  pthread_mutex_unlock(&m_flush_mutex);
+}
+#else
 void Log::dump_recent()
 {
   pthread_mutex_lock(&m_flush_mutex);
@@ -307,7 +433,7 @@ void Log::dump_recent()
   m_flush_mutex_holder = 0;
   pthread_mutex_unlock(&m_flush_mutex);
 }
-
+#endif
 void Log::start()
 {
   assert(!is_started());
@@ -328,6 +454,36 @@ void Log::stop()
   join();
 }
 
+#ifdef _WIN32
+void *Log::entry()
+{
+  pthread_mutex_lock(&m_queue_mutex);
+  m_queue_mutex_holder.p = pthread_self().p;
+  while (!m_stop) {
+    if (!m_new.empty()) {
+      m_queue_mutex_holder.p = 0;
+      pthread_mutex_unlock(&m_queue_mutex);
+      flush();
+      pthread_mutex_lock(&m_queue_mutex);
+      m_queue_mutex_holder.p = pthread_self().p;
+      continue;
+    }
+
+    pthread_cond_wait(&m_cond_flusher, &m_queue_mutex);
+  }
+  m_queue_mutex_holder.p = 0;
+  pthread_mutex_unlock(&m_queue_mutex);
+  flush();
+  return NULL;
+}
+
+bool Log::is_inside_log_lock()
+{
+  return
+    pthread_self().p == m_queue_mutex_holder.p ||
+    pthread_self().p == m_flush_mutex_holder.p;
+}
+#else
 void *Log::entry()
 {
   pthread_mutex_lock(&m_queue_mutex);
@@ -356,7 +512,7 @@ bool Log::is_inside_log_lock()
     pthread_self() == m_queue_mutex_holder ||
     pthread_self() == m_flush_mutex_holder;
 }
-
+#endif
 void Log::inject_segv()
 {
   m_inject_segv = true;

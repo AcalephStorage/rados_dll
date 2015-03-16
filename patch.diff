@@ -1,0 +1,205 @@
+From dfb2ef8658cfe057a59fa999f91a4c2b017bb620 Mon Sep 17 00:00:00 2001
+From: Julio Telan <julio_telan@dlsu.edu.ph>
+Date: Thu, 26 Feb 2015 11:47:08 +0800
+Subject: [PATCH] cleaned and connect rados_client
+
+---
+ bin/ceph.conf               |  1 +
+ src/Makefile                |  4 ++--
+ src/include/rados_client.c  |  3 +++
+ src/librados/RadosClient.cc | 11 +++++++---
+ src/osdc/Objecter.cc        |  5 ++---
+ src/rados_client.c          | 53 ---------------------------------------------
+ 6 files changed, 16 insertions(+), 61 deletions(-)
+ delete mode 100644 src/rados_client.c
+
+diff --git a/bin/ceph.conf b/bin/ceph.conf
+index ad9c5be..ebef776 100644
+--- a/bin/ceph.conf
++++ b/bin/ceph.conf
+@@ -4,6 +4,7 @@ auth service required = none
+ auth client required = none
+ log_file = 1.log
+ 
++
+ [mon]
+ [mon.vagrant-ubuntu-trusty-64]
+ 	host = vagrant-ubuntu-trusty-64
+diff --git a/src/Makefile b/src/Makefile
+index 882e8fb..c83e6ec 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -104,8 +104,8 @@ ALL: ../bin/rados_client.exe
+ 	@echo "MAKE "$@" FINISH"
+ 	@echo "**************************************************************"
+ 
+-../bin/rados_client.exe:../$(BUILD)/librados_client.o ../bin/rados.dll
+-	$(CPP) $(CFLAGS) $(CLIBS) -o $@ $^ -unicode -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0
++../bin/rados_client.exe:../$(BUILD)/rados_client.o ../bin/rados.dll
++	$(CPP) $(CFLAGS) $(CLIBS) -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0 -unicode
+ 	@echo "**************************************************************"
+ 	@echo "MAKE "$@" FINISH"
+ 	@echo "**************************************************************"
+diff --git a/src/include/rados_client.c b/src/include/rados_client.c
+index fe14bf1..d48314c 100644
+--- a/src/include/rados_client.c
++++ b/src/include/rados_client.c
+@@ -42,6 +42,7 @@ int main (int argc, char ** argv)
+         }
+ 
+         /* Connect to the cluster */
++        printf("1\n");
+         err = rados_connect(cluster);
+         if (err < 0) {
+                 fprintf(stderr, "%s: cannot connect to cluster: %s\n", argv[0], strerror(-err));
+@@ -50,4 +51,6 @@ int main (int argc, char ** argv)
+                 printf("\nConnected to the cluster.\n");
+         }
+ 
++        
++
+ }
+\ No newline at end of file
+diff --git a/src/librados/RadosClient.cc b/src/librados/RadosClient.cc
+index 096a34c..d0d1305 100644
+--- a/src/librados/RadosClient.cc
++++ b/src/librados/RadosClient.cc
+@@ -189,16 +189,17 @@ int librados::RadosClient::ping_monitor(const string mon_id, string *result)
+ int librados::RadosClient::connect()
+ {
+   common_init_finish(cct);
+-
+   int err;
+   uint64_t nonce;
+ 
+   // already connected?
+   if (state == CONNECTING)
+   //  return -EINPROGRESS;
++  
+   if (state == CONNECTED)
+     return -EISCONN;
+   state = CONNECTING;
++  
+ 
+   // get monmap
+   err = monclient.build_initial_monmap();
+@@ -207,8 +208,10 @@ int librados::RadosClient::connect()
+ 
+   err = -ENOMEM;
+   nonce = getpid() + (1000000 * (uint64_t)rados_instance.inc());
++
+   messenger = Messenger::create(cct, cct->_conf->ms_type, entity_name_t::CLIENT(-1),
+ 				"radosclient", nonce);
++
+   if (!messenger)
+     goto out;
+ 
+@@ -248,7 +251,7 @@ int librados::RadosClient::connect()
+     goto out;
+   }
+ 
+-  err = monclient.authenticate(conf->client_mount_timeout);
++  //err = monclient.authenticate(conf->client_mount_timeout);
+   if (err) {
+     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;
+     shutdown();
+@@ -257,7 +260,9 @@ int librados::RadosClient::connect()
+   messenger->set_myname(entity_name_t::CLIENT(monclient.get_global_id()));
+ 
+   objecter->set_client_incarnation(0);
++
+   objecter->start();
++
+   lock.Lock();
+ 
+   timer.init();
+@@ -287,7 +292,7 @@ int librados::RadosClient::connect()
+       messenger = NULL;
+     }
+   }
+-
++  
+   return err;
+ }
+ 
+diff --git a/src/osdc/Objecter.cc b/src/osdc/Objecter.cc
+index 9914d60..0009119 100644
+--- a/src/osdc/Objecter.cc
++++ b/src/osdc/Objecter.cc
+@@ -282,11 +282,10 @@ void Objecter::init()
+ void Objecter::start()
+ {
+   RWLock::RLocker rl(rwlock);
+-
+   schedule_tick();
+-  if (osdmap->get_epoch() == 0) {
++  /*if (osdmap->get_epoch() == 0) {
+     _maybe_request_map();
+-  }
++  }*/
+ }
+ 
+ void Objecter::shutdown()
+diff --git a/src/rados_client.c b/src/rados_client.c
+deleted file mode 100644
+index 251a0fc..0000000
+--- a/src/rados_client.c
++++ /dev/null
+@@ -1,53 +0,0 @@
+-#include <stdio.h>
+-#include <string.h>
+-#include <rados/librados.h>
+-
+-int main (int argc, char argv**)
+-{
+-
+-        /* Declare the cluster handle and required arguments. */
+-        rados_t cluster;
+-        char cluster_name[] = "ceph";
+-        char user_name[] = "client.admin";
+-        uint64_t flags;
+-
+-        /* Initialize the cluster handle with the "ceph" cluster name and the "client.admin" user */
+-        int err;
+-        err = rados_create2(&cluster, cluster_name, user_name, flags);
+-
+-        if (err < 0) {
+-                fprintf(stderr, "%s: Couldn't create the cluster handle! %s\n", argv[0], strerror(-err));
+-                exit(EXIT_FAILURE);
+-        } else {
+-                printf("\nCreated a cluster handle.\n");
+-        }
+-
+-
+-        /* Read a Ceph configuration file to configure the cluster handle. */
+-        err = rados_conf_read_file(cluster, "/etc/ceph/ceph.conf");
+-        if (err < 0) {
+-                fprintf(stderr, "%s: cannot read config file: %s\n", argv[0], strerror(-err));
+-                exit(EXIT_FAILURE);
+-        } else {
+-                printf("\nRead the config file.\n");
+-        }
+-
+-        /* Read command line arguments */
+-        err = rados_conf_parse_argv(cluster, argc, argv);
+-        if (err < 0) {
+-                fprintf(stderr, "%s: cannot parse command line arguments: %s\n", argv[0], strerror(-err));
+-                exit(EXIT_FAILURE);
+-        } else {
+-                printf("\nRead the command line arguments.\n");
+-        }
+-
+-        /* Connect to the cluster */
+-        err = rados_connect(cluster);
+-        if (err < 0) {
+-                fprintf(stderr, "%s: cannot connect to cluster: %s\n", argv[0], strerror(-err));
+-                exit(EXIT_FAILURE);
+-        } else {
+-                printf("\nConnected to the cluster.\n");
+-        }
+-
+-}
+\ No newline at end of file
+-- 
+1.9.5.msysgit.0
+

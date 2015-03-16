@@ -49,6 +49,7 @@ using namespace ceph;
 template<class T>
 inline void encode_raw(const T& t, bufferlist& bl)
 {
+  printf("encode_raw(%p, %p)\n", &t, &bl);
   bl.append((char*)&t, sizeof(t));
 }
 template<class T>
@@ -58,7 +59,9 @@ inline void decode_raw(T& t, bufferlist::iterator &p)
 }
 
 #define WRITE_RAW_ENCODER(type)						\
-  inline void encode(const type &v, bufferlist& bl, uint64_t features=0) { encode_raw(v, bl); } \
+  inline void encode(const type &v, bufferlist& bl, uint64_t features=0) { \
+    printf("encode(" #type ", %p, %" PRIu64 ")\n", &bl, features); \
+    encode_raw(v, bl); } \
   inline void decode(type &v, bufferlist::iterator& p) { __ASSERT_FUNCTION decode_raw(v, p); }
 
 WRITE_RAW_ENCODER(__u8)
@@ -286,7 +289,11 @@ inline void decode(T &o, bufferlist& bl)
 #include <deque>
 #include <vector>
 #include <string>
+#ifdef _WIN32
+#include <boost/optional.hpp>
+#else
 #include <boost/optional/optional_io.hpp>
+#endif
 #include <boost/tuple/tuple.hpp>
 
 #ifndef _BACKWARD_BACKWARD_WARNING_H
@@ -305,11 +312,14 @@ inline void encode(const boost::optional<T> &p, bufferlist &bl)
   if (p)
     encode(p.get(), bl);
 }
-
+#ifdef _WIN32
+#else
 #pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 template<typename T>
 inline void decode(boost::optional<T> &p, bufferlist::iterator &bp)
 {
@@ -321,9 +331,11 @@ inline void decode(boost::optional<T> &p, bufferlist::iterator &bp)
     decode(p.get(), bp);
   }
 }
+#ifdef _WIN32
+#else
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic warning "-Wpragmas"
-
+#endif
 //triple tuple
 template<class A, class B, class C>
 inline void encode(const boost::tuple<A, B, C> &t, bufferlist& bl)
@@ -582,8 +594,8 @@ inline void decode(std::map<T,U*>& m, bufferlist::iterator& p)
     decode(k, p);
     m[k] = new U(p);
   }
-  }*/
-
+  }
+*/
 // map
 template<class T, class U>
 inline void encode(const std::map<T,U>& m, bufferlist& bl)

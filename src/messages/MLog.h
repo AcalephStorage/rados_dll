@@ -19,8 +19,10 @@
 #include "messages/PaxosServiceMessage.h"
 
 #include <deque>
+#ifdef _WIN32
+#else
 #include <uuid/uuid.h>
-
+#endif
 class MLog : public PaxosServiceMessage {
 public:
   uuid_d fsid;

@@ -59,6 +59,7 @@
 #define CEPH_FEATURE_OSD_OBJECT_DIGEST  (1ULL<<46)  /* overlap with fadvise */
 #define CEPH_FEATURE_OSD_TRANSACTION_MAY_LAYOUT (1ULL<<46) /* overlap w/ fadvise */
 #define CEPH_FEATURE_MDS_QUOTA      (1ULL<<47)
+
 #define CEPH_FEATURE_CRUSH_V4      (1ULL<<48)  /* straw2 buckets */
 #define CEPH_FEATURE_OSD_MIN_SIZE_RECOVERY (1ULL<<49)
 // duplicated since it was introduced at the same time as MIN_SIZE_RECOVERY
@@ -156,6 +157,7 @@ static inline unsigned long long ceph_sanitize_features(unsigned long long f) {
 /*
  * crush related features
  */
+
 #define CEPH_FEATURES_CRUSH			\
 	(CEPH_FEATURE_CRUSH_TUNABLES |		\
 	 CEPH_FEATURE_CRUSH_TUNABLES2 |		\

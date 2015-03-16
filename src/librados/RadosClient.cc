@@ -83,14 +83,19 @@ librados::RadosClient::RadosClient(CephContext *cct_)
 
 int64_t librados::RadosClient::lookup_pool(const char *name)
 {
+  printf("1.1.4.1.1\n");
   int r = wait_for_osdmap();
+  printf("1.1.4.1.2\n");
   if (r < 0) {
     return r;
   }
-
+  printf("1.1.4.1.3\n");
   const OSDMap *osdmap = objecter->get_osdmap_read();
+  printf("1.1.4.1.4\n");
   int64_t ret = osdmap->lookup_pg_pool_name(name);
+  printf("1.1.4.1.5\n");
   objecter->put_osdmap_read();
+  printf("1.1.4.1.6\n");
   return ret;
 }
 
@@ -188,20 +193,30 @@ int librados::RadosClient::ping_monitor(const string mon_id, string *result)
 
 int librados::RadosClient::connect()
 {
+  printf("librados::RadosClient::connect()\n");
   common_init_finish(cct);
 
   int err;
   uint64_t nonce;
 
+  printf("RadosClient::connect state:");
   // already connected?
-  if (state == CONNECTING)
-    return -EINPROGRESS;
-  if (state == CONNECTED)
+  if (state == CONNECTING) {
+    printf("already CONNECTING\n");
+    // No EINPROGRESS in mingw sockets, so for now return EISCON
+    // return -EINPROGRESS;
     return -EISCONN;
+  }
+  if (state == CONNECTED) {
+    printf("CONNECTED\n");
+    return -EISCONN;
+  }
+  printf("<- CONNECTING\n");
   state = CONNECTING;
 
   // get monmap
   err = monclient.build_initial_monmap();
+  printf("RadosClient::connect err: %d\n", err);
   if (err < 0)
     goto out;
 
@@ -209,6 +224,7 @@ int librados::RadosClient::connect()
   nonce = getpid() + (1000000 * (uint64_t)rados_instance.inc());
   messenger = Messenger::create(cct, cct->_conf->ms_type, entity_name_t::CLIENT(-1),
 				"radosclient", nonce);
+  printf("RadosClient::connect messenger: %p\n", messenger);
   if (!messenger)
     goto out;
 
@@ -217,8 +233,11 @@ int librados::RadosClient::connect()
   // how to decompose the reply data into its consituent pieces.
   messenger->set_default_policy(Messenger::Policy::lossy_client(0, CEPH_FEATURE_OSDREPLYMUX));
 
+  std::cout << "RadosClient::connect starting msgr at " << messenger->get_myaddr() << std::endl;
+
   ldout(cct, 1) << "starting msgr at " << messenger->get_myaddr() << dendl;
 
+  printf("RadosClient::connect starting objecter\n");
   ldout(cct, 1) << "starting objecter" << dendl;
 
   err = -ENOMEM;
@@ -226,10 +245,12 @@ int librados::RadosClient::connect()
 			  &finisher,
 			  cct->_conf->rados_mon_op_timeout,
 			  cct->_conf->rados_osd_op_timeout);
+  printf("RadosClient::connect objecter: %p\n", objecter);
   if (!objecter)
     goto out;
   objecter->set_balanced_budget();
 
+  printf("RadosClient::connect monclient.set_messenger(%p);\n", messenger);
   monclient.set_messenger(messenger);
 
   objecter->init();
@@ -238,37 +259,51 @@ int librados::RadosClient::connect()
 
   messenger->start();
 
+  printf("RadosClient::connect setting wanted keys\n");
   ldout(cct, 1) << "setting wanted keys" << dendl;
   monclient.set_want_keys(CEPH_ENTITY_TYPE_MON | CEPH_ENTITY_TYPE_OSD);
+  printf("RadosClient::connect calling monclient init\n");
   ldout(cct, 1) << "calling monclient init" << dendl;
   err = monclient.init();
+  printf("RadosClient::connect monclient.init() -> %d\n", err);
   if (err) {
     ldout(cct, 0) << conf->name << " initialization error " << cpp_strerror(-err) << dendl;
     shutdown();
     goto out;
   }
 
+  //err = monclient.authenticate(conf->client_mount_timeout);
+
+
+  printf("RadosClient::connect monclient.authenticate(%f)...\n", conf->client_mount_timeout);
   err = monclient.authenticate(conf->client_mount_timeout);
+  printf("RadosClient::connect monclient.authenticate() -> %d\n", err);
+
   if (err) {
+    std::cout << conf->name << " authentication error " << cpp_strerror(-err) << std::endl;
     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;
     shutdown();
     goto out;
   }
+  std::cout << "RadosClient::connect messenger->set_myname(" << entity_name_t::CLIENT(monclient.get_global_id()) << ")" << std::endl;
   messenger->set_myname(entity_name_t::CLIENT(monclient.get_global_id()));
 
+  printf("RadosClient::connect objecter->set_client_incarnation(0);");
   objecter->set_client_incarnation(0);
+  printf("RadosClient::connect objecter->start();");
   objecter->start();
+  printf("RadosClient::connect lock.Lock();");
   lock.Lock();
-
+  printf("RadosClient::connect timer.init();");
   timer.init();
-
+  printf("RadosClient::connect monclient.renew_subs();");
   monclient.renew_subs();
-
+  printf("RadosClient::connect finisher.start();");
   finisher.start();
 
   state = CONNECTED;
   instance_id = monclient.get_global_id();
-
+  std::cout << "instance_id: " << instance_id << std::endl;
   lock.Unlock();
 
   ldout(cct, 1) << "init done" << dendl;
@@ -287,7 +322,7 @@ int librados::RadosClient::connect()
       messenger = NULL;
     }
   }
-
+  
   return err;
 }
 
@@ -347,14 +382,19 @@ librados::RadosClient::~RadosClient()
 
 int librados::RadosClient::create_ioctx(const char *name, IoCtxImpl **io)
 {
+  printf("librados::RadosClient::create_ioctx(%s, %p)\n", name, *io);
   int64_t poolid = lookup_pool(name);
+  printf("lookup_pool(%s) -> %" PRId64 "\n", name, poolid);
   if (poolid < 0) {
     // Make sure we have the latest map
     int r = wait_for_latest_osdmap();
+    printf("wait_for_latest_osdmap() -> %d\n", r);
     if (r < 0)
       return r;
 
     poolid = lookup_pool(name);
+    printf("poolid: %" PRId64 "\n", poolid);
+    printf("1.1.4.5\n");
     if (poolid < 0) {
       return (int)poolid;
     }
@@ -426,47 +466,68 @@ bool librados::RadosClient::_dispatch(Message *m)
 
 int librados::RadosClient::wait_for_osdmap()
 {
+  printf("librados::RadosClient::wait_for_osdmap\n");
   assert(!lock.is_locked_by_me());
-
+  printf("1.1.4.1.1.1\n");
   if (state != CONNECTED) {
     return -ENOTCONN;
   }
-
+  printf("1.1.4.1.1.2\n");
   bool need_map = false;
+  printf("librados::RadosClient::wait_for_osdmap: about to call objecter->get_osdmap_read()\n");
+  printf("objecter: %p\n", objecter);
   const OSDMap *osdmap = objecter->get_osdmap_read();
+  printf("osdmap: %p\n", osdmap);
+  printf("osdmap->get_epoch: %d\n", osdmap->get_epoch());
   if (osdmap->get_epoch() == 0) {
     need_map = true;
   }
+  printf("1.1.4.1.1.4\n");
   objecter->put_osdmap_read();
 
   if (need_map) {
+    printf("need_map\n");
     Mutex::Locker l(lock);
 
+    printf("cct->_conf->rados_mon_op_timeout: %f\n", cct->_conf->rados_mon_op_timeout);
     utime_t timeout;
     if (cct->_conf->rados_mon_op_timeout > 0)
       timeout.set_from_double(cct->_conf->rados_mon_op_timeout);
-
+  printf("1.1.4.1.1.6\n");
     const OSDMap *osdmap = objecter->get_osdmap_read();
+    printf("1.1.4.1.1.7\n");
     if (osdmap->get_epoch() == 0) {
       ldout(cct, 10) << __func__ << " waiting" << dendl;
       utime_t start = ceph_clock_now(cct);
+      printf("1.1.4.1.1.8\n");
       while (osdmap->get_epoch() == 0) {
         objecter->put_osdmap_read();
+        printf("1.1.4.1.1.9\n");
+        std::cout << osdmap->get_epoch() << std::endl;
+        printf("%d\n", osdmap->get_epoch());
         cond.WaitInterval(cct, lock, timeout);
+        printf("1.1.4.1.1.10\n");
         utime_t elapsed = ceph_clock_now(cct) - start;
+        printf("1.1.4.1.1.11\n");
         if (!timeout.is_zero() && elapsed > timeout) {
+          printf("1.1.4.1.1.12\n");
           lderr(cct) << "timed out waiting for first osdmap from monitors" << dendl;
           return -ETIMEDOUT;
         }
+        printf("1.1.4.1.1.13\n");
         osdmap = objecter->get_osdmap_read();
       }
+      
       ldout(cct, 10) << __func__ << " done waiting" << dendl;
     }
+
+    printf("1.1.4.1.1.14\n");
     objecter->put_osdmap_read();
     return 0;
   } else {
     return 0;
   }
+
 }
 
 

@@ -24,6 +24,9 @@
 
 void dump_open_fds(CephContext *cct)
 {
+#ifdef _WIN32
+  return;
+#else
   const char *fn = "/proc/self/fd";
   DIR *d = opendir(fn);
   if (!d) {
@@ -54,4 +57,5 @@ void dump_open_fds(CephContext *cct)
   lderr(cct) << "dump_open_fds dumped " << n << " open files" << dendl;
 
   closedir(d);
+#endif
 }

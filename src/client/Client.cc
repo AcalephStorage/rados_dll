@@ -491,8 +491,7 @@ int Client::init()
   cct->get_perfcounters_collection()->add(logger);
 
   client_lock.Unlock();
-#ifdef _WIN32
-#else
+
   AdminSocket* admin_socket = cct->get_admin_socket();
   int ret = admin_socket->register_command("mds_requests",
 					   "mds_requests",
@@ -534,7 +533,7 @@ int Client::init()
     lderr(cct) << "error registering admin socket command: "
 	       << cpp_strerror(-ret) << dendl;
   }
-#endif
+
   populate_metadata();
 
   client_lock.Lock();
@@ -546,15 +545,14 @@ int Client::init()
 void Client::shutdown() 
 {
   ldout(cct, 1) << "shutdown" << dendl;
-#ifdef _WIN32
-#else
+
   AdminSocket* admin_socket = cct->get_admin_socket();
   admin_socket->unregister_command("mds_requests");
   admin_socket->unregister_command("mds_sessions");
   admin_socket->unregister_command("dump_cache");
   admin_socket->unregister_command("kick_stale_sessions");
   admin_socket->unregister_command("status");
-#endif
+
   if (ino_invalidate_cb) {
     ldout(cct, 10) << "shutdown stopping cache invalidator finisher" << dendl;
     async_ino_invalidator.wait_for_empty();

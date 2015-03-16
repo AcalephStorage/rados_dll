@@ -14,7 +14,10 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+#ifdef _WIN32
+#else
 #include <sys/syscall.h>   /* For SYS_xxx definitions */
+#endif
 #include <algorithm>
 #include <errno.h>
 

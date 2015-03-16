@@ -16,8 +16,10 @@
 #define CEPH_MCOMMAND_H
 
 #include <vector>
+#ifdef _WIN32
+#else
 #include <uuid/uuid.h>
-
+#endif
 #include "msg/Message.h"
 
 class MCommand : public Message {

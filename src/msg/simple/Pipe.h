@@ -22,6 +22,24 @@
 #include "msg/Messenger.h"
 #include "PipeConnection.h"
 
+/* Structure describing messages sent by
+   `sendmsg' and received by `recvmsg'.  */
+struct msghdr
+  {
+    void *msg_name;             /* Address to send to/receive from.  */
+    socklen_t msg_namelen;      /* Length of address data.  */
+
+    struct iovec *msg_iov;	/* Vector of data to send/receive into.  */
+    size_t msg_iovlen;          /* Number of elements in the vector.  */
+
+    void *msg_control;          /* Ancillary data (eg BSD filedesc passing). */
+    size_t msg_controllen;	/* Ancillary data buffer length.
+                                   !! The type should be socklen_t but the
+                                   definition of the kernel is incompatible
+                                   with this.  */
+
+    int msg_flags;              /* Flags on received message.  */
+  };
 
 class SimpleMessenger;
 class IncomingQueue;
@@ -177,7 +195,7 @@ class DispatchQueue;
     }
 
   private:
-    int sd;
+    SOCKET sd;
     struct iovec msgvec[IOV_MAX];
 
   public:
@@ -225,6 +243,7 @@ class DispatchQueue;
     void reader();
     void writer();
     void unlock_maybe_reap();
+
 
     int randomize_out_seq();
 
@@ -326,7 +345,7 @@ class DispatchQueue;
     void shutdown_socket() {
       recv_reset();
       if (sd >= 0)
-        ::shutdown(sd, SHUT_RDWR);
+        ::shutdown(sd, SD_BOTH);
     }
 
     void recv_reset() {
@@ -373,6 +392,7 @@ class DispatchQueue;
      * @return 0 for success, or -1 on error
      */
     int tcp_write(const char *buf, int len);
+    int pipe_cloexec(int pipefd[2]);
 
   };
 

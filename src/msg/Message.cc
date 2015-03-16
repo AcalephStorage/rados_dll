@@ -65,8 +65,8 @@ using namespace std;
 #include "messages/MOSDOpReply.h"
 #include "messages/MOSDSubOp.h"
 #include "messages/MOSDSubOpReply.h"
-#include "messages/MOSDRepOp.h"
-#include "messages/MOSDRepOpReply.h"
+//#include "messages/MOSDRepOp.h"
+//#include "messages/MOSDRepOpReply.h"
 #include "messages/MOSDMap.h"
 #include "messages/MMonGetOSDMap.h"
 
@@ -90,7 +90,7 @@ using namespace std;
 #include "messages/MMonGetVersion.h"
 #include "messages/MMonGetVersionReply.h"
 #include "messages/MMonHealth.h"
-#include "messages/MDataPing.h"
+
 #include "messages/MAuth.h"
 #include "messages/MAuthReply.h"
 #include "messages/MMonSubscribe.h"
@@ -114,7 +114,7 @@ using namespace std;
 #include "messages/MMDSLoadTargets.h"
 #include "messages/MMDSResolve.h"
 #include "messages/MMDSResolveAck.h"
-#include "messages/MMDSCacheRejoin.h"
+//by ketor #include "messages/MMDSCacheRejoin.h"
 #include "messages/MMDSFindIno.h"
 #include "messages/MMDSFindInoReply.h"
 #include "messages/MMDSOpenIno.h"
@@ -147,13 +147,13 @@ using namespace std;
 
 #include "messages/MHeartbeat.h"
 
-#include "messages/MMDSTableRequest.h"
+//by ketor #include "messages/MMDSTableRequest.h"
 
 //#include "messages/MInodeUpdate.h"
 #include "messages/MCacheExpire.h"
 #include "messages/MInodeFileCaps.h"
 
-#include "messages/MLock.h"
+//by ketor #include "messages/MLock.h"
 
 #include "messages/MWatchNotify.h"
 #include "messages/MTimeCheck.h"
@@ -163,17 +163,16 @@ using namespace std;
 #include "messages/MOSDPGPush.h"
 #include "messages/MOSDPGPushReply.h"
 #include "messages/MOSDPGPull.h"
-
-#include "messages/MOSDECSubOpWrite.h"
-#include "messages/MOSDECSubOpWriteReply.h"
-#include "messages/MOSDECSubOpRead.h"
-#include "messages/MOSDECSubOpReadReply.h"
+//by ketor #include "messages/MOSDECSubOpWrite.h"
+//by ketor #include "messages/MOSDECSubOpWriteReply.h"
+//by ketor #include "messages/MOSDECSubOpRead.h"
+//by ketor #include "messages/MOSDECSubOpReadReply.h"
 
 #define DEBUGLVL  10    // debug level of output
 
 #define dout_subsys ceph_subsys_ms
 
-void Message::encode(uint64_t features, int crcflags)
+void Message::encode(uint64_t features, bool datacrc)
 {
   // encode and copy out of *m
   if (empty_payload()) {
@@ -184,19 +183,17 @@ void Message::encode(uint64_t features, int crcflags)
     if (header.compat_version == 0)
       header.compat_version = header.version;
   }
-  if (crcflags & MSG_CRC_HEADER)
-    calc_front_crc();
+  calc_front_crc();
 
   // update envelope
   header.front_len = get_payload().length();
   header.middle_len = get_middle().length();
   header.data_len = get_data().length();
-  if (crcflags & MSG_CRC_HEADER)
-    calc_header_crc();
+  calc_header_crc();
 
   footer.flags = CEPH_MSG_FOOTER_COMPLETE;
 
-  if (crcflags & MSG_CRC_DATA) {
+  if (datacrc) {
     calc_data_crc();
 
 #ifdef ENCODE_DUMP
@@ -248,14 +245,12 @@ void Message::dump(Formatter *f) const
   f->dump_string("summary", ss.str());
 }
 
-Message *decode_message(CephContext *cct, int crcflags,
-			ceph_msg_header& header,
-			ceph_msg_footer& footer,
-			bufferlist& front, bufferlist& middle,
-			bufferlist& data)
+Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_footer& footer,
+			bufferlist& front, bufferlist& middle, bufferlist& data)
 {
   // verify crc
-  if (crcflags & MSG_CRC_HEADER) {
+ // if (!cct || !cct->_conf->ms_nocrc)
+  {
     __u32 front_crc = front.crc32c(0);
     __u32 middle_crc = middle.crc32c(0);
 
@@ -277,8 +272,7 @@ Message *decode_message(CephContext *cct, int crcflags,
       }
       return 0;
     }
-  }
-  if (crcflags & MSG_CRC_DATA) {
+
     if ((footer.flags & CEPH_MSG_FOOTER_NOCRC) == 0) {
       __u32 data_crc = data.crc32c(0);
       if (data_crc != footer.data_crc) {
@@ -291,7 +285,7 @@ Message *decode_message(CephContext *cct, int crcflags,
 	return 0;
       }
     }
-  }
+  } 
 
   // make message
   Message *m = 0;
@@ -427,12 +421,12 @@ Message *decode_message(CephContext *cct, int crcflags,
   case MSG_OSD_SUBOPREPLY:
     m = new MOSDSubOpReply();
     break;
-  case MSG_OSD_REPOP:
-    m = new MOSDRepOp();
-    break;
-  case MSG_OSD_REPOPREPLY:
-    m = new MOSDRepOpReply();
-    break;
+//  case MSG_OSD_REPOP:
+//    m = new MOSDRepOp();
+//    break;
+//  case MSG_OSD_REPOPREPLY:
+//    m = new MOSDRepOpReply();
+//    break;
 
   case CEPH_MSG_OSD_MAP:
     m = new MOSDMap;
@@ -491,18 +485,18 @@ Message *decode_message(CephContext *cct, int crcflags,
   case MSG_OSD_PG_PUSH_REPLY:
     m = new MOSDPGPushReply;
     break;
-  case MSG_OSD_EC_WRITE:
-    m = new MOSDECSubOpWrite;
-    break;
-  case MSG_OSD_EC_WRITE_REPLY:
-    m = new MOSDECSubOpWriteReply;
-    break;
-  case MSG_OSD_EC_READ:
-    m = new MOSDECSubOpRead;
-    break;
-  case MSG_OSD_EC_READ_REPLY:
-    m = new MOSDECSubOpReadReply;
-    break;
+//by ketor  case MSG_OSD_EC_WRITE:
+//    m = new MOSDECSubOpWrite;
+//    break;
+//  case MSG_OSD_EC_WRITE_REPLY:
+//    m = new MOSDECSubOpWriteReply;
+//    break;
+//  case MSG_OSD_EC_READ:
+//    m = new MOSDECSubOpRead;
+//    break;
+//  case MSG_OSD_EC_READ_REPLY:
+//    m = new MOSDECSubOpReadReply;
+//    break;
    // auth
   case CEPH_MSG_AUTH:
     m = new MAuth;
@@ -573,9 +567,9 @@ Message *decode_message(CephContext *cct, int crcflags,
   case MSG_MDS_RESOLVEACK:
     m = new MMDSResolveAck;
     break;
-  case MSG_MDS_CACHEREJOIN:
-    m = new MMDSCacheRejoin;
-	break;
+//by ketor   case MSG_MDS_CACHEREJOIN:
+//    m = new MMDSCacheRejoin;
+//	break;
 	/*
   case MSG_MDS_CACHEREJOINACK:
 	m = new MMDSCacheRejoinAck;
@@ -673,9 +667,9 @@ Message *decode_message(CephContext *cct, int crcflags,
     m = new MCacheExpire();
     break;
 
-  case MSG_MDS_TABLE_REQUEST:
-    m = new MMDSTableRequest;
-    break;
+//by ketor   case MSG_MDS_TABLE_REQUEST:
+//    m = new MMDSTableRequest;
+//    break;
 
 	/*  case MSG_MDS_INODEUPDATE:
     m = new MInodeUpdate();
@@ -686,9 +680,9 @@ Message *decode_message(CephContext *cct, int crcflags,
     m = new MInodeFileCaps();
     break;
 
-  case MSG_MDS_LOCK:
-    m = new MLock();
-    break;
+//by ketor   case MSG_MDS_LOCK:
+//    m = new MLock();
+//    break;
 
   case MSG_TIMECHECK:
     m = new MTimeCheck();
@@ -697,11 +691,7 @@ Message *decode_message(CephContext *cct, int crcflags,
   case MSG_MON_HEALTH:
     m = new MMonHealth();
     break;
-#if defined(HAVE_XIO)
-  case MSG_DATA_PING:
-    m = new MDataPing();
-    break;
-#endif
+
     // -- simple messages without payload --
 
   case CEPH_MSG_SHUTDOWN:
@@ -776,7 +766,7 @@ void encode_message(Message *msg, uint64_t features, bufferlist& payload)
   bufferlist front, middle, data;
   ceph_msg_footer_old old_footer;
   ceph_msg_footer footer;
-  msg->encode(features, MSG_CRC_ALL);
+  msg->encode(features, true);
   ::encode(msg->get_header(), payload);
 
   // Here's where we switch to the old footer format.  PLR
@@ -798,7 +788,7 @@ void encode_message(Message *msg, uint64_t features, bufferlist& payload)
 // We've slipped in a 0 signature at this point, so any signature checking after this will
 // fail.  PLR
 
-Message *decode_message(CephContext *cct, int crcflags, bufferlist::iterator& p)
+Message *decode_message(CephContext *cct, bufferlist::iterator& p)
 {
   ceph_msg_header h;
   ceph_msg_footer_old fo;
@@ -814,6 +804,6 @@ Message *decode_message(CephContext *cct, int crcflags, bufferlist::iterator& p)
   ::decode(fr, p);
   ::decode(mi, p);
   ::decode(da, p);
-  return decode_message(cct, crcflags, h, f, fr, mi, da);
+  return decode_message(cct, h, f, fr, mi, da);
 }
 

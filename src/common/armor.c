@@ -1,10 +1,12 @@
-
+#ifdef _WIN32
+#include <errno.h>
+#else
 #if defined(__linux__)
 #include <linux/errno.h>
 #else
 #include <sys/errno.h>
 #endif
-
+#endif
 /*
  * base64 encode/decode.
  */

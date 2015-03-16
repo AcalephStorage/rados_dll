@@ -19,8 +19,10 @@
 #include "byteorder.h"
 
 #include "uuid.h"
-
+#ifdef _WIN32
+#else
 #include <netinet/in.h>
+#endif
 #include <fcntl.h>
 #include <string.h>
 
@@ -72,12 +74,20 @@ using namespace std;
 #include "assert.h"
 
 // DARWIN compatibility
+#ifdef _WIN32
+#ifndef _OFF_T_
+#define _OFF_T_
+typedef long long loff_t;
+typedef long long off64_t;
+//#define O_DIRECT 00040000
+#endif
+#else
 #ifdef DARWIN
 typedef long long loff_t;
 typedef long long off64_t;
 #define O_DIRECT 00040000
 #endif
-
+#endif
 // FreeBSD compatibility
 #ifdef __FreeBSD__
 typedef off_t loff_t;
@@ -241,6 +251,7 @@ WRITE_RAW_ENCODER(ceph_mon_statfs_reply)
 // some basic types
 
 // NOTE: these must match ceph_fs.h typedefs
+
 typedef uint64_t ceph_tid_t; // transaction id
 typedef uint64_t version_t;
 typedef __u32 epoch_t;       // map epoch  (32bits -> 13 epochs/second for 10 years)
@@ -451,7 +462,8 @@ inline ostream& operator<<(ostream &oss, health_status_t status) {
   return oss;
 }
 #endif
-
+#ifdef _WIN32
+#else
 struct weightf_t {
   float v;
   weightf_t(float _v) : v(_v) {}
@@ -468,6 +480,7 @@ inline ostream& operator<<(ostream& out, const weightf_t& w)
     return out << std::fixed << std::setprecision(5) << w.v << std::setprecision(p);
   }
 }
+#endif
 
 struct shard_id_t {
   uint8_t id;

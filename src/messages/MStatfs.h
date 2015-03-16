@@ -15,8 +15,10 @@
 
 #ifndef CEPH_MSTATFS_H
 #define CEPH_MSTATFS_H
-
+#ifdef _WIN32
+#else
 #include <sys/statvfs.h>    /* or <sys/statfs.h> */
+#endif
 #include "messages/PaxosServiceMessage.h"
 
 class MStatfs : public PaxosServiceMessage {

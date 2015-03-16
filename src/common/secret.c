@@ -18,7 +18,10 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#ifdef _WIN32
+#else
 #include <keyutils.h>
+#endif
 #include <sys/types.h>
 
 #include "common/armor.h"
@@ -52,6 +55,9 @@ int read_secret_from_file(const char *filename, char *secret, size_t max_len)
 
 int set_kernel_secret(const char *secret, const char *key_name)
 {
+#ifdef _WIN32
+	return -1;
+#else
   /* try to submit key to kernel via the keys api */
   key_serial_t serial;
   int ret;
@@ -77,18 +83,25 @@ int set_kernel_secret(const char *secret, const char *key_name)
   }
 
   return ret;
+#endif
 }
 
 int is_kernel_secret(const char *key_name)
 {
+#ifdef _WIN32
+	return 0;
+#else
   key_serial_t serial;
   serial = request_key("ceph", key_name, NULL, KEY_SPEC_USER_KEYRING);
   return serial != -1;
+#endif
 }
 
 int get_secret_option(const char *secret, const char *key_name,
 		      char *secret_option, size_t max_len)
 {
+#ifdef _WIN32
+#else
   if (!key_name) {
     return -EINVAL;
   }
@@ -134,4 +147,6 @@ int get_secret_option(const char *secret, const char *key_name,
   }
 
   return ret;
+#endif
+return 0;
 }

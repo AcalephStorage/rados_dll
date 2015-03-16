@@ -101,7 +101,9 @@ bool PerfCountersCollection::reset(const std::string &name)
   return result;
 }
 
-
+#ifdef _WIN32
+void PerfCountersCollection::dump_formatted(Formatter *f, bool schema)
+#else
 /**
  * Serialize current values of performance counters.  Optionally
  * output the schema instead, or filter output to a particular
@@ -117,15 +119,25 @@ void PerfCountersCollection::dump_formatted(
     bool schema,
     const std::string &logger,
     const std::string &counter)
+#endif
 {
   Mutex::Locker lck(m_lock);
   f->open_object_section("perfcounter_collection");
-  
+#ifdef _WIN32
+  perf_counters_set_t::iterator l = m_loggers.begin();
+  perf_counters_set_t::iterator l_end = m_loggers.end();
+  if (l != l_end) {
+    while (true) {
+      (*l)->dump_formatted(f, schema);
+      if (++l == l_end)
+	break;
+#else
   for (perf_counters_set_t::iterator l = m_loggers.begin();
        l != m_loggers.end(); ++l) {
     // Optionally filter on logger name, pass through counter filter
     if (logger.empty() || (*l)->get_name() == logger) {
       (*l)->dump_formatted(f, schema, counter);
+#endif
     }
   }
   f->close_section();
@@ -276,11 +288,23 @@ void PerfCounters::reset()
     ++d;
   }
 }
-
+#ifdef _WIN32
+void PerfCounters::dump_formatted(Formatter *f, bool schema)
+#else
 void PerfCounters::dump_formatted(Formatter *f, bool schema,
     const std::string &counter)
+#endif
 {
   f->open_object_section(m_name.c_str());
+#ifdef _WIN32
+  perf_counter_data_vec_t::const_iterator d = m_data.begin();
+  perf_counter_data_vec_t::const_iterator d_end = m_data.end();
+  if (d == d_end) {
+    f->close_section();
+    return;
+  }
+  while (true) {
+#else
   
   for (perf_counter_data_vec_t::const_iterator d = m_data.begin();
        d != m_data.end(); ++d) {
@@ -288,7 +312,7 @@ void PerfCounters::dump_formatted(Formatter *f, bool schema,
       // Optionally filter on counter name
       continue;
     }
-
+#endif
     if (schema) {
       f->open_object_section(d->name);
       f->dump_int("type", d->type);
@@ -322,6 +346,11 @@ void PerfCounters::dump_formatted(Formatter *f, bool schema,
 	}
       }
     }
+#ifdef _WIN32
+
+    if (++d == d_end)
+      break;
+#endif
   }
   f->close_section();
 }

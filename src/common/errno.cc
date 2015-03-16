@@ -15,7 +15,9 @@ std::string cpp_strerror(int err)
     err = -err;
   std::ostringstream oss;
   buf[0] = '\0';
-
+#ifdef _WIN32
+ oss << "(" << err << ") ";
+#else
   // strerror_r returns char * on Linux, and does not always fill buf
 #ifdef STRERROR_R_CHAR_P
   errmsg = strerror_r(err, buf, sizeof(buf));
@@ -25,6 +27,6 @@ std::string cpp_strerror(int err)
 #endif
 
   oss << "(" << err << ") " << errmsg;
-
+#endif
   return oss.str();
 }

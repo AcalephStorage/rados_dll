@@ -11,8 +11,11 @@ namespace ceph {
     }
     return n;
   }
-
+#ifdef _WIN32
+  unsigned _page_size = 4096;
+#else
   unsigned _page_size = sysconf(_SC_PAGESIZE);
+#endif
   unsigned long _page_mask = ~(unsigned long)(_page_size - 1);
   unsigned _page_shift = _get_bits_of(_page_size);
 

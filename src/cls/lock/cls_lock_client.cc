@@ -117,7 +117,7 @@ namespace rados {
         try {
           ::decode(ret, iter);
         } catch (buffer::error& err) {
-	  return -EBADMSG;
+	  //return -EBADMSG;
         }
 
         *locks = ret.locks;
@@ -143,7 +143,7 @@ namespace rados {
         try {
           ::decode(ret, *iter);
         } catch (buffer::error& err) {
-	  return -EBADMSG;
+	 // return -EBADMSG;
         }
 
         if (lockers) {
@@ -191,7 +191,7 @@ namespace rados {
 
       void Lock::assert_locked_exclusive(ObjectOperation *op)
       {
-        assert_locked(op, name, LOCK_EXCLUSIVE, cookie, tag);
+        assert_locked(op, name, LOCK_EXCLUSIVE_one, cookie, tag);
       }
 
       void Lock::assert_locked_shared(ObjectOperation *op)
@@ -213,13 +213,13 @@ namespace rados {
 
       void Lock::lock_exclusive(ObjectWriteOperation *op)
       {
-        lock(op, name, LOCK_EXCLUSIVE,
+        lock(op, name, LOCK_EXCLUSIVE_one,
              cookie, tag, description, duration, flags);
       }
 
       int Lock::lock_exclusive(IoCtx *ioctx, const string& oid)
       {
-        return lock(ioctx, oid, name, LOCK_EXCLUSIVE,
+        return lock(ioctx, oid, name, LOCK_EXCLUSIVE_one,
                     cookie, tag, description, duration, flags);
       }
 

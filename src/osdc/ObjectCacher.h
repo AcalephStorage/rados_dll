@@ -56,8 +56,10 @@ class ObjectCacher {
     snapid_t snap;
     map<object_t, bufferlist*> read_data;  // bits of data as they come back
     bufferlist *bl;
+
     int fadvise_flags;
     OSDRead(snapid_t s, bufferlist *b, int f) : snap(s), bl(b), fadvise_flags(f) {}
+
   };
 
   OSDRead *prepare_read(snapid_t snap, bufferlist *b, int f) {
@@ -70,15 +72,19 @@ class ObjectCacher {
     SnapContext snapc;
     bufferlist bl;
     utime_t mtime;
+
+
     int fadvise_flags;
     OSDWrite(const SnapContext& sc, const bufferlist& b, utime_t mt, int f)
       : snapc(sc), bl(b), mtime(mt), fadvise_flags(f) {}
   };
 
+
   OSDWrite *prepare_write(const SnapContext& sc, const bufferlist &b,
 			  utime_t mt, int f) { 
     return new OSDWrite(sc, b, mt, f); 
   }
+
 
 
 
@@ -101,6 +107,7 @@ class ObjectCacher {
     struct {
       loff_t start, length;   // bh extent in object
     } ex;
+
     bool dontneed; //indicate bh don't need by anyone
 
   public:
@@ -113,7 +120,7 @@ class ObjectCacher {
     int error; // holds return value for failed reads
     
     map< loff_t, list<Context*> > waitfor_read;
-    
+   
     // cons
     BufferHead(Object *o) : 
       state(STATE_MISSING),
@@ -125,6 +132,7 @@ class ObjectCacher {
       error(0) {
       ex.start = ex.length = 0;
     }
+
   
     // extent
     loff_t start() const { return ex.start; }
@@ -169,6 +177,7 @@ class ObjectCacher {
     bool get_dontneed() {
       return dontneed;
     }
+
   };
 
   // ******* Object *********
@@ -181,7 +190,9 @@ class ObjectCacher {
     friend struct ObjectSet;
 
   public:
+
     uint64_t object_no;
+
     ObjectSet *oset;
     xlist<Object*>::item set_item;
     object_locator_t oloc;
@@ -217,6 +228,7 @@ class ObjectCacher {
       // add to set
       os->objects.push_back(&set_item);
     }
+
     ~Object() {
       reads.clear();
       assert(ref == 0);
@@ -230,8 +242,9 @@ class ObjectCacher {
     snapid_t get_snap() { return oid.snap; }
     ObjectSet *get_object_set() { return oset; }
     string get_namespace() { return oloc.nspace; }
+
     uint64_t get_object_number() const { return object_no; }
-    
+   
     object_locator_t& get_oloc() { return oloc; }
     void set_object_locator(object_locator_t& l) { oloc = l; }
 
@@ -292,7 +305,9 @@ class ObjectCacher {
     void try_merge_bh(BufferHead *bh);
 
     bool is_cached(loff_t off, loff_t len);
+
     bool include_all_cached_data(loff_t off, loff_t len);
+
     int map_read(OSDRead *rd,
                  map<loff_t, BufferHead*>& hits,
                  map<loff_t, BufferHead*>& missing,
@@ -387,9 +402,11 @@ class ObjectCacher {
     return NULL;
   }
 
+
   Object *get_object(sobject_t oid, uint64_t object_no, ObjectSet *oset,
 		     object_locator_t &l, uint64_t truncate_size,
 		     uint64_t truncate_seq);
+
   void close_object(Object *ob);
 
   // bh stats
@@ -422,15 +439,16 @@ class ObjectCacher {
       bh_lru_rest.lru_touch(bh);
 
     bh->set_dontneed(false);
+
     touch_ob(bh->ob);
   }
   void touch_ob(Object *ob) {
     ob_lru.lru_touch(ob);
   }
+
   void bottouch_ob(Object *ob) {
     ob_lru.lru_bottouch(ob);
   }
-
   // bh states
   void bh_set_state(BufferHead *bh, int s);
   void copy_bh_state(BufferHead *bh1, BufferHead *bh2) { 

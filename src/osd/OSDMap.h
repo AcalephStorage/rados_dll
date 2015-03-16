@@ -650,7 +650,9 @@ public:
     return acting->size();
   }
   int pg_to_acting_osds(pg_t pg, vector<int>& acting) const {
-    return pg_to_acting_osds(pg, &acting, NULL);
+    int primary;
+    int r = pg_to_acting_osds(pg, &acting, &primary);
+    return r;
   }
   /**
    * This does not apply temp overrides and should not be used

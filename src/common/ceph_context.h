@@ -15,6 +15,10 @@
 #ifndef CEPH_CEPHCONTEXT_H
 #define CEPH_CEPHCONTEXT_H
 
+#ifdef _WIN32
+#include "common/ceph-mingw-type.h"
+#endif
+
 #include <iostream>
 #include <stdint.h>
 #include <string>
@@ -25,7 +29,10 @@
 #include "common/cmdparse.h"
 #include "include/Spinlock.h"
 
+
 class AdminSocket;
+
+
 class CephContextServiceThread;
 class PerfCountersCollection;
 class md_config_obs_t;
@@ -61,10 +68,13 @@ private:
   ~CephContext();
   atomic_t nref;
 public:
+#ifdef _WIN32
+#else
   class AssociatedSingletonObject {
    public:
     virtual ~AssociatedSingletonObject() {}
   };
+#endif
   CephContext *get() {
     nref.inc();
     return this;
@@ -88,7 +98,9 @@ public:
 
   /* Get the PerfCountersCollection of this CephContext */
   PerfCountersCollection *get_perfcounters_collection();
-
+#ifdef _WIN32
+    AdminSocket *get_admin_socket();
+#else
   ceph::HeartbeatMap *get_heartbeat_map() {
     return _heartbeat_map;
   }
@@ -120,6 +132,7 @@ public:
     }
     ceph_spin_unlock(&_associated_objs_lock);
   }
+#endif
   /**
    * get a crypto handler
    */
@@ -145,6 +158,7 @@ private:
   md_config_obs_t *_log_obs;
 
   /* The admin socket associated with this context */
+
   AdminSocket *_admin_socket;
 
   /* lock which protects service thread creation, destruction, etc. */
@@ -156,12 +170,14 @@ private:
   md_config_obs_t *_perf_counters_conf_obs;
 
   CephContextHook *_admin_hook;
-
+#ifdef _WIN32
+  ceph_spinlock_t _associated_objs_lock;
+#else
   ceph::HeartbeatMap *_heartbeat_map;
 
   ceph_spinlock_t _associated_objs_lock;
   std::map<std::string, AssociatedSingletonObject*> _associated_objs;
-
+#endif
   // crypto
   CryptoNone *_crypto_none;
   CryptoAES *_crypto_aes;

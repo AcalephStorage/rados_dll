@@ -16,12 +16,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #if defined(__FreeBSD__)
 #include <sys/socket.h>
 #include <netinet/in.h>
 #endif
 #include <netdb.h>
-
+#endif
 #define BUF_SIZE 128
 
 int safe_cat(char **pstr, int *plen, int pos, const char *str2)
@@ -50,6 +53,9 @@ int safe_cat(char **pstr, int *plen, int pos, const char *str2)
 
 char *resolve_addrs(const char *orig_str)
 {
+#ifdef _WIN32
+  return NULL;
+#else
   char *new_str;
   char *tok, *saveptr = NULL;
   int len, pos;
@@ -153,4 +159,5 @@ char *resolve_addrs(const char *orig_str)
   //printf("new_str is '%s'\n", new_str);
   free(buf);
   return new_str;
+#endif
 }

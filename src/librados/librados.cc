@@ -23,6 +23,8 @@
 #include "include/types.h"
 #include <include/stringify.h>
 
+#include "common/ceph-mingw-type.h"
+
 #include "librados/AioCompletionImpl.h"
 #include "librados/IoCtxImpl.h"
 #include "librados/PoolAsyncCompletionImpl.h"
@@ -30,6 +32,11 @@
 #include "librados/RadosXattrIter.h"
 #include "librados/ListObjectImpl.h"
 #include <cls/lock/cls_lock_client.h>
+
+#ifdef _WINSOCK2_H
+#undef _WINSOCK2_H
+#endif
+
 
 #include <string>
 #include <map>
@@ -98,8 +105,8 @@ static void set_op_flags(::ObjectOperation *o, int flags)
     rados_flags |= CEPH_OSD_OP_FLAG_FADVISE_WILLNEED;
   if (flags & LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
     rados_flags |= CEPH_OSD_OP_FLAG_FADVISE_DONTNEED;
-  if (flags & LIBRADOS_OP_FLAG_FADVISE_NOCACHE)
-    rados_flags |= CEPH_OSD_OP_FLAG_FADVISE_NOCACHE;
+  //if (flags & LIBRADOS_OP_FLAG_FADVISE_NOCACHE)
+  //  rados_flags |= CEPH_OSD_OP_FLAG_FADVISE_NOCACHE;
   o->set_last_op_flags(rados_flags);
 }
 
@@ -1455,7 +1462,7 @@ int librados::IoCtx::lock_exclusive(const std::string &oid, const std::string &n
   if (duration)
     dur.set_from_timeval(duration);
 
-  return rados::cls::lock::lock(this, oid, name, LOCK_EXCLUSIVE, cookie, "",
+  return rados::cls::lock::lock(this, oid, name, LOCK_EXCLUSIVE_one, cookie, "",
 		  		description, dur, flags);
 }
 
@@ -1514,7 +1521,7 @@ int librados::IoCtx::list_lockers(const std::string &oid, const std::string &nam
   if (tag)
     *tag = tmp_tag;
   if (exclusive) {
-    if (tmp_type == LOCK_EXCLUSIVE)
+    if (tmp_type == LOCK_EXCLUSIVE_one)
       *exclusive = 1;
     else
       *exclusive = 0;
@@ -2208,6 +2215,7 @@ extern "C" int rados_create(rados_t *pcluster, const char * const id)
 extern "C" int rados_create2(rados_t *pcluster, const char *const clustername,
 			     const char * const name, uint64_t flags)
 {
+  printf("rados_create2(%p, %s, %s, %d)\n", pcluster, clustername, name, flags);
   tracepoint(librados, rados_create2_enter, clustername, name, flags);
   // client is assumed, but from_str will override
   CephInitParameters iparams(CEPH_ENTITY_TYPE_CLIENT);
@@ -2245,6 +2253,7 @@ extern "C" rados_config_t rados_cct(rados_t cluster)
 }
 
 extern "C" int rados_connect(rados_t cluster)
+
 {
   tracepoint(librados, rados_connect_enter, cluster);
   librados::RadosClient *client = (librados::RadosClient *)cluster;
@@ -2724,19 +2733,26 @@ extern "C" int rados_monitor_log(rados_t cluster, const char *level, rados_log_c
 
 extern "C" int rados_ioctx_create(rados_t cluster, const char *name, rados_ioctx_t *io)
 {
+  printf("1.1.1\n");
   tracepoint(librados, rados_ioctx_create_enter, cluster, name);
+  printf("1.1.2\n");
   librados::RadosClient *client = (librados::RadosClient *)cluster;
+  printf("1.1.3\n");
   librados::IoCtxImpl *ctx;
-
+  printf("1.1.4\n");
   int r = client->create_ioctx(name, &ctx);
+  printf("1.1.5\n");
   if (r < 0) {
     tracepoint(librados, rados_ioctx_create_exit, r, NULL);
+  printf("1.1.6\n");
     return r;
   }
-
+  printf("1.1.7\n");
   *io = ctx;
   ctx->get();
+  printf("1.1.8\n");
   tracepoint(librados, rados_ioctx_create_exit, 0, ctx);
+  printf("1.1.9\n");
   return 0;
 }
 

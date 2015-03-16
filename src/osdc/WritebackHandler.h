@@ -16,6 +16,7 @@ class WritebackHandler {
 		    const object_locator_t& oloc, uint64_t off, uint64_t len,
 		    snapid_t snapid, bufferlist *pbl, uint64_t trunc_size,
 		    __u32 trunc_seq, Context *onfinish) = 0;
+
   /**
    * check if a given extent read result may change due to a write
    *

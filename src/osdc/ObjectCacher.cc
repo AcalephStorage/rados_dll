@@ -179,6 +179,7 @@ bool ObjectCacher::Object::is_cached(loff_t cur, loff_t left)
 /*
  * all cached data in this range[off, off+len]
  */
+
 bool ObjectCacher::Object::include_all_cached_data(loff_t off, loff_t len)
 {
   assert(oc->lock.is_locked());
@@ -644,6 +645,7 @@ void ObjectCacher::bh_read(BufferHead *bh)
   C_ReadFinish *onfinish = new C_ReadFinish(this, bh->ob, bh->last_read_tid,
 					    bh->start(), bh->length());
   // go
+
   writeback_handler.read(bh->ob->get_oid(), bh->ob->get_object_number(),
 			 bh->ob->get_oloc(), bh->start(), bh->length(),
 			 bh->ob->get_snap(), &onfinish->bl,
@@ -1053,10 +1055,12 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
   assert(lock.is_locked());
   bool success = true;
   int error = 0;
+
   uint64_t bytes_in_cache = 0;
   uint64_t bytes_not_in_cache = 0;
   uint64_t total_bytes_read = 0;
   map<uint64_t, bufferlist> stripe_map;  // final buffer offset -> substring
+
   bool dontneed = rd->fadvise_flags & LIBRADOS_OP_FLAG_FADVISE_DONTNEED;
 
   for (vector<ObjectExtent>::iterator ex_it = rd->extents.begin();
@@ -1068,6 +1072,7 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
 
     // get Object cache
     sobject_t soid(ex_it->oid, rd->snap);
+
     Object *o = get_object(soid, ex_it->objectno, oset, ex_it->oloc, ex_it->truncate_size, oset->truncate_seq);
     if (external_call)
       touch_ob(o);
@@ -1117,8 +1122,10 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
       if (allzero) {
 	ldout(cct, 10) << "readx  ob has all zero|rx, returning ENOENT" << dendl;
 	delete rd;
+
 	if (dontneed)
 	  bottouch_ob(o);
+
 	return -ENOENT;
       }
     }
@@ -1193,6 +1200,7 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
       for (map<loff_t, BufferHead*>::iterator bh_it = hits.begin();
            bh_it != hits.end();
            ++bh_it) {
+
 	BufferHead *bh = bh_it->second;
 	ldout(cct, 10) << "readx hit bh " << *bh << dendl;
 	if (bh->is_error() && bh->error)
@@ -1207,6 +1215,7 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
 	  if (bh->is_clean())
 	    bh_lru_rest.lru_bottouch(bh);
 	}
+
       }
 
       // create reverse map of buffer offset -> object for the eventual result.
@@ -1262,9 +1271,10 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
 
       if (dontneed && o->include_all_cached_data(ex_it->offset, ex_it->length))
 	  bottouch_ob(o);
+
     }
   }
-  
+
   if (!success) {
     if (perfcounter && external_call) {
       perfcounter->inc(l_objectcacher_data_read, total_bytes_read);
@@ -1286,6 +1296,7 @@ int ObjectCacher::_readx(OSDRead *rd, ObjectSet *oset, Context *onfinish,
   }
 
   // no misses... success!  do the read.
+
   ldout(cct, 10) << "readx has all buffers" << dendl;
 
   // ok, assemble into result buffer.
@@ -1340,13 +1351,15 @@ int ObjectCacher::writex(OSDWrite *wr, ObjectSet *oset, Mutex& wait_on_lock,
   utime_t now = ceph_clock_now(cct);
   uint64_t bytes_written = 0;
   uint64_t bytes_written_in_flush = 0;
+
   bool dontneed = wr->fadvise_flags & LIBRADOS_OP_FLAG_FADVISE_DONTNEED;
-  
+
   for (vector<ObjectExtent>::iterator ex_it = wr->extents.begin();
        ex_it != wr->extents.end();
        ++ex_it) {
     // get object cache
     sobject_t soid(ex_it->oid, CEPH_NOSNAP);
+
     Object *o = get_object(soid, ex_it->objectno, oset, ex_it->oloc,
 			   ex_it->truncate_size, oset->truncate_seq);
 
@@ -1389,6 +1402,7 @@ int ObjectCacher::writex(OSDWrite *wr, ObjectSet *oset, Mutex& wait_on_lock,
 
     // ok, now bh is dirty.
     mark_dirty(bh);
+
     if (dontneed)
       bh->set_dontneed(true);
     else
@@ -2097,10 +2111,12 @@ void ObjectCacher::bh_set_state(BufferHead *bh, int s)
     bh_lru_dirty.lru_insert_top(bh);
   } else if (s != BufferHead::STATE_DIRTY && state == BufferHead::STATE_DIRTY) {
     bh_lru_dirty.lru_remove(bh);
+
     if (bh->get_dontneed())
       bh_lru_rest.lru_insert_bot(bh);
     else
       bh_lru_rest.lru_insert_top(bh);
+
   }
 
   if ((s == BufferHead::STATE_TX ||
@@ -2134,10 +2150,12 @@ void ObjectCacher::bh_add(Object *ob, BufferHead *bh)
     bh_lru_dirty.lru_insert_top(bh);
     dirty_or_tx_bh.insert(bh);
   } else {
+
     if (bh->get_dontneed())
       bh_lru_rest.lru_insert_bot(bh);
     else
       bh_lru_rest.lru_insert_top(bh);
+
   }
 
   if (bh->is_tx()) {

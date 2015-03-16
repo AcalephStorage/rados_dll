@@ -6,6 +6,9 @@
 
 #include "include/utime.h"
 #include "common/PrebufferedStreambuf.h"
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
 #include <pthread.h>
 #include <string>
 
@@ -22,7 +25,24 @@ struct Entry {
 
   char m_static_buf[CEPH_LOG_ENTRY_PREALLOC];
   PrebufferedStreambuf m_streambuf;
-
+#ifdef _WIN32
+  Entry()
+    : /*m_thread(0),*/ m_prio(0), m_subsys(0),
+      m_next(NULL),
+      m_streambuf(m_static_buf, sizeof(m_static_buf))
+  {
+  	m_thread.p = NULL;
+  	m_thread.x = 0;
+  }
+  Entry(utime_t s, pthread_t t, short pr, short sub,
+	const char *msg = NULL)
+    : m_stamp(s), /*m_thread(t),*/ m_prio(pr), m_subsys(sub),
+      m_next(NULL),
+      m_streambuf(m_static_buf, sizeof(m_static_buf))
+  {
+  	m_thread.p = t.p;
+  	m_thread.x = t.x;
+#else
   Entry()
     : m_thread(0), m_prio(0), m_subsys(0),
       m_next(NULL),
@@ -33,7 +53,9 @@ struct Entry {
     : m_stamp(s), m_thread(t), m_prio(pr), m_subsys(sub),
       m_next(NULL),
       m_streambuf(m_static_buf, sizeof(m_static_buf))
+
   {
+#endif
     if (msg) {
       ostream os(&m_streambuf);
       os << msg;

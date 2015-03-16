@@ -14,7 +14,8 @@
 
 #ifndef CEPH_LIBRADOS_XATTRITER_H
 #define CEPH_LIBRADOS_XATTRITER_H
-
+#include <stdio.h>
+#include <stdlib.h>
 #include <string>
 #include <map>
 

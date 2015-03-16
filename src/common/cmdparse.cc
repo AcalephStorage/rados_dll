@@ -129,8 +129,8 @@ cmdmap_from_json(vector<string> cmd, map<string, cmd_vartype> *mapp, stringstrea
     fullcmd += *it;
 
   try {
-    if (!json_spirit::read(fullcmd, v))
-      throw runtime_error("unparseable JSON " + fullcmd);
+    //if (!json_spirit::read(fullcmd, v))
+      //throw runtime_error("unparseable JSON " + fullcmd);
     if (v.type() != json_spirit::obj_type)
       throw(runtime_error("not JSON object " + fullcmd));
 

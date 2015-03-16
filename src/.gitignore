@@ -1,5 +1,5 @@
 # generic entries
-Makefile
+# Makefile
 
 # local directory specific entries
 /.git_version

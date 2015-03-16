@@ -33,6 +33,10 @@ void escape_xml_attr(const char *buf, char *out);
 /* Returns the length of a buffer that would be needed to escape 'buf'
  * as an JSON attrribute
  */
+#ifdef _WIN32
+int escape_json_attr_len(const char *buf);
+void escape_json_attr(const char *buf, char *out);
+#else
 int escape_json_attr_len(const char *buf, int src_len);
 
 /* Escapes 'buf' as an JSON attribute. Assumes that 'out' is at least long
@@ -40,7 +44,7 @@ int escape_json_attr_len(const char *buf, int src_len);
  * escape_json_attr_len first.
  */
 void escape_json_attr(const char *buf, int src_len, char *out);
-
+#endif
 /* Note: we escape control characters. Although the XML spec doesn't actually
  * require this, Amazon does it in their XML responses.
  */

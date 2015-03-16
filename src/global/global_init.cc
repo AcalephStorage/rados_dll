@@ -119,6 +119,22 @@ void global_init(std::vector < const char * > *alt_def_args,
   g_lockdep = g_ceph_context->_conf->lockdep;
 
   // signal stuff
+#ifdef _WIN32
+  int siglist[] = { 0, 0 };
+  block_signals(siglist, NULL);
+
+//  if (g_conf->fatal_signal_handlers)
+//    install_standard_sighandlers();
+
+  if (g_conf->log_flush_on_exit)
+    g_ceph_context->_log->set_flush_on_exit();
+
+  if (g_conf->run_dir.length() &&
+      code_env == CODE_ENVIRONMENT_DAEMON &&
+      !(flags & CINIT_FLAG_NO_DAEMON_ACTIONS)) {
+    //int r = ::mkdir(g_conf->run_dir.c_str(), 0755);
+    int r = ::mkdir(g_conf->run_dir.c_str());
+#else
   int siglist[] = { SIGPIPE, 0 };
   block_signals(siglist, NULL);
 
@@ -132,6 +148,7 @@ void global_init(std::vector < const char * > *alt_def_args,
       code_env == CODE_ENVIRONMENT_DAEMON &&
       !(flags & CINIT_FLAG_NO_DAEMON_ACTIONS)) {
     int r = ::mkdir(g_conf->run_dir.c_str(), 0755);
+#endif
     if (r < 0 && errno != EEXIST) {
       r = -errno;
       derr << "warning: unable to create " << g_conf->run_dir << ": " << cpp_strerror(r) << dendl;
@@ -166,6 +183,10 @@ int global_init_prefork(CephContext *cct, int flags)
   if (g_code_env != CODE_ENVIRONMENT_DAEMON)
     return -1;
   const md_config_t *conf = cct->_conf;
+#ifdef _WIN32
+  if (!conf->daemonize)
+    return -1;
+#else
   if (!conf->daemonize) {
     if (atexit(pidfile_remove_void)) {
       derr << "global_init_daemonize: failed to set pidfile_remove function "
@@ -176,7 +197,7 @@ int global_init_prefork(CephContext *cct, int flags)
 
     return -1;
   }
-
+#endif
   // stop log thread
   g_ceph_context->_log->flush();
   g_ceph_context->_log->stop();
@@ -185,6 +206,8 @@ int global_init_prefork(CephContext *cct, int flags)
 
 void global_init_daemonize(CephContext *cct, int flags)
 {
+#ifdef _WIN32
+#else
   if (global_init_prefork(cct, flags) < 0)
     return;
 
@@ -198,6 +221,7 @@ void global_init_daemonize(CephContext *cct, int flags)
 
   global_init_postfork_start(cct);
   global_init_postfork_finish(cct, flags);
+#endif
 }
 
 void global_init_postfork_start(CephContext *cct)

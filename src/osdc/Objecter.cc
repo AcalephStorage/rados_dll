@@ -261,15 +261,12 @@ void Objecter::init()
   m_request_state_hook = new RequestStateHook(this);
   AdminSocket* admin_socket = cct->get_admin_socket();
   int ret = admin_socket->register_command("objecter_requests",
-					   "objecter_requests",
-					   m_request_state_hook,
-					   "show in-progress osd requests");
-
-  /* Don't warn on EEXIST, happens if multiple ceph clients
-   * are instantiated from one process */
-  if (ret < 0 && ret != -EEXIST) {
+        				   "objecter_requests",
+        				   m_request_state_hook,
+        				   "show in-progress osd requests");
+  if (ret < 0) {
     lderr(cct) << "error registering admin socket command: "
-	       << cpp_strerror(ret) << dendl;
+               << cpp_strerror(-ret) << dendl;
   }
 
   timer_lock.Lock();
@@ -284,9 +281,11 @@ void Objecter::init()
  */
 void Objecter::start()
 {
+  printf("Objecter::start()");
   RWLock::RLocker rl(rwlock);
-
   schedule_tick();
+  printf("osdmap: %p\n", osdmap);
+  printf("osdmap->get_epoch(): %d\n", osdmap->get_epoch());
   if (osdmap->get_epoch() == 0) {
     _maybe_request_map();
   }
@@ -658,7 +657,7 @@ Objecter::LingerOp *Objecter::linger_register(const object_t& oid,
   info->target.flags = flags;
   info->watch_valid_thru = ceph_clock_now(NULL);
 
-  RWLock::WLocker l(rwlock);
+  RWLock::Context lc(rwlock, RWLock::Context::TakenForWrite);
 
   // Acquire linger ID
   info->linger_id = ++max_linger_id;
@@ -1701,6 +1700,7 @@ void Objecter::maybe_request_map()
 
 void Objecter::_maybe_request_map()
 {
+  printf("Entering _maybe_request_map()...\n");
   assert(rwlock.is_locked());
   int flag = 0;
   if (_osdmap_full_flag()
@@ -1715,6 +1715,7 @@ void Objecter::_maybe_request_map()
   if (monc->sub_want("osdmap", epoch, flag)) {
     monc->renew_subs();
   }
+  printf("Exiting _maybe_request_map()...\n");
 }
 
 void Objecter::_wait_for_new_map(Context *c, epoch_t epoch, int err)
@@ -1970,12 +1971,9 @@ class C_CancelOp : public Context
   ceph_tid_t tid;
   Objecter *objecter;
 public:
-  C_CancelOp(Objecter *objecter) : objecter(objecter) {}
+  C_CancelOp(ceph_tid_t t, Objecter *objecter) : tid(t), objecter(objecter) {}
   void finish(int r) {
     objecter->op_cancel(tid, -ETIMEDOUT);
-  }
-  void set_tid(ceph_tid_t _tid) {
-    tid = _tid;
   }
 };
 
@@ -2005,17 +2003,11 @@ ceph_tid_t Objecter::_op_submit_with_budget(Op *op, RWLock::Context& lc, int *ct
     }
   }
 
-  C_CancelOp *cb = NULL;
-  if (osd_timeout > 0) {
-    cb = new C_CancelOp(this);
-    op->ontimeout = cb;
-  }
-
   ceph_tid_t tid = _op_submit(op, lc);
 
-  if (cb) {
-    cb->set_tid(tid);
+  if (osd_timeout > 0) {
     Mutex::Locker l(timer_lock);
+    op->ontimeout = new C_CancelOp(tid, this);
     timer.add_event_after(osd_timeout, op->ontimeout);
   }
 
@@ -4234,7 +4226,9 @@ Objecter::RequestStateHook::RequestStateHook(Objecter *objecter) :
 bool Objecter::RequestStateHook::call(std::string command, cmdmap_t& cmdmap,
 				      std::string format, bufferlist& out)
 {
-  Formatter *f = Formatter::create(format, "json-pretty", "json-pretty");
+  Formatter *f = new_formatter(format);
+  if (!f)
+    f = new_formatter("json-pretty");
   RWLock::RLocker rl(m_objecter->rwlock);
   m_objecter->dump_requests(f);
   f->flush(out);

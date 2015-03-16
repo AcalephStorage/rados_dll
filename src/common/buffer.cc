@@ -24,14 +24,16 @@
 #include "common/Mutex.h"
 #include "include/types.h"
 #include "include/compat.h"
-#if defined(HAVE_XIO)
-#include "msg/xio/XioMsg.h"
-#endif
+# if defined(HAVE_XIO)
+#  include "msg/xio/XioMsg.h"
+#  endif
+#include "include/buffer.h"
+
 
 #include <errno.h>
 #include <fstream>
 #include <sstream>
-#include <sys/uio.h>
+
 #include <limits.h>
 
 namespace ceph {
@@ -218,9 +220,11 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       return new raw_malloc(len);
     }
   };
-
+/*  
+#ifdef _WIN32
+#else
 #ifndef __CYGWIN__
-  class buffer::raw_mmap_pages : public buffer::raw {
+class buffer::raw_mmap_pages : public buffer::raw {
   public:
     raw_mmap_pages(unsigned l) : raw(l) {
       data = (char*)::mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
@@ -252,7 +256,8 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       int r = ::posix_memalign((void**)(void*)&data, align, len);
       if (r)
 	throw bad_alloc();
-#endif /* DARWIN */
+#endif /* DARWIN 
+
       if (!data)
 	throw bad_alloc();
       inc_total_alloc(len);
@@ -268,8 +273,9 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
     }
   };
 #endif
-
+*/
 #ifdef __CYGWIN__
+#endif
   class buffer::raw_hack_aligned : public buffer::raw {
     unsigned align;
     char *realdata;
@@ -296,6 +302,8 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       return new raw_hack_aligned(len, align);
     }
   };
+#ifdef _WIN32
+#else
 #endif
 
 #ifdef CEPH_HAVE_SPLICE
@@ -531,7 +539,8 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
       return new buffer::raw_char(len);
     }
   };
-
+#ifdef _WIN32
+#else
 #if defined(HAVE_XIO)
   class buffer::xio_msg_buffer : public buffer::raw {
   private:
@@ -584,7 +593,7 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
     return bp;
   }
 #endif /* HAVE_XIO */
-
+#endif
   buffer::raw* buffer::copy(const char *c, unsigned len) {
     raw* r = new raw_char(len);
     memcpy(r->data, c, len);
@@ -605,15 +614,31 @@ static simple_spinlock_t buffer_debug_lock = SIMPLE_SPINLOCK_INITIALIZER;
   buffer::raw* buffer::create_static(unsigned len, char *buf) {
     return new raw_static(buf, len);
   }
-  buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
-#ifndef __CYGWIN__
+
+#ifdef _WIN32
+buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
+//#ifndef __CYGWIN__
     //return new raw_mmap_pages(len);
-    return new raw_posix_aligned(len, align);
-#else
+    //return new raw_posix_aligned(len, align);
+//#else
     return new raw_hack_aligned(len, align);
-#endif
+//#endif
   }
+#else
+
+
+
+  buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
+    printf("buffer::create_aligned(%u, %u)\n", len, align);
+    #if defined(__CYGWIN__) || defined(_WIN32)
+      return new raw_hack_aligned(len, align);
+    #else
+      return new raw_posix_aligned(len, align);
+    #endif
+  }
+
   buffer::raw* buffer::create_page_aligned(unsigned len) {
+    printf("buffer::create_page_aligned(%u)\n", len);
     return create_aligned(len, CEPH_PAGE_SIZE);
   }
 
@@ -1357,21 +1382,24 @@ void buffer::list::rebuild_page_aligned()
   
   void buffer::list::append(const char *data, unsigned len)
   {
+    printf("buffer::list::append(%p, %u)\n", data, len);
     while (len > 0) {
       // put what we can into the existing append_buffer.
       unsigned gap = append_buffer.unused_tail_length();
+      printf("gap: %u\n", gap);
       if (gap > 0) {
-	if (gap > len) gap = len;
-	//cout << "append first char is " << data[0] << ", last char is " << data[len-1] << std::endl;
-	append_buffer.append(data, gap);
-	append(append_buffer, append_buffer.end() - gap, gap);	// add segment to the list
-	len -= gap;
-	data += gap;
+      	if (gap > len) gap = len;
+      	// cout << "append first char is " << data[0] << ", last char is " << data[len-1] << std::endl;
+      	append_buffer.append(data, gap);
+      	append(append_buffer, append_buffer.end() - gap, gap);	// add segment to the list
+      	len -= gap;
+      	data += gap;
       }
       if (len == 0)
-	break;  // done!
+      	break;  // done!
       
       // make a new append_buffer!
+      printf("make a new append_buffer!\n");
       unsigned alen = CEPH_PAGE_SIZE * (((len-1) / CEPH_PAGE_SIZE) + 1);
       append_buffer = create_page_aligned(alen);
       append_buffer.set_length(0);   // unused, so far.
@@ -1736,6 +1764,7 @@ int buffer::list::write_file(const char *fn, int mode)
 
 int buffer::list::write_fd(int fd) const
 {
+/*
   if (can_zero_copy())
     return write_fd_zero_copy(fd);
 
@@ -1785,8 +1814,9 @@ int buffer::list::write_fd(int fd) const
       iovlen = 0;
       bytes = 0;
     }
-  }
+  }*/
   return 0;
+
 }
 
 int buffer::list::write_fd_zero_copy(int fd) const

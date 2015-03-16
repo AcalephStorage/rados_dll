@@ -169,9 +169,10 @@ private:
 };
 WRITE_CLASS_ENCODER(HitSet)
 WRITE_CLASS_ENCODER(HitSet::Params)
-
+#ifdef _WIN32
+#else
 typedef boost::shared_ptr<HitSet> HitSetRef;
-
+#endif
 ostream& operator<<(ostream& out, const HitSet::Params& p);
 
 /**

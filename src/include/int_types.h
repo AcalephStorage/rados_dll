@@ -2,6 +2,12 @@
 #define CEPH_INTTYPES_H
 
 #include "acconfig.h"
+#ifdef _WIN32
+#include "common/ceph-mingw-type.h"
+#endif
+#ifdef HAVE_LINUX_TYPES_H
+#include <linux/types.h>
+#endif
 
 /*
  * Get 64b integers either from inttypes.h or glib.h
@@ -26,9 +32,7 @@
  * Include types.h after stdint.h to accomodate for older distributions
  *
  */
-#ifdef HAVE_LINUX_TYPES_H
-#include <linux/types.h>
-#endif
+
 
 /*
  * Emergency replacements for PRI*64 modifiers. Some systems have
@@ -59,6 +63,7 @@
 #endif
 
 #ifndef HAVE_LINUX_TYPES_H
+#endif
 #ifndef HAVE___U8
 typedef uint8_t __u8;
 #endif
@@ -90,8 +95,9 @@ typedef uint64_t __u64;
 #ifndef HAVE___S64
 typedef int64_t __s64;
 #endif
+#ifdef _WIN32
 #endif /* LINUX_TYPES_H */
-
+#endif
 #define __bitwise__
 
 typedef __u16 __bitwise__ __le16;
@@ -101,4 +107,4 @@ typedef __u32 __bitwise__ __be32;
 typedef __u64 __bitwise__ __le64;
 typedef __u64 __bitwise__ __be64;
 
-#endif
+

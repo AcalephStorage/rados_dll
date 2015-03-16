@@ -122,13 +122,21 @@ void escape_xml_attr(const char *buf, char *out)
 #define SLASH_JESCAPE "\\/"
 #define TAB_JESCAPE "\\t"
 #define NEWLINE_JESCAPE "\\n"
-
+#ifdef _WIN32
+int escape_json_attr_len(const char *buf)
+#else
 int escape_json_attr_len(const char *buf, int src_len)
+#endif
 {
 	const char *b;
 	int ret = 0;
+#ifdef _WIN32
+	for (b = buf; *b; ++b) 
+#else
 	int i;
-	for (i = 0, b = buf; i < src_len; ++i, ++b) {
+	for (i = 0, b = buf; i < src_len; ++i, ++b)
+#endif
+ {
 		unsigned char c = *b;
 		switch (c) {
 		case '"':
@@ -160,13 +168,21 @@ int escape_json_attr_len(const char *buf, int src_len)
 	ret++;
 	return ret;
 }
-
+#ifdef _WIN32
+void escape_json_attr(const char *buf, char *out)
+#else
 void escape_json_attr(const char *buf, int src_len, char *out)
+#endif
 {
 	char *o = out;
 	const char *b;
+#ifdef _WIN32
+	for (b = buf; *b; ++b) 
+#else
 	int i;
-	for (i = 0, b = buf; i < src_len; ++i, ++b) {
+	for (i = 0, b = buf; i < src_len; ++i, ++b) 
+#endif
+{
 		unsigned char c = *b;
 		switch (c) {
 		case '"':
