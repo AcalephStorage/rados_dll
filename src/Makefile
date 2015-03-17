@@ -1,4 +1,3 @@
-#Makefile by Ketor 
 #edited by Julio
 TEST = test
 BUILD = build
