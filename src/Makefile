@@ -19,6 +19,8 @@ CEPH_INCLUDE = -I./ -I./global -lpthreadGCE2
 CFLAGS   = $(CEPH_INCLUDE)
 CLIBS    = 
 
+../$(BUILD)/%.o:%.c
+	$(CC) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:auth/%.cc
@@ -31,8 +33,6 @@ CLIBS    =
 	$(CPP) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:include/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
-../$(BUILD)/%.o:include/%.c
-	$(CC) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:common/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:common/%.c
