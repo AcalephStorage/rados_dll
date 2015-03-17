@@ -2,6 +2,7 @@
 #edited by Julio
 TEST = test
 BUILD = build
+BIN = bin
 LIB = lib
 
 CC        = gcc -lws2_32 -D__USE_FILE_OFFSET64 -DHAVE_CONFIG_H -I. -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -fno-strict-aliasing -fsigned-char -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -g -DPIC
@@ -99,15 +100,15 @@ OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/snap_set_diff.o ../$(BUILD)/librados.o .
 ../$(BUILD)/Accepter.o ../$(BUILD)/DispatchQueue.o  ../$(BUILD)/PipeConnection.o ../$(BUILD)/dout.o \
 ../$(BUILD)/AuthSessionHandler.o ../$(BUILD)/histogram.o ../$(BUILD)/ceph_hash.o ../$(BUILD)/addr_parsing.o ../$(BUILD)/cmdparse.o
 
-ALL: ../bin/rados_client.exe
+all: ../$(BIN)/rados_client.exe
 
-../bin/rados.dll:$(OBJECTS)
+../$(BIN)/rados.dll:$(OBJECTS)
 	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0 -lboost_system-mgw48-mt-1_57 -lboost_system-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_context-mgw48-mt-1_57 -lboost_context-mgw48-mt-d-1_57 -lboost_filesystem-mgw48-mt-1_57 -lboost_filesystem-mgw48-mt-d-1_57 -lboost_iostreams-mgw48-mt-1_57 -lboost_iostreams-mgw48-mt-d-1_57 -lboost_log-mgw48-mt-1_57 -lboost_log-mgw48-mt-d-1_57 -lboost_signals-mgw48-mt-1_57 -lboost_signals-mgw48-mt-d-1_57 -lboost_thread-mgw48-mt-1_57 -lboost_thread-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57 
 	@echo "**************************************************************"
 	@echo "MAKE "$@" FINISH"
 	@echo "**************************************************************"
 
-../bin/rados_client.exe:../$(BUILD)/rados_client.o ../bin/rados.dll
+../$(BIN)/rados_client.exe:../$(BUILD)/rados_client.o ../$(BIN)/rados.dll
 	$(CPP) $(CFLAGS) $(CLIBS) -o $@ $^ -unicode -lws2_32 -l$(PTHREAD) -lgio-2.0 -lglib-2.0 -lgobject-2.0 \
 	-lboost_thread-mgw48-mt-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_log-mgw48-mt-1_57 -lboost_system-mgw48-mt-1_57
 	@echo "**************************************************************"
@@ -116,4 +117,4 @@ ALL: ../bin/rados_client.exe
 
 
 clean:
-	rm -f $(OBJECTS) ../$(BUILD)/*.o ../bin/rados.dll ../bin/rados_client.exe
+	rm -f $(OBJECTS) ../$(BUILD)/*.o ../$(BIN)/rados.dll ../$(BIN)/rados_client.exe
