@@ -481,23 +481,16 @@ int MonClient::authenticate(double timeout)
   while (state != MC_STATE_HAVE_SESSION && !authenticate_err) {
     if (timeout > 0.0) {
       printf("4.4\n");
-      int r = auth_cond.WaitUntil(monc_lock, until);
-
       printf("%d\n", until);
+      int r = auth_cond.WaitUntil(monc_lock, until);
+      printf("MonClient::authenticate auth_cond.WaitUntil(monc_lock, until) -> %d\n", r);
       printf("4.5\n");
       if (r == ETIMEDOUT) {
         printf("4.6\n");
-	ldout(cct, 0) << "authenticate timed out after " << timeout << dendl;
-	authenticate_err = -r;
-    printf("5\n");
-
-      printf("MonClient::authenticate auth_cond.WaitUntil(monc_lock, until) -> %d\n", r);
-      if (r == ETIMEDOUT) {
       	ldout(cct, 0) << "authenticate timed out after " << timeout << dendl;
         std::cout << "authenticate timed out after " << timeout << std::endl;
       	authenticate_err = -r;
         printf("5\n");
-
       }
     } else {
       printf("4.7\n");

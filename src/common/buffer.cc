@@ -302,9 +302,7 @@ class buffer::raw_mmap_pages : public buffer::raw {
       return new raw_hack_aligned(len, align);
     }
   };
-#ifdef _WIN32
-#else
-#endif
+
 
 #ifdef CEPH_HAVE_SPLICE
   class buffer::raw_pipe : public buffer::raw {
@@ -614,19 +612,6 @@ class buffer::raw_mmap_pages : public buffer::raw {
   buffer::raw* buffer::create_static(unsigned len, char *buf) {
     return new raw_static(buf, len);
   }
-
-#ifdef _WIN32
-buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
-//#ifndef __CYGWIN__
-    //return new raw_mmap_pages(len);
-    //return new raw_posix_aligned(len, align);
-//#else
-    return new raw_hack_aligned(len, align);
-//#endif
-  }
-#else
-
-
 
   buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
     printf("buffer::create_aligned(%u, %u)\n", len, align);
