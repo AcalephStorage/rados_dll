@@ -102,12 +102,7 @@ OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/snap_set_diff.o ../$(BUILD)/librados.o .
 ALL: ../bin/rados_client.exe
 
 ../bin/rados.dll:$(OBJECTS)
-<<<<<<< HEAD
 	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0 -lboost_system-mgw48-mt-1_57 -lboost_system-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_context-mgw48-mt-1_57 -lboost_context-mgw48-mt-d-1_57 -lboost_filesystem-mgw48-mt-1_57 -lboost_filesystem-mgw48-mt-d-1_57 -lboost_iostreams-mgw48-mt-1_57 -lboost_iostreams-mgw48-mt-d-1_57 -lboost_log-mgw48-mt-1_57 -lboost_log-mgw48-mt-d-1_57 -lboost_signals-mgw48-mt-1_57 -lboost_signals-mgw48-mt-d-1_57 -lboost_thread-mgw48-mt-1_57 -lboost_thread-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57 
-=======
-	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -unicode -lws2_32 -l$(PTHREAD) -lgio-2.0 -lglib-2.0 -lgobject-2.0 \
-	-lboost_thread-mgw48-mt-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_log-mgw48-mt-1_57 -lboost_system-mgw48-mt-1_57
->>>>>>> 191a0a9c087caf392841aeeed3e6177fba7b6ee4
 	@echo "**************************************************************"
 	@echo "MAKE "$@" FINISH"
 	@echo "**************************************************************"
