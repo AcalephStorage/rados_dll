@@ -88,7 +88,6 @@ MonClient::~MonClient()
 
 int MonClient::build_initial_monmap()
 {
-  printf("MonClient::build_initial_monmap()\n");
   ldout(cct, 10) << "build_initial_monmap" << dendl;
   return monmap.build_initial(cct, cerr);
 }
@@ -447,67 +446,44 @@ void MonClient::shutdown()
 
 int MonClient::authenticate(double timeout)
 {
-  printf("MonClient::authenticate(%f)\n", timeout);
+  ldout(cct,10) << "MonClient::authenticate(" << timeout << ")\n" << dendl;
   Mutex::Locker lock(monc_lock);
-  printf("MonClient::authenticate state: %d\n", state);
+  ldout(cct,10) << "MonClient::authenticate state: " << state << dendl;
   if (state == MC_STATE_HAVE_SESSION) {
     ldout(cct, 5) << "already authenticated" << dendl;
     return 0;
   }
-
-  printf("MonClient::authenticate monmap.get_epoch(): %d\n", monmap.get_epoch());
   _sub_want("monmap", monmap.get_epoch() ? monmap.get_epoch() + 1 : 0, 0);
-  printf("MonClient::authenticate cur_mon.empty() %d\n", cur_mon.empty());
   if (cur_mon.empty())
     _reopen_session();
   utime_t until = ceph_clock_now(cct);
 
-  printf("4.1\n");
   until += timeout;
-  printf("4.2\n");
   if (timeout > 0.0)
-    printf("4.3\n");
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;
-    std::cout << "timeout: "<< until <<std::endl;
 
-  printf("MonClient::authenticate ceph_clock_now(%p) -> %d\n", &cct, until);
   until += timeout;
-  printf("MonClient::authenticate until: %d\n", until);
   if (timeout > 0.0) {
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;
-    std::cout << "authenticate will time out at " << until << std::endl;
   }
 
   while (state != MC_STATE_HAVE_SESSION && !authenticate_err) {
     if (timeout > 0.0) {
-      printf("4.4\n");
-      printf("%d\n", until);
       int r = auth_cond.WaitUntil(monc_lock, until);
-      printf("MonClient::authenticate auth_cond.WaitUntil(monc_lock, until) -> %d\n", r);
-      printf("4.5\n");
       if (r == ETIMEDOUT) {
-        printf("4.6\n");
       	ldout(cct, 0) << "authenticate timed out after " << timeout << dendl;
-        std::cout << "authenticate timed out after " << timeout << std::endl;
       	authenticate_err = -r;
-        printf("5\n");
       }
     } else {
-      printf("4.7\n");
       auth_cond.Wait(monc_lock);
     }
   }
-  printf("6\n");
   if (state == MC_STATE_HAVE_SESSION) {
     ldout(cct, 5) << "authenticate success, global_id " << global_id << dendl;
-    std::cout << "authenticate success, global_id " << global_id << std::endl;
   }
-  printf("7\n");
   if (authenticate_err < 0 && no_keyring_disabled_cephx) {
     lderr(cct) << "authenticate NOTE: no keyring found; disabled cephx authentication" << dendl;
-    std::cout << "authenticate NOTE: no keyring found; disabled cephx authentication" << std::endl;
   }
-  printf("8\n");
   return authenticate_err;
   
 }
@@ -632,7 +608,6 @@ string MonClient::_pick_random_mon()
 void MonClient::_reopen_session(int rank, string name)
 {
   assert(monc_lock.is_locked());
-  printf("reopen 1\n");
   ldout(cct, 10) << "_reopen_session rank " << rank << " name " << name << dendl;
 
   if (rank < 0 && name.length() == 0) {
@@ -642,7 +617,6 @@ void MonClient::_reopen_session(int rank, string name)
   } else {
     cur_mon = monmap.get_name(rank);
   }
-  printf("reopen 2\n");
   if (cur_con) {
     cur_con->mark_down();
   }
@@ -657,14 +631,12 @@ void MonClient::_reopen_session(int rank, string name)
     waiting_for_session.front()->put();
     waiting_for_session.pop_front();
   }
-  printf("reopen 3\n");
   // throw out version check requests
   while (!version_requests.empty()) {
     finisher.queue(version_requests.begin()->second->context, -EAGAIN);
     delete version_requests.begin()->second;
     version_requests.erase(version_requests.begin());
   }
-  printf("3.1\n");
   // adjust timeouts if necessary
   if (had_a_connection) {
     reopen_interval_multiplier *= cct->_conf->mon_client_hunt_interval_backoff;
@@ -673,41 +645,26 @@ void MonClient::_reopen_session(int rank, string name)
       reopen_interval_multiplier =
           cct->_conf->mon_client_hunt_interval_max_multiple;
   }
-  printf("3.2\n");
   // restart authentication handshake
   state = MC_STATE_NEGOTIATING;
   hunting = true;
-  printf("3.3\n");
   // send an initial keepalive to ensure our timestamp is valid by the
   // time we are in an OPENED state (by sequencing this before
   // authentication).
   cur_con->send_keepalive();
-  printf("3.4\n");
   MAuth *m = new MAuth;
   m->protocol = 0;
-  printf("3.4.1\n");
   m->monmap_epoch = monmap.get_epoch();
-  printf("m->monmap_epoch: %d\n", m->monmap_epoch);
-  printf("3.5\n");
   __u8 struct_v = 1;
-  printf("3.5.0.1\n");
-
-  printf("m->auth_payload: %p\n", &m->auth_payload);
+  ldout(cct,5) << "m->auth_payload: " << &m->auth_payload << dendl;
 
   ::encode(struct_v, m->auth_payload);
-  printf("3.5.1\n");
   ::encode(auth_supported->get_supported_set(), m->auth_payload);
-  printf("3.5.2\n");
   ::encode(entity_name, m->auth_payload);
-  printf("3.5.3\n");
   ::encode(global_id, m->auth_payload);
-  printf("3.5.4\n");
-  std::cout << "auth_payload: " << m->auth_payload << std::endl;
   _send_mon_message(m, true);
-  printf("reopen 4\n");
   if (!sub_have.empty())
     _renew_subs();
-  printf("reopen 5\n");
 }
 
 

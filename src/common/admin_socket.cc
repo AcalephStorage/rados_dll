@@ -160,14 +160,7 @@ std::string AdminSocket::bind_and_listen(const std::string &sock_path, int *fd)
     WSADATA wsa;
   int retval;
   retval = WSAStartup(MAKEWORD(2,2),&wsa);
-  printf("\nInitialising Winsock...");
-  //WSADATA wsa;
-  //printf("\nInitialising Winsock...");
-    //if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
-    //{
-        //printf("Failed. Error Code : %d",WSAGetLastError());
-        //return 1;
-    //}
+  ldout(m_cct,0) << "\nInitialising Winsock...\n" << dendl;
   struct sockaddr_in address;
   /*if (sock_path.size() > sizeof(address.sun_path) - 1) {
     ostringstream oss;

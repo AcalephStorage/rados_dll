@@ -281,11 +281,10 @@ void Objecter::init()
  */
 void Objecter::start()
 {
-  printf("Objecter::start()");
   RWLock::RLocker rl(rwlock);
   schedule_tick();
-  printf("osdmap: %p\n", osdmap);
-  printf("osdmap->get_epoch(): %d\n", osdmap->get_epoch());
+  ldout(cct,10) << "osdmap: " << osdmap << dendl;
+  ldout(cct, 10) << "osdmap-<get_epoch: " << osdmap->get_epoch() << dendl;
   if (osdmap->get_epoch() == 0) {
     _maybe_request_map();
   }
@@ -1700,7 +1699,6 @@ void Objecter::maybe_request_map()
 
 void Objecter::_maybe_request_map()
 {
-  printf("Entering _maybe_request_map()...\n");
   assert(rwlock.is_locked());
   int flag = 0;
   if (_osdmap_full_flag()
@@ -1715,7 +1713,6 @@ void Objecter::_maybe_request_map()
   if (monc->sub_want("osdmap", epoch, flag)) {
     monc->renew_subs();
   }
-  printf("Exiting _maybe_request_map()...\n");
 }
 
 void Objecter::_wait_for_new_map(Context *c, epoch_t epoch, int err)

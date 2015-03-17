@@ -2215,7 +2215,6 @@ extern "C" int rados_create(rados_t *pcluster, const char * const id)
 extern "C" int rados_create2(rados_t *pcluster, const char *const clustername,
 			     const char * const name, uint64_t flags)
 {
-  printf("rados_create2(%p, %s, %s, %d)\n", pcluster, clustername, name, flags);
   tracepoint(librados, rados_create2_enter, clustername, name, flags);
   // client is assumed, but from_str will override
   CephInitParameters iparams(CEPH_ENTITY_TYPE_CLIENT);
@@ -2733,26 +2732,17 @@ extern "C" int rados_monitor_log(rados_t cluster, const char *level, rados_log_c
 
 extern "C" int rados_ioctx_create(rados_t cluster, const char *name, rados_ioctx_t *io)
 {
-  printf("1.1.1\n");
   tracepoint(librados, rados_ioctx_create_enter, cluster, name);
-  printf("1.1.2\n");
   librados::RadosClient *client = (librados::RadosClient *)cluster;
-  printf("1.1.3\n");
   librados::IoCtxImpl *ctx;
-  printf("1.1.4\n");
   int r = client->create_ioctx(name, &ctx);
-  printf("1.1.5\n");
   if (r < 0) {
     tracepoint(librados, rados_ioctx_create_exit, r, NULL);
-  printf("1.1.6\n");
     return r;
   }
-  printf("1.1.7\n");
   *io = ctx;
   ctx->get();
-  printf("1.1.8\n");
   tracepoint(librados, rados_ioctx_create_exit, 0, ctx);
-  printf("1.1.9\n");
   return 0;
 }
 

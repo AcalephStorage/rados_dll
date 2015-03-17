@@ -614,7 +614,6 @@ class buffer::raw_mmap_pages : public buffer::raw {
   }
 
   buffer::raw* buffer::create_aligned(unsigned len, unsigned align) {
-    printf("buffer::create_aligned(%u, %u)\n", len, align);
     #if defined(__CYGWIN__) || defined(_WIN32)
       return new raw_hack_aligned(len, align);
     #else
@@ -623,7 +622,6 @@ class buffer::raw_mmap_pages : public buffer::raw {
   }
 
   buffer::raw* buffer::create_page_aligned(unsigned len) {
-    printf("buffer::create_page_aligned(%u)\n", len);
     return create_aligned(len, CEPH_PAGE_SIZE);
   }
 
@@ -1367,11 +1365,9 @@ void buffer::list::rebuild_page_aligned()
   
   void buffer::list::append(const char *data, unsigned len)
   {
-    printf("buffer::list::append(%p, %u)\n", data, len);
     while (len > 0) {
       // put what we can into the existing append_buffer.
       unsigned gap = append_buffer.unused_tail_length();
-      printf("gap: %u\n", gap);
       if (gap > 0) {
       	if (gap > len) gap = len;
       	// cout << "append first char is " << data[0] << ", last char is " << data[len-1] << std::endl;
@@ -1384,7 +1380,6 @@ void buffer::list::rebuild_page_aligned()
       	break;  // done!
       
       // make a new append_buffer!
-      printf("make a new append_buffer!\n");
       unsigned alen = CEPH_PAGE_SIZE * (((len-1) / CEPH_PAGE_SIZE) + 1);
       append_buffer = create_page_aligned(alen);
       append_buffer.set_length(0);   // unused, so far.
