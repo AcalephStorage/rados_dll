@@ -867,12 +867,9 @@ int Pipe::connect()
   WSADATA wsa;
   int retval;
   retval = WSAStartup(MAKEWORD(2,2),&wsa);
-  printf("\nInitialising Winsock...");
-    //if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
-   // {
-        //printf("Failed. Error Code : %d",WSAGetLastError());
-        //return 1;
-    //}
+
+  ldout(msgr->cct,10) << "\nInitialising Winsock..." << dendl;
+
   
   bool got_bad_auth = false;
 

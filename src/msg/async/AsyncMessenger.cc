@@ -76,14 +76,6 @@ class C_handle_connect : public EventCallback {
 int Processor::bind(const entity_addr_t &bind_addr, const set<int>& avoid_ports)
 {
   const md_config_t *conf = msgr->cct->_conf;
-  // bind to a socket
-  //WSADATA wsa;
-   //printf("\nInitialising Winsock...");
-   // if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
-    //{
-        //printf("Failed. Error Code : %d",WSAGetLastError());
-        //return 1;
-    //}
   ldout(msgr->cct, 10) << __func__ << dendl;
 
   int family;

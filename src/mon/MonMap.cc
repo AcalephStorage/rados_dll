@@ -97,12 +97,10 @@ int MonMap::write(const char *fn)
 }
 
 int MonMap::read(const char *fn) {
-  printf("MonMap::read(%s)\n", fn);
   // read
   bufferlist bl;
   std::string error;
   int r = bl.read_file(fn, &error);
-  printf("r: %d\n", r);
   if (r < 0)
     return r;
   decode(bl);
@@ -245,10 +243,7 @@ void MonMap::set_initial_members(CephContext *cct,
 
 int MonMap::build_initial(CephContext *cct, ostream& errout)
 {
-  printf("MonMap::build_initial(%p)\n", cct);
   const md_config_t *conf = cct->_conf;
-  printf("MonMap::build_initial conf: %p\n", conf);
-  printf("MonMap::build_initial conf->monmap.empty(): %d\n", conf->monmap.empty());
   // file?
   if (!conf->monmap.empty()) {
     int r;
@@ -258,7 +253,6 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
     catch (const buffer::error &e) {
       r = -EINVAL;
     }
-    printf("MonMap::build_initial r: %d\n", r);
     if (r >= 0)
       return 0;
     errout << "unable to read/decode monmap from " << conf->monmap
@@ -271,14 +265,11 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
     fsid = cct->_conf->fsid;
     char s[37];
     uuid_unparse(fsid.uuid, s);
-    printf("MonMap::build_initial fsid: %s\n", s); 
   }
 
   // -m foo?
-  printf("MonMap::build_initial conf->mon_host.empty(): %d\n", conf->mon_host.empty()); 
   if (!conf->mon_host.empty()) {
     int r = build_from_host_list(conf->mon_host, "noname-");
-    std::cout << "MonMap::build_initial build_from_host_list(" << conf->mon_host << ", \"noname-\") -> " << r << std::endl;
     if (r < 0) {
       errout << "unable to parse addrs in '" << conf->mon_host << "'"
              << std::endl;
@@ -290,7 +281,6 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
   // What monitors are in the config file?
   std::vector <std::string> sections;
   int ret = conf->get_all_sections(sections);
-  printf("MonMap::build_initial ret: %d\n", ret);
   if (ret) {
     errout << "Unable to find any monitors in the configuration "
          << "file, because there was an error listing the sections. error "
@@ -301,7 +291,6 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
   for (std::vector <std::string>::const_iterator s = sections.begin();
        s != sections.end(); ++s) {
     if ((s->substr(0, 4) == "mon.") && (s->size() > 4)) {
-      std::cout << "MonMap::build_initial mon_names.push_back(" << s->substr(4) << ");" << std::endl;
       mon_names.push_back(s->substr(4));
     }
   }
@@ -313,26 +302,22 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
     std::string m_name("mon");
     m_name += ".";
     m_name += *m;
-    std::cout << "MonMap::build_initial sections.push_back(" << m_name << ");" << std::endl;
     sections.push_back(m_name);
     sections.push_back("mon");
     sections.push_back("global");
     std::string val;
     int res = conf->get_val_from_conf_file(sections, "mon addr", val, true);
-    printf("MonMap::build_initial res: %d\n", res);
     if (res) {
       errout << "failed to get an address for mon." << *m << ": error "
 	   << res << std::endl;
       continue;
     }
-    std::cout << "MonMap::build_initial val: " << val << std::endl;
     entity_addr_t addr;
     if (!addr.parse(val.c_str())) {
       errout << "unable to parse address for mon." << *m
 	   << ": addr='" << val << "'" << std::endl;
       continue;
     }
-    std::cout << "MonMap::build_initial addr: " << addr << std::endl;
     if (addr.get_port() == 0)
       addr.set_port(CEPH_MON_PORT);
 
@@ -342,11 +327,9 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
     if (contains(*m))
       remove(*m);
 
-    std::cout << "MonMap::build_initial add(" << m->c_str() << ", " << addr << ")" << std::endl;
     add(m->c_str(), addr);
   }
 
-  printf("MonMap::build_initial size(): %d\n", size());
   if (size() == 0) {
     errout << "no monitors specified to connect to." << std::endl;
     return -ENOENT;
