@@ -1,2 +1,2 @@
 # rados_dll
-rados
+Ported ceph librados to a windows version "rados.dll"

@@ -49,7 +49,6 @@ using namespace ceph;
 template<class T>
 inline void encode_raw(const T& t, bufferlist& bl)
 {
-  printf("encode_raw(%p, %p)\n", &t, &bl);
   bl.append((char*)&t, sizeof(t));
 }
 template<class T>
@@ -60,7 +59,6 @@ inline void decode_raw(T& t, bufferlist::iterator &p)
 
 #define WRITE_RAW_ENCODER(type)						\
   inline void encode(const type &v, bufferlist& bl, uint64_t features=0) { \
-    printf("encode(" #type ", %p, %" PRIu64 ")\n", &bl, features); \
     encode_raw(v, bl); } \
   inline void decode(type &v, bufferlist::iterator& p) { __ASSERT_FUNCTION decode_raw(v, p); }
 

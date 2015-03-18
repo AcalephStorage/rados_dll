@@ -209,7 +209,6 @@ private:
   void handle_subscribe_ack(MMonSubscribeAck* m);
 
   bool _sub_want(string what, version_t start, unsigned flags) {
-    std::cout << "_sub_want(" << what << ", " << start << ", " << flags << ")" << std::endl;
     if (sub_have.count(what) &&
     	sub_have[what].start == start &&
     	sub_have[what].flags == flags)

@@ -31,6 +31,7 @@
 #include "common/RWLock.h"
 #include "include/rados/rados_types.hpp"
 
+
 using namespace std;
 
 class Context;
@@ -1866,10 +1867,6 @@ private:
   void shutdown();
 
   const OSDMap *get_osdmap_read() {
-    printf("getting osd map\n");
-    // DEBUG by aisrael
-    printf("osdmap: %p\n", (void *) osdmap);
-    printf("osdmap->get_epoch(): %d\n", (void *) osdmap->get_epoch());
     rwlock.get_read();
     return osdmap;
   }
