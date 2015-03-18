@@ -60,9 +60,7 @@ int main (int argc, const char ** argv)
 
   rados_ioctx_t io;
   char *poolname = "data";
-  printf("create 1\n");
   err = rados_ioctx_create(cluster, poolname, &io);
-  printf("create 2\n");
   if (err < 0) {
     fprintf(stderr, "%s: cannot open rados pool %s: %s\n", argv[0], poolname, strerror(-err));
     rados_shutdown(cluster);
