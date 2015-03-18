@@ -5,6 +5,7 @@ Windows port of Ceph librados.
 * mingw
 * pthreads 2.9.1
 * boost 1.57.0
+* glib-2.0
 
 #### Preparation
 1) Install `mingw`
@@ -19,6 +20,11 @@ b2 toolset=gcc
 ```
 
 4) Copy boost libraries to `mingw\lib`
+
+5) Copy glib header files to `mingw\include`
+
+6) Copy glib libraries to `mingw\lib`
+
 
 #### Building
 
