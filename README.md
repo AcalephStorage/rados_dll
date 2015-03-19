@@ -35,6 +35,8 @@ $ make
 
 #### Testing
 
+Copy or create `ceph.conf` under `bin` folder, then:
+
 ```
 $ cd bin
 $ rados_client.exe
