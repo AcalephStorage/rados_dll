@@ -4,7 +4,6 @@
 # local directory specific entries
 /.git_version
 /.libs
-/acconfig.h*
 /ceph
 /cephfs
 /crushtool
@@ -50,7 +49,6 @@
 /ceph-monstore-tool
 /ceph-osdomap-tool
 /ceph-kvstore-tool
-/ceph_ver.h
 /dev
 /get_command_descriptions
 /init-ceph
