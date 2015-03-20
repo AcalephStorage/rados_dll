@@ -13,7 +13,7 @@ INCLUDE_BASE=C:/MinGW
 BOOST_INCLUDE_PATH=$(INCLUDE_BASE)/boost
 PTHREADS_PATH=$(INCLUDE_BASE)/pthread
 
-CEPH_INCLUDE = -I$(CEPH_SRC) -I$(CEPH_SRC)/global -l$(PTHREAD)
+CEPH_INCLUDE = -I$(SRC) -I$(CEPH_SRC) -I$(CEPH_SRC)/global -l$(PTHREAD)
 CFLAGS   = $(CEPH_INCLUDE) -lws2_32 -D__USE_FILE_OFFSET64 -DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -fno-strict-aliasing -fsigned-char -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -g -DPIC
 CPPFLAGS = $(CFLAGS) -Wno-invalid-offsetof
 CLIBS    = 
