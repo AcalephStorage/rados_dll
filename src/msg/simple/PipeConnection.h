@@ -18,8 +18,12 @@
 #include "msg/Connection.h"
 
 class Pipe;
-
-struct PipeConnection : public Connection {
+#ifdef _WIN32
+struct PipeConnection : public Connection 
+#else
+class PipeConnection : public Connection 
+#endif
+{
   Pipe* pipe;
 
   friend class boost::intrusive_ptr<PipeConnection>;

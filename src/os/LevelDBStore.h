@@ -302,10 +302,12 @@ public:
   static string combine_strings(const string &prefix, const string &value);
   static int split_key(leveldb::Slice in, string *prefix, string *key);
   static bufferlist to_bufferlist(leveldb::Slice in);
+#ifdef _WIN32
   static bool in_prefix(const string &prefix, leveldb::Slice key) {
     return (key.compare(leveldb::Slice(past_prefix(prefix))) < 0) &&
       (key.compare(leveldb::Slice(prefix)) > 0);
   }
+#endif
   static string past_prefix(const string &prefix) {
     string limit = prefix;
     limit.push_back(1);

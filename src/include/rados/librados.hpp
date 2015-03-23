@@ -8,8 +8,13 @@
 #include <set>
 #include <vector>
 #include <utility>
+#ifdef _WIN32
 #include "include/memory.h"
 #include "include/buffer.h"
+#else
+#include "memory.h"
+#include "buffer.h"
+#endif
 
 #include "librados.h"
 #include "rados_types.hpp"
@@ -215,7 +220,7 @@ namespace librados
    * These are per-op flags which may be different among
    * ops added to an ObjectOperation.
    */
-
+#ifdef _WIN32
   enum ObjectOperationFlags {
     OP_EXCL =   LIBRADOS_OP_FLAG_EXCL,
     OP_FAILOK = LIBRADOS_OP_FLAG_FAILOK,
@@ -225,7 +230,16 @@ namespace librados
     OP_FADVISE_DONTNEED = LIBRADOS_OP_FLAG_FADVISE_DONTNEED,
     OP_FADVISE_NOCACHE = LIBRADOS_OP_FLAG_FADVISE_NOCACHE,
   };
-
+#else
+  enum ObjectOperationFlags {
+    OP_EXCL =   LIBRADOS_OP_FLAG_EXCL,
+    OP_FAILOK = LIBRADOS_OP_FLAG_FAILOK,
+    OP_FADVISE_RANDOM = LIBRADOS_OP_FLAG_FADVISE_RANDOM,
+    OP_FADVISE_SEQUENTIAL = LIBRADOS_OP_FLAG_FADVISE_SEQUENTIAL,
+    OP_FADVISE_WILLNEED = LIBRADOS_OP_FLAG_FADVISE_WILLNEED,
+    OP_FADVISE_DONTNEED = LIBRADOS_OP_FLAG_FADVISE_DONTNEED,
+  };
+#endif
   class CEPH_RADOS_API ObjectOperationCompletion {
   public:
     virtual ~ObjectOperationCompletion() {}
@@ -621,9 +635,9 @@ namespace librados
 
     // get pool auid
     int get_auid(uint64_t *auid_);
-
+#ifdef _WIN32
     uint64_t get_instance_id() const;
-
+#endif
     std::string get_pool_name();
 
     bool pool_requires_alignment();
@@ -1108,10 +1122,10 @@ namespace librados
 
     /// get/wait for the most recent osdmap
     int wait_for_latest_osdmap();
-
+#ifdef _WIN32
     int blacklist_add(const std::string& client_address,
                       uint32_t expire_seconds);
-
+#endif
     /*
      * pool aio
      *

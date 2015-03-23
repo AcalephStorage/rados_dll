@@ -210,8 +210,8 @@ private:
 
   bool _sub_want(string what, version_t start, unsigned flags) {
     if (sub_have.count(what) &&
-    	sub_have[what].start == start &&
-    	sub_have[what].flags == flags)
+	sub_have[what].start == start &&
+	sub_have[what].flags == flags)
       return false;
     sub_have[what].start = start;
     sub_have[what].flags = flags;

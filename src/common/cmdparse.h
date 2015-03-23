@@ -34,7 +34,6 @@ void dump_cmddesc_to_json(ceph::Formatter *jf,
 		          const std::string& avail);
 bool cmdmap_from_json(std::vector<std::string> cmd, cmdmap_t *mapp,
 		      std::stringstream &ss);
-
 void handle_bad_get(CephContext *cct, std::string k, const char *name);
 
 std::string cmd_vartype_stringify(const cmd_vartype& v);

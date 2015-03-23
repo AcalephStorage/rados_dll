@@ -134,6 +134,9 @@ enum {
   l_osd_tier_dirty,
   l_osd_tier_clean,
   l_osd_tier_delay,
+#ifndef _WIN32
+  l_osd_tier_proxy_read,
+#endif
 
   l_osd_agent_wake,
   l_osd_agent_skip,
@@ -142,7 +145,9 @@ enum {
 
   l_osd_object_ctx_cache_hit,
   l_osd_object_ctx_cache_total,
-
+#ifndef _WIN32
+  l_osd_op_cache_hit,
+#endif
   l_osd_last,
 };
 
@@ -2171,7 +2176,9 @@ protected:
     }
     void _process(
       MOSDRepScrub *msg,
-      ThreadPool::TPHandle &handle) {
+      ThreadPool::TPHandle &handle) 
+#ifdef _WIN32
+{
       osd->osd_lock.Lock();
       if (osd->is_stopping()) {
 	osd->osd_lock.Unlock();
@@ -2188,6 +2195,24 @@ protected:
 	osd->osd_lock.Unlock();
       }
     }
+#else
+{
+      PG *pg = NULL;
+      {
+	Mutex::Locker lock(osd->osd_lock);
+	if (osd->is_stopping() ||
+	    !osd->_have_pg(msg->pgid)) {
+	  msg->put();
+	  return;
+	}
+	pg = osd->_lookup_lock_pg(msg->pgid);
+      }
+      assert(pg);
+      pg->replica_scrub(msg, handle);
+      msg->put();
+      pg->unlock();
+    }
+#endif
     void _clear() {
       while (!rep_scrub_queue.empty()) {
 	MOSDRepScrub *msg = rep_scrub_queue.front();

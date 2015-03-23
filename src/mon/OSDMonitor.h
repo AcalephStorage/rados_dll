@@ -139,7 +139,9 @@ private:
    * optimization to try to avoid sending the same inc maps twice.
    */
   map<int,epoch_t> osd_epoch;
-
+#ifndef _WIN32
+  void note_osd_has_epoch(int osd, epoch_t epoch);
+#endif
   void check_failures(utime_t now);
   bool check_failure(utime_t now, int target_osd, failure_info_t& fi);
 

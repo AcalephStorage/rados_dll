@@ -19,24 +19,26 @@
 #include "common/errno.h"
 #include "common/safe_io.h"
 #include "common/admin_socket_client.h"
-
-//#include <arpa/inet.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <winsock.h>
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>
+#include <poll.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <map>
-//#include <poll.h>
 #include <sstream>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
-#include <winsock2.h>
-#include <winsock.h>
-#include <ws2tcpip.h>
-//#include <sys/socket.h>
 #include <sys/types.h>
-//#include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
 #include <vector>
@@ -53,9 +55,11 @@ const char* get_rand_socket_path()
     if (tdir == NULL) {
       tdir = "/tmp";
     }
-    /*snprintf(buf, sizeof(((struct sockaddr_in*)0)->sun_path),
+#ifndef _WIN32
+    snprintf(buf, sizeof(((struct sockaddr_in*)0)->sun_path),
 	     "%s/perfcounters_test_socket.%ld.%ld",
-	     tdir, (long int)getpid(), time(NULL));*/
+	     tdir, (long int)getpid(), time(NULL));
+#endif
     g_socket_path = (char*)strdup(buf);
   }
   return g_socket_path;
@@ -70,14 +74,24 @@ static std::string asok_connect(const std::string &path, int *fd)
     oss << "socket(PF_UNIX, SOCK_STREAM, 0) failed: " << cpp_strerror(err);
     return oss.str();
   }
-
+#ifdef _WIN32
   struct sockaddr_in address;
   memset(&address, 0, sizeof(struct sockaddr_in));
   address.sin_family = AF_UNIX;
-  //snprintf(address.sun_path, sizeof(address.sun_path), "%s", path.c_str());
-
+#else
+  struct sockaddr_un address;
+  memset(&address, 0, sizeof(struct sockaddr_un));
+  address.sun_family = AF_UNIX;
+  snprintf(address.sun_path, sizeof(address.sun_path), "%s", path.c_str());
+#endif
+#ifdef _WIN32
   if (::connect(socket_fd, (struct sockaddr *) &address, 
-	sizeof(struct sockaddr_in)) != 0) {
+	sizeof(struct sockaddr_in)) != 0) 
+#else
+  if (::connect(socket_fd, (struct sockaddr *) &address, 
+	sizeof(struct sockaddr_un)) != 0)
+#endif
+{
     int err = errno;
     ostringstream oss;
     oss << "connect(" << socket_fd << ") failed: " << cpp_strerror(err);
@@ -88,7 +102,8 @@ static std::string asok_connect(const std::string &path, int *fd)
   struct timeval timer;
   timer.tv_sec = 5;
   timer.tv_usec = 0;
-  /*if (::setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &timer, sizeof(timer))) {
+#ifndef _WIN32
+  if (::setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &timer, sizeof(timer))) {
     int err = errno;
     ostringstream oss;
     oss << "setsockopt(" << socket_fd << ", SO_RCVTIMEO) failed: "
@@ -105,8 +120,8 @@ static std::string asok_connect(const std::string &path, int *fd)
 	<< cpp_strerror(err);
     close(socket_fd);
     return oss.str();
-  }*/
-
+  }
+#endif
   *fd = socket_fd;
   return "";
 }

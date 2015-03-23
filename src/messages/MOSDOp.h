@@ -31,8 +31,11 @@
 class OSD;
 
 class MOSDOp : public Message {
-
+#ifdef _WIN32
   static const int HEAD_VERSION = 4;
+#else
+  static const int HEAD_VERSION = 5;
+#endif
   static const int COMPAT_VERSION = 3;
 
 private:
@@ -53,7 +56,9 @@ private:
   snapid_t snapid;
   snapid_t snap_seq;
   vector<snapid_t> snaps;
-
+#ifndef _WIN32
+  uint64_t features;
+#endif
 public:
   friend class MOSDOpReply;
 
@@ -89,7 +94,7 @@ public:
   const eversion_t& get_version() { return reassert_version; }
   
   utime_t get_mtime() { return mtime; }
-
+#ifdef _WIN32
   MOSDOp()
     : Message(CEPH_MSG_OSD_OP, HEAD_VERSION, COMPAT_VERSION) { }
   MOSDOp(int inc, long tid,
@@ -101,6 +106,20 @@ public:
       oid(_oid), oloc(_oloc), pgid(_pgid) {
     set_tid(tid);
   }
+#else
+  MOSDOp()
+    : Message(CEPH_MSG_OSD_OP, HEAD_VERSION, COMPAT_VERSION) { }
+  MOSDOp(int inc, long tid,
+         object_t& _oid, object_locator_t& _oloc, pg_t& _pgid, epoch_t _osdmap_epoch,
+	 int _flags, uint64_t feat)
+    : Message(CEPH_MSG_OSD_OP, HEAD_VERSION, COMPAT_VERSION),
+      client_inc(inc),
+      osdmap_epoch(_osdmap_epoch), flags(_flags), retry_attempt(-1),
+      oid(_oid), oloc(_oloc), pgid(_pgid),
+      features(feat) {
+    set_tid(tid);
+  }
+#endif
 private:
   ~MOSDOp() {}
 
@@ -142,7 +161,13 @@ public:
   void stat() {
     add_simple_op(CEPH_OSD_OP_STAT, 0, 0);
   }
-
+#ifndef _WIN32
+  uint64_t get_features() const {
+    if (features)
+      return features;
+    return get_connection()->get_features();
+  }
+#endif
   // flags
   int get_flags() const { return flags; }
 
@@ -251,6 +276,9 @@ struct ceph_osd_request_head {
       ::encode(snaps, payload);
 
       ::encode(retry_attempt, payload);
+#ifndef _WIN32
+      ::encode(features, payload);
+#endif
     }
   }
 
@@ -297,6 +325,9 @@ struct ceph_osd_request_head {
 				oid.name.length()));
 
       retry_attempt = -1;
+#ifndef _WIN32
+      features = 0;
+#endif
     } else {
       // new decode 
       ::decode(client_inc, p);

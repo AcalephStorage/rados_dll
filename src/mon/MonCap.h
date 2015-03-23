@@ -8,7 +8,11 @@
 using std::ostream;
 
 #include "include/types.h"
+#ifdef _WIN32
 #include "msg/msg_types.h"
+#else
+#include "common/entity_name.h"
+#endif
 
 class CephContext;
 
@@ -75,9 +79,11 @@ struct MonCapGrant {
   // explicit grants that a profile grant expands to; populated as
   // needed by expand_profile() (via is_match()) and cached here.
   mutable list<MonCapGrant> profile_grants;
-
+#ifdef _WIN32
   void expand_profile(entity_name_t name) const;
-
+#else
+  void expand_profile(EntityName name) const;
+#endif
   MonCapGrant() : allow(0) {}
   MonCapGrant(mon_rwxa_t a) : allow(a) {}
   MonCapGrant(string s, mon_rwxa_t a) : service(s), allow(a) {}
@@ -96,11 +102,19 @@ struct MonCapGrant {
    * @param command_args command args (if any)
    * @return bits we allow
    */
+#ifdef _WIN32
   mon_rwxa_t get_allowed(CephContext *cct,
 			 entity_name_t name,
 			 const std::string& service,
 			 const std::string& command,
 			 const map<string,string>& command_args) const;
+#else
+  mon_rwxa_t get_allowed(CephContext *cct,
+			 EntityName name,
+			 const std::string& service,
+			 const std::string& command,
+			 const map<string,string>& command_args) const;
+#endif
 
   bool is_allow_all() const {
     return
@@ -142,12 +156,19 @@ struct MonCap {
    * @param op_may_exec whether the operation may exec
    * @return true if the operation is allowed, false otherwise
    */
+#ifdef _WIN32
   bool is_capable(CephContext *cct,
 		  entity_name_t name,
 		  const string& service,
 		  const string& command, const map<string,string>& command_args,
 		  bool op_may_read, bool op_may_write, bool op_may_exec) const;
-
+#else
+  bool is_capable(CephContext *cct,
+		  EntityName name,
+		  const string& service,
+		  const string& command, const map<string,string>& command_args,
+		  bool op_may_read, bool op_may_write, bool op_may_exec) const;
+#endif
   void encode(bufferlist& bl) const;
   void decode(bufferlist::iterator& bl);
   void dump(Formatter *f) const;

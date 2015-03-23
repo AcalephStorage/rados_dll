@@ -11,12 +11,17 @@ class WritebackHandler {
  public:
   WritebackHandler() {}
   virtual ~WritebackHandler() {}
-
+#ifdef _WIN32
   virtual void read(const object_t& oid, uint64_t object_no,
 		    const object_locator_t& oloc, uint64_t off, uint64_t len,
 		    snapid_t snapid, bufferlist *pbl, uint64_t trunc_size,
 		    __u32 trunc_seq, Context *onfinish) = 0;
-
+#else
+  virtual void read(const object_t& oid, uint64_t object_no,
+		    const object_locator_t& oloc, uint64_t off, uint64_t len,
+		    snapid_t snapid, bufferlist *pbl, uint64_t trunc_size,
+		    __u32 trunc_seq, int op_flags, Context *onfinish) = 0;
+#endif
   /**
    * check if a given extent read result may change due to a write
    *

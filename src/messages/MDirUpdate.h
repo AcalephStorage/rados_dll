@@ -23,22 +23,30 @@ class MDirUpdate : public Message {
   dirfrag_t dirfrag;
   int32_t dir_rep;
   int32_t discover;
+#ifdef _WIN32
   set<int32_t> dir_rep_by;
+#else
+  compact_set<int32_t> dir_rep_by;
+#endif
   filepath path;
 
  public:
   mds_rank_t get_source_mds() const { return from_mds; }
   dirfrag_t get_dirfrag() const { return dirfrag; }
   int get_dir_rep() const { return dir_rep; }
+#ifdef _WIN32
   const set<int>& get_dir_rep_by() const { return dir_rep_by; } 
+#else
+  const compact_set<int>& get_dir_rep_by() const { return dir_rep_by; }
+#endif
   bool should_discover() const { return discover > 0; }
   const filepath& get_path() const { return path; }
 
   void tried_discover() {
     if (discover) discover--;
   }
-
   MDirUpdate() : Message(MSG_MDS_DIRUPDATE) {}
+#ifdef _WIN32
   MDirUpdate(mds_rank_t f, 
 	     dirfrag_t dirfrag,
              int dir_rep,
@@ -54,6 +62,23 @@ class MDirUpdate : public Message {
     else this->discover = 0;
     this->path = path;
   }
+#else
+  MDirUpdate(mds_rank_t f, 
+	     dirfrag_t dirfrag,
+             int dir_rep,
+             compact_set<int>& dir_rep_by,
+             filepath& path,
+             bool discover = false) :
+    Message(MSG_MDS_DIRUPDATE) {
+    this->from_mds = f;
+    this->dirfrag = dirfrag;
+    this->dir_rep = dir_rep;
+    this->dir_rep_by = dir_rep_by;
+    if (discover) this->discover = 5;
+    else this->discover = 0;
+    this->path = path;
+  }
+#endif
 private:
   ~MDirUpdate() {}
 

@@ -32,8 +32,11 @@ struct cls_log_list_op {
   utime_t to_time; /* not inclusive */
   int max_entries; /* upperbound to returned num of entries
                       might return less than that and still be truncated */
-
+#ifdef _WIN32
   cls_log_list_op() : max_entries(0) {}
+#else
+  cls_log_list_op() {}
+#endif
 
   void encode(bufferlist& bl) const {
     ENCODE_START(1, 1, bl);

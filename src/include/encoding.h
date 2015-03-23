@@ -58,8 +58,7 @@ inline void decode_raw(T& t, bufferlist::iterator &p)
 }
 
 #define WRITE_RAW_ENCODER(type)						\
-  inline void encode(const type &v, bufferlist& bl, uint64_t features=0) { \
-    encode_raw(v, bl); } \
+  inline void encode(const type &v, bufferlist& bl, uint64_t features=0) { encode_raw(v, bl); } \
   inline void decode(type &v, bufferlist::iterator& p) { __ASSERT_FUNCTION decode_raw(v, p); }
 
 WRITE_RAW_ENCODER(__u8)
@@ -592,8 +591,8 @@ inline void decode(std::map<T,U*>& m, bufferlist::iterator& p)
     decode(k, p);
     m[k] = new U(p);
   }
-  }
-*/
+  }*/
+
 // map
 template<class T, class U>
 inline void encode(const std::map<T,U>& m, bufferlist& bl)

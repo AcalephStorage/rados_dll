@@ -21,7 +21,7 @@
 #include "msg/msg_types.h"
 #include "msg/Messenger.h"
 #include "PipeConnection.h"
-
+#ifdef _WIN32
 /* Structure describing messages sent by
    `sendmsg' and received by `recvmsg'.  */
 struct msghdr
@@ -40,7 +40,7 @@ struct msghdr
 
     int msg_flags;              /* Flags on received message.  */
   };
-
+#endif
 class SimpleMessenger;
 class IncomingQueue;
 class DispatchQueue;
@@ -195,7 +195,11 @@ class DispatchQueue;
     }
 
   private:
+#ifdef _WIN32
     SOCKET sd;
+#else
+    int sd;
+#endif
     struct iovec msgvec[IOV_MAX];
 
   public:
@@ -243,7 +247,6 @@ class DispatchQueue;
     void reader();
     void writer();
     void unlock_maybe_reap();
-
 
     int randomize_out_seq();
 
@@ -345,7 +348,11 @@ class DispatchQueue;
     void shutdown_socket() {
       recv_reset();
       if (sd >= 0)
+#ifdef _WIN32
         ::shutdown(sd, SD_BOTH);
+#else
+        ::shutdown(sd, SHUT_RDWR);
+#endif
     }
 
     void recv_reset() {
@@ -392,8 +399,9 @@ class DispatchQueue;
      * @return 0 for success, or -1 on error
      */
     int tcp_write(const char *buf, int len);
+#ifdef _WIN32
     int pipe_cloexec(int pipefd[2]);
-
+#endif
   };
 
 

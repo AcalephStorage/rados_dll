@@ -219,7 +219,7 @@ public:
       crush->choose_total_tries == 50 &&
       crush->chooseleaf_descend_once == 1 &&
       crush->chooseleaf_vary_r == 1 &&
-	  crush->straw_calc_version == 1;
+      crush->straw_calc_version == 1;
   }
 
   bool has_optimal_tunables() const {

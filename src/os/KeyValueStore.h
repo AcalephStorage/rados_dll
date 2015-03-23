@@ -194,7 +194,9 @@ class KeyValueStore : public ObjectStore,
   string internal_name; // internal name, used to name the perfcounter instance
   string basedir;
   std::string current_fn;
+#ifdef _WIN32
   std::string current_op_seq_fn;
+#endif
   uuid_d fsid;
 
   int fsid_fd, current_fd;

@@ -4,8 +4,7 @@
 #include "Log.h"
 
 #include <errno.h>
-#ifdef _WIN32
-#else
+#ifndef _WIN32
 #include <syslog.h>
 #endif
 #include <iostream>

@@ -392,7 +392,6 @@ int MonClient::init()
       }
 #endif
     }
-
   }
 
   if (r < 0) {
@@ -453,39 +452,40 @@ int MonClient::authenticate(double timeout)
     ldout(cct, 5) << "already authenticated" << dendl;
     return 0;
   }
+
   _sub_want("monmap", monmap.get_epoch() ? monmap.get_epoch() + 1 : 0, 0);
   if (cur_mon.empty())
     _reopen_session();
-  utime_t until = ceph_clock_now(cct);
 
+  utime_t until = ceph_clock_now(cct);
   until += timeout;
   if (timeout > 0.0)
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;
-
   until += timeout;
   if (timeout > 0.0) {
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;
   }
-
   while (state != MC_STATE_HAVE_SESSION && !authenticate_err) {
     if (timeout > 0.0) {
       int r = auth_cond.WaitUntil(monc_lock, until);
       if (r == ETIMEDOUT) {
-      	ldout(cct, 0) << "authenticate timed out after " << timeout << dendl;
-      	authenticate_err = -r;
+	ldout(cct, 0) << "authenticate timed out after " << timeout << dendl;
+	authenticate_err = -r;
       }
     } else {
       auth_cond.Wait(monc_lock);
     }
   }
+
   if (state == MC_STATE_HAVE_SESSION) {
     ldout(cct, 5) << "authenticate success, global_id " << global_id << dendl;
   }
+
   if (authenticate_err < 0 && no_keyring_disabled_cephx) {
     lderr(cct) << "authenticate NOTE: no keyring found; disabled cephx authentication" << dendl;
   }
+
   return authenticate_err;
-  
 }
 
 void MonClient::handle_auth(MAuthReply *m)
@@ -617,6 +617,7 @@ void MonClient::_reopen_session(int rank, string name)
   } else {
     cur_mon = monmap.get_name(rank);
   }
+
   if (cur_con) {
     cur_con->mark_down();
   }
@@ -631,12 +632,14 @@ void MonClient::_reopen_session(int rank, string name)
     waiting_for_session.front()->put();
     waiting_for_session.pop_front();
   }
+
   // throw out version check requests
   while (!version_requests.empty()) {
     finisher.queue(version_requests.begin()->second->context, -EAGAIN);
     delete version_requests.begin()->second;
     version_requests.erase(version_requests.begin());
   }
+
   // adjust timeouts if necessary
   if (had_a_connection) {
     reopen_interval_multiplier *= cct->_conf->mon_client_hunt_interval_backoff;
@@ -645,24 +648,27 @@ void MonClient::_reopen_session(int rank, string name)
       reopen_interval_multiplier =
           cct->_conf->mon_client_hunt_interval_max_multiple;
   }
+
   // restart authentication handshake
   state = MC_STATE_NEGOTIATING;
   hunting = true;
+
   // send an initial keepalive to ensure our timestamp is valid by the
   // time we are in an OPENED state (by sequencing this before
   // authentication).
   cur_con->send_keepalive();
+
   MAuth *m = new MAuth;
   m->protocol = 0;
   m->monmap_epoch = monmap.get_epoch();
   __u8 struct_v = 1;
   ldout(cct,5) << "m->auth_payload: " << &m->auth_payload << dendl;
-
   ::encode(struct_v, m->auth_payload);
   ::encode(auth_supported->get_supported_set(), m->auth_payload);
   ::encode(entity_name, m->auth_payload);
   ::encode(global_id, m->auth_payload);
   _send_mon_message(m, true);
+
   if (!sub_have.empty())
     _renew_subs();
 }
