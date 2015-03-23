@@ -19,20 +19,22 @@
 #include "include/types.h"
 #include "osd/osd_types.h"
 #include "common/TrackedOp.h"
-//by ketor #include "common/WorkQueue.h"
+#ifndef _WIN32
+#include "common/WorkQueue.h"
+#endif
 #include "ObjectMap.h"
 
 #include <errno.h>
 #include <sys/stat.h>
 #include <vector>
 #include <map>
-
-//by ketor #if defined(DARWIN) || defined(__FreeBSD__)
-//#include <sys/statvfs.h>
-//#else
-//#include <sys/vfs.h>    /* or <sys/statfs.h> */
-//#endif /* DARWIN */
-
+#ifndef _WIN32
+#if defined(DARWIN) || defined(__FreeBSD__)
+#include <sys/statvfs.h>
+#else
+#include <sys/vfs.h>    /* or <sys/statfs.h> */
+#endif /* DARWIN */
+#endif
 #define OPS_PER_PTR 32
 
 class CephContext;
@@ -104,11 +106,19 @@ public:
    * @param journal path (or other descriptor) for journal (optional)
    * @param flags which filestores should check if applicable
    */
+#ifdef _WIN32
   static ObjectStore *create(CephContext *cct,
 			     const string& type,
 			     const string& data,
 			     const string& journal,
 			     osflagbits_t flag = 0);
+#else
+  static ObjectStore *create(CephContext *cct,
+			     const string& type,
+			     const string& data,
+			     const string& journal,
+			     osflagbits_t flags = 0);
+#endif
 
   Logger *logger;
 

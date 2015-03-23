@@ -64,10 +64,11 @@ class Cond {
     assert(waiter_mutex == NULL || waiter_mutex == &mutex);
     waiter_mutex = &mutex;
 
-
     assert(mutex.is_locked());
+
     struct timespec ts;
     when.to_timespec(&ts);
+
     mutex._pre_unlock();
     int r = pthread_cond_timedwait(&_c, &mutex._m, &ts);
     mutex._post_lock();

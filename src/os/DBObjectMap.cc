@@ -984,6 +984,9 @@ int DBObjectMap::upgrade_to_v2()
   }
 
   state.v = 2;
+#ifndef _WIN32
+  Mutex::Locker l(header_lock);
+#endif
   KeyValueDB::Transaction t = db->get_transaction();
   write_state(t);
   db->submit_transaction_sync(t);
@@ -1031,7 +1034,9 @@ int DBObjectMap::init(bool do_upgrade)
 int DBObjectMap::sync(const ghobject_t *oid,
 		      const SequencerPosition *spos) {
   KeyValueDB::Transaction t = db->get_transaction();
+#ifdef _WIN32
   write_state(t);
+#endif
   if (oid) {
     assert(spos);
     MapHeaderLock hl(this, *oid);

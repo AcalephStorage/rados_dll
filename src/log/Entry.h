@@ -53,7 +53,6 @@ struct Entry {
     : m_stamp(s), m_thread(t), m_prio(pr), m_subsys(sub),
       m_next(NULL),
       m_streambuf(m_static_buf, sizeof(m_static_buf))
-
   {
 #endif
     if (msg) {

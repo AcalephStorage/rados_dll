@@ -21,8 +21,11 @@
 #include "osd/osd_types.h"
 
 class MOSDBoot : public PaxosServiceMessage {
-
+#ifdef _WIN32
   static const int HEAD_VERSION = 5;
+#else
+  static const int HEAD_VERSION = 6;
+#endif
   static const int COMPAT_VERSION = 2;
 
  public:
@@ -31,11 +34,15 @@ class MOSDBoot : public PaxosServiceMessage {
   entity_addr_t cluster_addr;
   epoch_t boot_epoch;  // last epoch this daemon was added to the map (if any)
   map<string,string> metadata; ///< misc metadata about this osd
-
+#ifndef _WIN32
+  uint64_t osd_features;
+#endif
+#ifdef _WIN32
   MOSDBoot()
     : PaxosServiceMessage(MSG_OSD_BOOT, 0, HEAD_VERSION, COMPAT_VERSION),
       boot_epoch(0)
   { }
+
   MOSDBoot(OSDSuperblock& s, epoch_t be,
 	   const entity_addr_t& hb_back_addr_ref,
 	   const entity_addr_t& hb_front_addr_ref,
@@ -47,7 +54,25 @@ class MOSDBoot : public PaxosServiceMessage {
       cluster_addr(cluster_addr_ref),
       boot_epoch(be)
   { }
-  
+#else
+  MOSDBoot()
+    : PaxosServiceMessage(MSG_OSD_BOOT, 0, HEAD_VERSION, COMPAT_VERSION),
+      boot_epoch(0), osd_features(0)
+  { }
+  MOSDBoot(OSDSuperblock& s, epoch_t be,
+	   const entity_addr_t& hb_back_addr_ref,
+	   const entity_addr_t& hb_front_addr_ref,
+           const entity_addr_t& cluster_addr_ref,
+	   uint64_t feat)
+    : PaxosServiceMessage(MSG_OSD_BOOT, s.current_epoch, HEAD_VERSION, COMPAT_VERSION),
+      sb(s),
+      hb_back_addr(hb_back_addr_ref),
+      hb_front_addr(hb_front_addr_ref),
+      cluster_addr(cluster_addr_ref),
+      boot_epoch(be),
+      osd_features(feat)
+  { }
+#endif
 private:
   ~MOSDBoot() { }
 
@@ -65,6 +90,9 @@ public:
     ::encode(boot_epoch, payload);
     ::encode(hb_front_addr, payload);
     ::encode(metadata, payload);
+#ifndef _WIN32
+    ::encode(osd_features, payload);
+#endif
   }
   void decode_payload() {
     bufferlist::iterator p = payload.begin();
@@ -79,6 +107,12 @@ public:
       ::decode(hb_front_addr, p);
     if (header.version >= 5)
       ::decode(metadata, p);
+#ifndef _WIN32
+    if (header.version >= 6)
+      ::decode(osd_features, p);
+    else
+      osd_features = 0;
+#endif
   }
 };
 

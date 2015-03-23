@@ -29,10 +29,7 @@
 #include "common/cmdparse.h"
 #include "include/Spinlock.h"
 
-
 class AdminSocket;
-
-
 class CephContextServiceThread;
 class PerfCountersCollection;
 class md_config_obs_t;

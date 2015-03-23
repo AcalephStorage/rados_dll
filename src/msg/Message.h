@@ -168,12 +168,39 @@
 // *** generic ***
 #define MSG_TIMECHECK             0x600
 #define MSG_MON_HEALTH            0x601
+#ifndef _WIN32
+// *** Message::encode() crcflags bits ***
+#define MSG_CRC_DATA           (1 << 0)
+#define MSG_CRC_HEADER         (1 << 1)
+#define MSG_CRC_ALL            (MSG_CRC_DATA | MSG_CRC_HEADER)
 
+// Xio Testing
+#define MSG_DATA_PING		  0x602
+
+// Xio intends to define messages 0x603..0x606
+
+// Special
+#define MSG_NOP                   0x607
+#endif
 
 // ======================================================
 
 // abstract Message class
+#ifndef _WIN32
+namespace bi = boost::intrusive;
 
+// XioMessenger conditional trace flags
+#define MSG_MAGIC_XIO          0x0002
+#define MSG_MAGIC_TRACE_XCON   0x0004
+#define MSG_MAGIC_TRACE_DTOR   0x0008
+#define MSG_MAGIC_TRACE_HDR    0x0010
+#define MSG_MAGIC_TRACE_XIO    0x0020
+#define MSG_MAGIC_TRACE_XMSGR  0x0040
+#define MSG_MAGIC_TRACE_CTR    0x0080
+
+// XioMessenger diagnostic "ping pong" flag (resend msg when send completes)
+#define MSG_MAGIC_REDUPE       0x0100
+#endif
 class Message : public RefCountedObject {
 protected:
   ceph_msg_header  header;      // headerelope
@@ -196,7 +223,9 @@ protected:
   ConnectionRef connection;
 
   uint32_t magic;
-
+#ifndef _WIN32
+  bi::list_member_hook<> dispatch_q;
+#endif
 public:
   class CompletionHook : public Context {
   protected:
@@ -205,10 +234,17 @@ public:
   public:
     CompletionHook(Message *_m) : m(_m) {}
     virtual void set_message(Message *_m) { m = _m; }
+#ifdef _WIN32
     virtual void finish(int r) = 0;
     virtual ~CompletionHook() {}
+#endif
   };
-
+#ifndef _WIN32
+  typedef bi::list< Message,
+		    bi::member_hook< Message,
+				     bi::list_member_hook<>,
+				     &Message::dispatch_q > > Queue;
+#endif
 protected:
   CompletionHook* completion_hook; // owned by Messenger
 
@@ -270,7 +306,11 @@ protected:
       completion_hook->complete(0);
   }
 public:
+#ifdef _WIN32
   inline const ConnectionRef& get_connection() { return connection; }
+#else
+  inline const ConnectionRef& get_connection() const { return connection; }
+#endif
   void set_connection(const ConnectionRef& c) {
     connection = c;
   }
@@ -282,14 +322,28 @@ public:
   Throttle *get_message_throttler() { return msg_throttler; }
 
   void set_dispatch_throttle_size(uint64_t s) { dispatch_throttle_size = s; }
+#ifdef _WIN32
   uint64_t get_dispatch_throttle_size() { return dispatch_throttle_size; }
+#else
+  uint64_t get_dispatch_throttle_size() const { return dispatch_throttle_size; }
 
+  const ceph_msg_header &get_header() const { return header; }
+#endif
   ceph_msg_header &get_header() { return header; }
   void set_header(const ceph_msg_header &e) { header = e; }
   void set_footer(const ceph_msg_footer &e) { footer = e; }
+#ifndef _WIN32
+  const ceph_msg_footer &get_footer() const { return footer; }
+#endif
   ceph_msg_footer &get_footer() { return footer; }
-
+#ifndef _WIN32
+  void set_src(const entity_name_t& src) { header.src = src; }
+#endif
+#ifdef _WIN32
   uint32_t get_magic() { return magic; }
+#else
+  uint32_t get_magic() const { return magic; }
+#endif
   void set_magic(int _magic) { magic = _magic; }
 
   /*
@@ -313,8 +367,11 @@ public:
     data.clear();
     clear_buffers(); // let subclass drop buffers as well
   }
-
+#ifdef _WIN32
   bool empty_payload() { return payload.length() == 0; }
+#else
+  bool empty_payload() const { return payload.length() == 0; }
+#endif
   bufferlist& get_payload() { return payload; }
   void set_payload(bufferlist& bl) {
     if (byte_throttler)
@@ -421,14 +478,23 @@ public:
   }
 
   virtual void dump(Formatter *f) const;
-
+#ifdef _WIN32
   void encode(uint64_t features, bool datacrc);
+#else
+  void encode(uint64_t features, int crcflags);
+#endif
 };
 typedef boost::intrusive_ptr<Message> MessageRef;
-
+#ifdef _WIN32
 extern Message *decode_message(CephContext *cct, ceph_msg_header &header,
 			       ceph_msg_footer& footer, bufferlist& front,
 			       bufferlist& middle, bufferlist& data);
+#else
+extern Message *decode_message(CephContext *cct, int crcflags,
+			       ceph_msg_header &header,
+			       ceph_msg_footer& footer, bufferlist& front,
+			       bufferlist& middle, bufferlist& data);
+#endif
 inline ostream& operator<<(ostream& out, Message& m) {
   m.print(out);
   if (m.get_header().version)
@@ -437,6 +503,11 @@ inline ostream& operator<<(ostream& out, Message& m) {
 }
 
 extern void encode_message(Message *m, uint64_t features, bufferlist& bl);
+#ifdef _WIN32
 extern Message *decode_message(CephContext *cct, bufferlist::iterator& bl);
+#else
+extern Message *decode_message(CephContext *cct, int crcflags,
+                               bufferlist::iterator& bl);
+#endif
 
 #endif

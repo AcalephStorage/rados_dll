@@ -61,9 +61,9 @@ public:
    *  from this value.
    */
   CephContext *cct;
-
+#ifdef _WIN32
   int crcflags;
-
+#endif
   /**
    * A Policy describes the rules of a Connection. Is there a limit on how
    * much data this Connection can have locally? When the underlying connection

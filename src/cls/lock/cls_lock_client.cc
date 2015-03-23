@@ -117,7 +117,9 @@ namespace rados {
         try {
           ::decode(ret, iter);
         } catch (buffer::error& err) {
-	  //return -EBADMSG;
+#ifndef _WIN32
+	  return -EBADMSG;
+#endif
         }
 
         *locks = ret.locks;
@@ -143,7 +145,9 @@ namespace rados {
         try {
           ::decode(ret, *iter);
         } catch (buffer::error& err) {
-	 // return -EBADMSG;
+#ifndef _WIN32
+	  return -EBADMSG;
+#endif
         }
 
         if (lockers) {
@@ -174,7 +178,7 @@ namespace rados {
 	bufferlist::iterator it = out.begin();
 	return get_lock_info_finish(&it, lockers, type, tag);
       }
-
+#ifdef _WIN32
       void assert_locked(librados::ObjectOperation *rados_op,
                          const std::string& name, ClsLockType type,
                          const std::string& cookie, const std::string& tag)
@@ -198,7 +202,7 @@ namespace rados {
       {
         assert_locked(op, name, LOCK_SHARED, cookie, tag);
       }
-
+#endif
       void Lock::lock_shared(ObjectWriteOperation *op)
       {
         lock(op, name, LOCK_SHARED,
@@ -213,14 +217,24 @@ namespace rados {
 
       void Lock::lock_exclusive(ObjectWriteOperation *op)
       {
+#ifdef _WIN32
         lock(op, name, LOCK_EXCLUSIVE_one,
              cookie, tag, description, duration, flags);
+#else
+        lock(op, name, LOCK_EXCLUSIVE,
+             cookie, tag, description, duration, flags);
+#endif
       }
 
       int Lock::lock_exclusive(IoCtx *ioctx, const string& oid)
       {
+#ifdef _WIN32
         return lock(ioctx, oid, name, LOCK_EXCLUSIVE_one,
                     cookie, tag, description, duration, flags);
+#else
+        return lock(ioctx, oid, name, LOCK_EXCLUSIVE,
+                    cookie, tag, description, duration, flags);
+#endif
       }
 
       void Lock::unlock(ObjectWriteOperation *op)

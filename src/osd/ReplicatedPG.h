@@ -126,7 +126,11 @@ public:
     uint32_t flags;    // object_copy_data_t::FLAG_*
     uint32_t source_data_digest, source_omap_digest;
     uint32_t data_digest, omap_digest;
+#ifdef _WIN32
     vector<osd_reqid_t> reqids;
+#else
+    vector<pair<osd_reqid_t, version_t> > reqids; // [(reqid, user_version)]
+#endif
     bool is_data_digest() {
       return flags & object_copy_data_t::FLAG_DATA_DIGEST;
     }
@@ -323,8 +327,10 @@ public:
     osd->send_message_osd_cluster(to_osd, m, get_osdmap()->get_epoch());
   }
   void queue_transaction(ObjectStore::Transaction *t, OpRequestRef op) {
+#ifdef _WIN32
     list<ObjectStore::Transaction *> tls;
     tls.push_back(t);
+#endif
     osd->store->queue_transaction(osr.get(), t, 0, 0, 0, op);
   }
   epoch_t get_epoch() const {
@@ -554,9 +560,11 @@ public:
 
     int num_read;    ///< count read ops
     int num_write;   ///< count update ops
-
+#ifdef _WIN32
     vector<osd_reqid_t> extra_reqids;
-
+#else
+    vector<pair<osd_reqid_t, version_t> > extra_reqids;
+#endif
     CopyFromCallback *copy_cb;
 
     hobject_t new_temp_oid, discard_temp_oid;  ///< temp objects we should start/stop tracking
@@ -1011,7 +1019,7 @@ protected:
       pg(p), obc(o) {}
     void finish(int r) {
       pg->object_context_destructor_callback(obc);
-     }
+    }
   };
 
   int find_object_context(const hobject_t& oid,
@@ -1359,7 +1367,13 @@ protected:
   // -- scrub --
   virtual bool _range_available_for_scrub(
     const hobject_t &begin, const hobject_t &end);
+#ifdef _WIN32
   virtual void _scrub(ScrubMap& map);
+#else
+  virtual void _scrub(
+    ScrubMap &map,
+    const std::map<hobject_t, pair<uint32_t, uint32_t> > &missing_digest);
+#endif
   void _scrub_digest_updated();
   virtual void _scrub_clear_state();
   virtual void _scrub_finish();
@@ -1499,6 +1513,11 @@ private:
 
   int _verify_no_head_clones(const hobject_t& soid,
 			     const SnapSet& ss);
+#ifndef _WIN32
+  // return true if we're creating a local object, false for a
+  // whiteout or no change.
+  bool maybe_create_new_object(OpContext *ctx);
+#enduf
   int _delete_oid(OpContext *ctx, bool no_whiteout);
   int _rollback_to(OpContext *ctx, ceph_osd_op& op);
 public:
@@ -1509,8 +1528,16 @@ public:
   }
   void wait_for_unreadable_object(const hobject_t& oid, OpRequestRef op);
   void wait_for_all_missing(OpRequestRef op);
-
+#ifdef _WIN32
   bool is_degraded_object(const hobject_t& oid);
+#else
+  bool is_degraded_or_backfilling_object(const hobject_t& oid);
+
+  /* true if the object is missing on any peer, *healthy_copies will be
+   * set to the number of complete peers not missing the object
+   */
+  bool is_degraded_object(const hobject_t &oid, int *healthy_copies);
+#endif
   void wait_for_degraded_object(const hobject_t& oid, OpRequestRef op);
 
   bool maybe_await_blocked_snapset(const hobject_t &soid, OpRequestRef op);

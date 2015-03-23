@@ -1,10 +1,12 @@
 
 #include "msg_types.h"
-
-//by ketor #include <arpa/inet.h>
+#ifndef _WIN32
+#include <arpa/inet.h>
+#include <netdb.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
-//by ketor #include <netdb.h>
+
 
 #include "common/Formatter.h"
 
@@ -86,11 +88,22 @@ bool entity_addr_t::parse(const char *s, const char **end)
   // ipv4?
   struct in_addr a4;
   struct in6_addr a6;
-  if (inet_pton(AF_INET, buf4, (char*)&a4)) {
+#ifdef _WIN32
+  if (inet_pton(AF_INET, buf4, (char*)&a4)) 
+#else
+  if (inet_pton(AF_INET, buf4, &a4))
+#endif
+{
     addr4.sin_addr.s_addr = a4.s_addr;
     addr.ss_family = AF_INET;
     p = start + strlen(buf4);
-  } else if (inet_pton(AF_INET6, buf6, (char*)&a6)) {
+  }
+#ifdef _WIN32 
+else if (inet_pton(AF_INET6, buf6, (char*)&a6)) 
+#else
+else if (inet_pton(AF_INET6, buf6, &a6)) 
+#endif
+{
     addr.ss_family = AF_INET6;
     memcpy(&addr6.sin6_addr, &a6, sizeof(a6));
     p = start + strlen(buf6);
@@ -152,7 +165,7 @@ ostream& operator<<(ostream& out, const sockaddr_storage &ss)
   return out //<< ss.ss_family << ":"
 	     << buf << ':' << serv;
 }
-
+#ifdef _WIN32
 
 int inet_pton4(const char *src, char *dst)
 {
@@ -309,3 +322,4 @@ int inet_pton(int af, const char *src, char *dst)
         return -1;
     }
 }
+#endif

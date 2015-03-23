@@ -8,20 +8,31 @@
 
 /* lock flags */
 #define LOCK_FLAG_RENEW 0x1        /* idempotent lock acquire */
-
+# ifdef _WIN32
 enum ClsLockType {
   LOCK_NONE      = 0,
   LOCK_EXCLUSIVE_one = 1,
   LOCK_SHARED    = 3,
 };
-
+# else
+enum ClsLockType {
+  LOCK_NONE      = 0,
+  LOCK_EXCLUSIVE = 1,
+  LOCK_SHARED    = 2,
+};
+# endif
 static inline const char *cls_lock_type_str(ClsLockType type)
 {
     switch (type) {
       case LOCK_NONE:
 	return "none";
+#ifdef _WIN32
       case LOCK_EXCLUSIVE_one:
 	return "exclusive";
+#else
+      case LOCK_EXCLUSIVE:
+	return "exclusive";
+#endif
       case LOCK_SHARED:
 	return "shared";
       default:

@@ -3,7 +3,9 @@
 #include "common/debug.h"
 #include "common/Formatter.h"
 #include "common/errno.h"
+#ifdef _WIN32
 #define EALREADY 114 /* Operation already in progress */ //by ketor
+#endif
 #include "CrushWrapper.h"
 
 #define dout_subsys ceph_subsys_crush

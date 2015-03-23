@@ -233,7 +233,11 @@ protected:
    * put() should be called on destruction of some previously copied pointer.
    * put_unlock() when done with the current pointer (_most common_).
    */  
+#ifdef _WIN32
   Mutex _lock;
+#else
+  mutable Mutex _lock;
+#endif
   atomic_t ref;
 
 #ifdef PG_DEBUG_REFS
@@ -248,8 +252,14 @@ public:
 
 
   void lock_suspend_timeout(ThreadPool::TPHandle &handle);
+#ifdef _WIN32
   void lock(bool no_lockdep = false);
-  void unlock() {
+  void unlock() 
+#else
+  void lock(bool no_lockdep = false) const;
+  void unlock() const 
+#endif
+{
     //generic_dout(0) << this << " " << info.pgid << " unlock" << dendl;
     assert(!dirty_info);
     assert(!dirty_big_info);
@@ -780,7 +790,12 @@ protected:
 			     waiting_for_blocked_object;
   // Callbacks should assume pg (and nothing else) is locked
   map<hobject_t, list<Context*> > callbacks_for_degraded_object;
+#ifdef _WIN32
   map<eversion_t,list<OpRequestRef> > waiting_for_ack, waiting_for_ondisk;
+#else
+  map<eversion_t,
+      list<pair<OpRequestRef, version_t> > > waiting_for_ack, waiting_for_ondisk;
+#endif
   map<eversion_t,OpRequestRef>   replay_queue;
   void split_ops(PG *child, unsigned split_bits);
 
@@ -1105,9 +1120,10 @@ public:
 
     // Map from object with errors to good peers
     map<hobject_t, list<pair<ScrubMap::object, pg_shard_t> > > authoritative;
-
+#ifdef _WIN32
     // Objects who need digest updates
     map<hobject_t, pair<uint32_t,uint32_t> > missing_digest;
+#endif
     int num_digest_updates_pending;
 
     // chunky scrub
@@ -1202,7 +1218,9 @@ public:
       inconsistent.clear();
       missing.clear();
       authoritative.clear();
+#ifdef _WIN32
       missing_digest.clear();
+#endif
       num_digest_updates_pending = 0;
     }
 
@@ -1240,7 +1258,13 @@ public:
    */
   virtual bool _range_available_for_scrub(
     const hobject_t &begin, const hobject_t &end) = 0;
+#ifdef _WIN32
   virtual void _scrub(ScrubMap &map) { }
+#else
+  virtual void _scrub(
+    ScrubMap &map,
+    const std::map<hobject_t, pair<uint32_t, uint32_t> > &missing_digest) { }
+#endif
   virtual void _scrub_clear_state() { }
   virtual void _scrub_finish() { }
   virtual void get_colls(list<coll_t> *out) = 0;

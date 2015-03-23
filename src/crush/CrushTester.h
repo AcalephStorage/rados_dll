@@ -334,7 +334,9 @@ public:
   }
 
   int test();
+#ifdef _WIN32
   int test_with_crushtool();
+#endif
 };
 
 #endif

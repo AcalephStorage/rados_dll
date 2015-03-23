@@ -20,6 +20,7 @@
 #include "include/utime.h"
 #include "common/Clock.h"
 
+#ifdef _WIN32
 Mutex::Mutex(const char *n, bool r, bool ld,
 	     bool bt,
 	     CephContext *cct) :
@@ -68,7 +69,54 @@ Mutex::Mutex(const char *n, bool r, bool ld,
     pthread_mutex_init(&_m, NULL);
   }
 }
-
+#else
+Mutex::Mutex(const char *n, bool r, bool ld,
+	     bool bt,
+	     CephContext *cct) :
+  name(n), id(-1), recursive(r), lockdep(ld), backtrace(bt),
+  nlock(0), locked_by(0), cct(cct), logger(0)
+{
+  if (cct) {
+    PerfCountersBuilder b(cct, string("mutex-") + name,
+			  l_mutex_first, l_mutex_last);
+    b.add_time_avg(l_mutex_wait, "wait");
+    logger = b.create_perf_counters();
+    cct->get_perfcounters_collection()->add(logger);
+    logger->set(l_mutex_wait, 0);
+  }
+  if (recursive) {
+    // Mutexes of type PTHREAD_MUTEX_RECURSIVE do all the same checks as
+    // mutexes of type PTHREAD_MUTEX_ERRORCHECK.
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&_m,&attr);
+    pthread_mutexattr_destroy(&attr);
+    if (g_lockdep)
+      _register();
+  }
+  else if (lockdep) {
+    // If the mutex type is PTHREAD_MUTEX_ERRORCHECK, then error checking
+    // shall be provided. If a thread attempts to relock a mutex that it
+    // has already locked, an error shall be returned. If a thread
+    // attempts to unlock a mutex that it has not locked or a mutex which
+    // is unlocked, an error shall be returned.
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+    pthread_mutex_init(&_m, &attr);
+    if (g_lockdep)
+      _register();
+  }
+  else {
+    // If the mutex type is PTHREAD_MUTEX_NORMAL, deadlock detection
+    // shall not be provided. Attempting to relock the mutex causes
+    // deadlock. If a thread attempts to unlock a mutex that  it  has not
+    // locked or a mutex which is unlocked, undefined behavior results.
+    pthread_mutex_init(&_m, NULL);
+  }
+}
+#endif
 Mutex::~Mutex() {
   assert(nlock == 0);
   pthread_mutex_destroy(&_m);
