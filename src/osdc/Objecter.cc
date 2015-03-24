@@ -129,6 +129,11 @@ enum {
   l_osdc_osd_session_open,
   l_osdc_osd_session_close,
   l_osdc_osd_laggy,
+#ifndef _WIN32
+  l_osdc_osdop_omap_wr,
+  l_osdc_osdop_omap_rd,
+  l_osdc_osdop_omap_del,
+#endif
   l_osdc_last,
 };
 
@@ -181,8 +186,12 @@ void Objecter::init()
 
   if (!logger) {
     PerfCountersBuilder pcb(cct, "objecter", l_osdc_first, l_osdc_last);
-
+#ifdef _WIN32
     pcb.add_u64(l_osdc_op_active, "op_active");
+#else
+    pcb.add_u64(l_osdc_op_active, "op_active",
+        "Operations active", "actv");
+#endif
     pcb.add_u64(l_osdc_op_laggy, "op_laggy");
     pcb.add_u64_counter(l_osdc_op_send, "op_send");
     pcb.add_u64_counter(l_osdc_op_send_bytes, "op_send_bytes");
@@ -191,8 +200,15 @@ void Objecter::init()
     pcb.add_u64_counter(l_osdc_op_commit, "op_commit");
 
     pcb.add_u64_counter(l_osdc_op, "op");
+#ifdef _WIN32
     pcb.add_u64_counter(l_osdc_op_r, "op_r");
     pcb.add_u64_counter(l_osdc_op_w, "op_w");
+#else
+    pcb.add_u64_counter(l_osdc_op_r, "op_r",
+        "Read operations", "read");
+    pcb.add_u64_counter(l_osdc_op_w, "op_w",
+        "Write operations", "writ");
+#endif
     pcb.add_u64_counter(l_osdc_op_rmw, "op_rmw");
     pcb.add_u64_counter(l_osdc_op_pg, "op_pg");
 
@@ -253,7 +269,11 @@ void Objecter::init()
     pcb.add_u64_counter(l_osdc_osd_session_open, "osd_session_open");
     pcb.add_u64_counter(l_osdc_osd_session_close, "osd_session_close");
     pcb.add_u64(l_osdc_osd_laggy, "osd_laggy");
-
+#ifndef _WIN32
+    pcb.add_u64_counter(l_osdc_osdop_omap_wr, "omap_wr");
+    pcb.add_u64_counter(l_osdc_osdop_omap_rd, "omap_rd");
+    pcb.add_u64_counter(l_osdc_osdop_omap_del, "omap_del");
+#endif
     logger = pcb.create_perf_counters();
     cct->get_perfcounters_collection()->add(logger);
   }
@@ -261,14 +281,22 @@ void Objecter::init()
   m_request_state_hook = new RequestStateHook(this);
   AdminSocket* admin_socket = cct->get_admin_socket();
   int ret = admin_socket->register_command("objecter_requests",
-        				   "objecter_requests",
-        				   m_request_state_hook,
-        				   "show in-progress osd requests");
+					   "objecter_requests",
+					   m_request_state_hook,
+					   "show in-progress osd requests");
+#ifdef _WIN32
   if (ret < 0) {
     lderr(cct) << "error registering admin socket command: "
                << cpp_strerror(-ret) << dendl;
   }
-
+#else
+  /* Don't warn on EEXIST, happens if multiple ceph clients
+   * are instantiated from one process */
+  if (ret < 0 && ret != -EEXIST) {
+    lderr(cct) << "error registering admin socket command: "
+	       << cpp_strerror(ret) << dendl;
+  }
+#endif
   timer_lock.Lock();
   timer.init();
   timer_lock.Unlock();
@@ -282,6 +310,7 @@ void Objecter::init()
 void Objecter::start()
 {
   RWLock::RLocker rl(rwlock);
+
   schedule_tick();
   ldout(cct,10) << "osdmap: " << osdmap << dendl;
   ldout(cct, 10) << "osdmap-<get_epoch: " << osdmap->get_epoch() << dendl;
@@ -415,8 +444,13 @@ void Objecter::_send_linger(LingerOp *info)
   RWLock::Context lc(rwlock, RWLock::Context::TakenForWrite);
 
   vector<OSDOp> opv;
+#ifdef _WIN32
   Context *onack = NULL;
+#endif
   Context *oncommit = NULL;
+#ifndef _WIN32
+  info->watch_lock.get_read(); // just to read registered status
+#endif
   if (info->registered && info->is_watch) {
     ldout(cct, 15) << "send_linger " << info->linger_id << " reconnect" << dendl;
     opv.push_back(OSDOp());
@@ -428,14 +462,25 @@ void Objecter::_send_linger(LingerOp *info)
   } else {
     ldout(cct, 15) << "send_linger " << info->linger_id << " register" << dendl;
     opv = info->ops;
+#ifdef _WIN32
     if (info->on_reg_ack)
       onack = new C_Linger_Register(this, info);
+#endif
     oncommit = new C_Linger_Commit(this, info);
   }
+#ifdef _WIN32
   Op *o = new Op(info->target.base_oid, info->target.base_oloc,
 		 opv, info->target.flags | CEPH_OSD_FLAG_READ,
 		 onack, oncommit,
 		 info->pobjver);
+#else
+  info->watch_lock.put_read();
+  Op *o = new Op(info->target.base_oid, info->target.base_oloc,
+		 opv, info->target.flags | CEPH_OSD_FLAG_READ,
+		 NULL, NULL,
+		 info->pobjver);
+  o->oncommit_sync = oncommit;
+#endif
   o->snapid = info->snap;
   o->snapc = info->snapc;
   o->mtime = info->mtime;
@@ -464,7 +509,7 @@ void Objecter::_send_linger(LingerOp *info)
 
   logger->inc(l_osdc_linger_send);
 }
-
+#ifdef _WIN32
 void Objecter::_linger_register(LingerOp *info, int r)
 {
   ldout(cct, 10) << "_linger_register " << info->linger_id << dendl;
@@ -473,9 +518,12 @@ void Objecter::_linger_register(LingerOp *info, int r)
     info->on_reg_ack = NULL;
   }
 }
-
+#endif
 void Objecter::_linger_commit(LingerOp *info, int r) 
 {
+#ifndef _WIN32
+  RWLock::WLocker wl(info->watch_lock);
+#endif
   ldout(cct, 10) << "_linger_commit " << info->linger_id << dendl;
   if (info->on_reg_commit) {
     info->on_reg_commit->complete(r);
@@ -497,7 +545,18 @@ struct C_DoWatchError : public Context {
     info->_queued_async();
   }
   void finish(int r) {
+#ifdef _WIN32
     info->watch_context->handle_error(info->get_cookie(), err);
+#else
+    objecter->rwlock.get_read();
+    bool canceled = info->canceled;
+    objecter->rwlock.put_read();
+
+    if (!canceled) {
+      info->watch_context->handle_error(info->get_cookie(), err);
+    }
+
+#endif
     info->finished_async();
     info->put();
     objecter->_linger_callback_finish();
@@ -548,18 +607,25 @@ void Objecter::_send_linger_ping(LingerOp *info)
 
   utime_t now = ceph_clock_now(NULL);
   ldout(cct, 10) << __func__ << " " << info->linger_id << " now " << now << dendl;
-
+#ifdef _WIN32
   RWLock::Context lc(rwlock, RWLock::Context::TakenForRead);
-
+#endif
   vector<OSDOp> opv(1);
   opv[0].op.op = CEPH_OSD_OP_WATCH;
   opv[0].op.watch.cookie = info->get_cookie();
   opv[0].op.watch.op = CEPH_OSD_WATCH_OP_PING;
   opv[0].op.watch.gen = info->register_gen;
   C_Linger_Ping *onack = new C_Linger_Ping(this, info);
+#ifdef _WIN32
   Op *o = new Op(info->target.base_oid, info->target.base_oloc,
 		 opv, info->target.flags | CEPH_OSD_FLAG_READ,
 		 onack, NULL, NULL);
+#else
+  Op *o = new Op(info->target.base_oid, info->target.base_oloc,
+		 opv, info->target.flags | CEPH_OSD_FLAG_READ,
+		 NULL, NULL, NULL);
+  o->oncommit_sync = onack;
+#endif
   o->target = info->target;
   o->should_resend = false;
   _send_op_account(o);
@@ -655,9 +721,11 @@ Objecter::LingerOp *Objecter::linger_register(const object_t& oid,
     info->target.base_oloc.key.clear();
   info->target.flags = flags;
   info->watch_valid_thru = ceph_clock_now(NULL);
-
+#ifdef _WIN32
   RWLock::Context lc(rwlock, RWLock::Context::TakenForWrite);
-
+#else
+  RWLock::WLocker l(rwlock);
+#endif
   // Acquire linger ID
   info->linger_id = ++max_linger_id;
   ldout(cct, 10) << __func__ << " info " << info
@@ -687,7 +755,9 @@ ceph_tid_t Objecter::linger_watch(LingerOp *info,
   info->inbl = inbl;
   info->poutbl = NULL;
   info->pobjver = objver;
+#ifdef _WIN32
   info->on_reg_ack = NULL;
+#endif
   info->on_reg_commit = oncommit;
 
   RWLock::WLocker wl(rwlock);
@@ -1294,6 +1364,11 @@ void Objecter::_check_op_pool_dne(Op *op, bool session_locked)
       if (op->oncommit) {
 	op->oncommit->complete(-ENOENT);
       }
+#ifndef _WIN32
+      if (op->oncommit_sync) {
+	op->oncommit_sync->complete(-ENOENT);
+      }
+#endif
 
       OSDSession *s = op->session;
       assert(s != NULL);
@@ -1387,9 +1462,11 @@ void Objecter::_check_linger_pool_dne(LingerOp *op, bool *need_unregister)
   }
   if (op->map_dne_bound > 0) {
     if (osdmap->get_epoch() >= op->map_dne_bound) {
+#ifdef _WIN32
       if (op->on_reg_ack) {
 	op->on_reg_ack->complete(-ENOENT);
       }
+#endif
       if (op->on_reg_commit) {
 	op->on_reg_commit->complete(-ENOENT);
       }
@@ -1769,8 +1846,11 @@ void Objecter::kick_requests(OSDSession *session)
 
 void Objecter::_kick_requests(OSDSession *session, map<uint64_t, LingerOp *>& lresend)
 {
+#ifdef _WIN32
   assert(rwlock.is_locked());
-
+#else
+  assert(rwlock.is_wlocked());
+#endif
   // resend ops
   map<ceph_tid_t,Op*> resend;  // resend in tid order
   for (map<ceph_tid_t, Op*>::iterator p = session->ops.begin(); p != session->ops.end();) {
@@ -1813,7 +1893,11 @@ void Objecter::_kick_requests(OSDSession *session, map<uint64_t, LingerOp *>& lr
 
 void Objecter::_linger_ops_resend(map<uint64_t, LingerOp *>& lresend)
 {
+#ifdef _WIN32
   assert(rwlock.is_locked());
+#else
+  assert(rwlock.is_wlocked());
+#endif
 
   while (!lresend.empty()) {
     LingerOp *op = lresend.begin()->second;
@@ -1879,6 +1963,9 @@ void Objecter::tick()
            p != s->linger_ops.end();
            ++p) {
         LingerOp *op = p->second;
+#ifndef _WIN32
+        RWLock::WLocker wl(op->watch_lock);
+#endif
         assert(op->session);
         ldout(cct, 10) << " pinging osd that serves lingering tid " << p->first << " (osd." << op->session->osd << ")" << dendl;
         toping.insert(op->session);
@@ -1968,10 +2055,19 @@ class C_CancelOp : public Context
   ceph_tid_t tid;
   Objecter *objecter;
 public:
+#ifdef _WIN32
   C_CancelOp(ceph_tid_t t, Objecter *objecter) : tid(t), objecter(objecter) {}
+#else
+  C_CancelOp(Objecter *objecter) : objecter(objecter) {}
+#endif
   void finish(int r) {
     objecter->op_cancel(tid, -ETIMEDOUT);
   }
+#ifndef _WIN32
+  void set_tid(ceph_tid_t _tid) {
+    tid = _tid;
+  }
+#endif
 };
 
 ceph_tid_t Objecter::op_submit(Op *op, int *ctx_budget)
@@ -1999,15 +2095,27 @@ ceph_tid_t Objecter::_op_submit_with_budget(Op *op, RWLock::Context& lc, int *ct
       *ctx_budget = op_budget;
     }
   }
-
+#ifndef _WIN32
+  C_CancelOp *cb = NULL;
+  if (osd_timeout > 0) {
+    cb = new C_CancelOp(this);
+    op->ontimeout = cb;
+  }
+#endif
   ceph_tid_t tid = _op_submit(op, lc);
-
+#ifdef _WIN32
   if (osd_timeout > 0) {
     Mutex::Locker l(timer_lock);
     op->ontimeout = new C_CancelOp(tid, this);
     timer.add_event_after(osd_timeout, op->ontimeout);
   }
-
+#else
+  if (cb) {
+    cb->set_tid(tid);
+    Mutex::Locker l(timer_lock);
+    timer.add_event_after(osd_timeout, op->ontimeout);
+  }
+#endif
   return tid;
 }
 
@@ -2021,12 +2129,19 @@ void Objecter::_send_op_account(Op *op)
   } else {
     ldout(cct, 20) << " note: not requesting ack" << dendl;
   }
+#ifdef _WIN32
   if (op->oncommit) {
     num_uncommitted.inc();
   } else {
     ldout(cct, 20) << " note: not requesting commit" << dendl;
   }
-
+#else
+  if (op->oncommit || op->oncommit_sync) {
+    num_uncommitted.inc();
+  } else {
+    ldout(cct, 20) << " note: not requesting commit" << dendl;
+  }
+#endif
   logger->inc(l_osdc_op_active);
   logger->inc(l_osdc_op);
 
@@ -2063,6 +2178,24 @@ void Objecter::_send_op_account(Op *op)
     case CEPH_OSD_OP_TMAPUP: code = l_osdc_osdop_tmap_up; break;
     case CEPH_OSD_OP_TMAPPUT: code = l_osdc_osdop_tmap_put; break;
     case CEPH_OSD_OP_TMAPGET: code = l_osdc_osdop_tmap_get; break;
+#ifndef _WIN32
+
+    // OMAP read operations
+    case CEPH_OSD_OP_OMAPGETVALS:
+    case CEPH_OSD_OP_OMAPGETKEYS:
+    case CEPH_OSD_OP_OMAPGETHEADER:
+    case CEPH_OSD_OP_OMAPGETVALSBYKEYS:
+    case CEPH_OSD_OP_OMAP_CMP: code = l_osdc_osdop_omap_rd; break;
+
+    // OMAP write operations
+    case CEPH_OSD_OP_OMAPSETVALS:
+    case CEPH_OSD_OP_OMAPSETHEADER: code = l_osdc_osdop_omap_wr; break;
+
+    // OMAP del operations
+    case CEPH_OSD_OP_OMAPCLEAR:
+    case CEPH_OSD_OP_OMAPRMKEYS: code = l_osdc_osdop_omap_del; break;
+
+#endif
     case CEPH_OSD_OP_CALL: code = l_osdc_osdop_call; break;
     case CEPH_OSD_OP_WATCH: code = l_osdc_osdop_watch; break;
     case CEPH_OSD_OP_NOTIFY: code = l_osdc_osdop_notify; break;
@@ -2191,6 +2324,12 @@ int Objecter::op_cancel(OSDSession *s, ceph_tid_t tid, int r)
     op->oncommit->complete(r);
     op->oncommit = NULL;
   }
+#ifndef _WIN32
+  if (op->oncommit_sync) {
+    op->oncommit_sync->complete(r);
+    op->oncommit_sync = NULL;
+  }
+#endif
   _op_cancel_map_check(op);
   _finish_op(op);
   s->lock.unlock();
@@ -2567,8 +2706,11 @@ void Objecter::_session_linger_op_assign(OSDSession *to, LingerOp *op)
 void Objecter::_session_linger_op_remove(OSDSession *from, LingerOp *op)
 {
   assert(from == op->session);
+#ifdef _WIN32
   assert(from->lock.is_locked());
-
+#else
+  assert(from->lock.is_wlocked());
+#endif
   if (from->is_homeless()) {
     num_homeless_ops.dec();
   }
@@ -2612,7 +2754,7 @@ void Objecter::_session_command_op_assign(OSDSession *to, CommandOp *op)
 
   ldout(cct, 15) << __func__ << " " << to->osd << " " << op->tid << dendl;
 }
-
+#ifdef _WIN32
 int Objecter::_get_osd_session(int osd, RWLock::Context& lc, OSDSession **psession)
 {
   int r;
@@ -2642,7 +2784,7 @@ bool Objecter::_promote_lock_check_race(RWLock::Context& lc)
   lc.promote();
   return (epoch == osdmap->get_epoch());
 }
-
+#endif
 int Objecter::_recalc_linger_op_target(LingerOp *linger_op, RWLock::Context& lc)
 {
   assert(rwlock.is_wlocked());
@@ -2652,7 +2794,7 @@ int Objecter::_recalc_linger_op_target(LingerOp *linger_op, RWLock::Context& lc)
     ldout(cct, 10) << "recalc_linger_op_target tid " << linger_op->linger_id
 		   << " pgid " << linger_op->target.pgid
 		   << " acting " << linger_op->target.acting << dendl;
-    
+#ifdef _WIN32    
     OSDSession *s;
     r = _get_osd_session(linger_op->target.osd, lc, &s);
     if (r < 0) {
@@ -2660,7 +2802,11 @@ int Objecter::_recalc_linger_op_target(LingerOp *linger_op, RWLock::Context& lc)
       // in this session to be handled again next time we scan requests
       return r;
     }
-
+#else
+    OSDSession *s = NULL;
+    r = _get_session(linger_op->target.osd, &s, lc);
+    assert(r == 0);
+#endif
     if (linger_op->session != s) {
       // NB locking two sessions (s and linger_op->session) at the same time here
       // is only safe because we are the only one that takes two, and we are
@@ -2684,6 +2830,9 @@ void Objecter::_cancel_linger_op(Op *op)
   assert(!op->should_resend);
   delete op->onack;
   delete op->oncommit;
+#ifndef _WIN32
+  delete op->oncommit_sync;
+#endif
 
   _finish_op(op);
 }
@@ -2735,20 +2884,31 @@ MOSDOp *Objecter::_prepare_osd_op(Op *op)
 
   int flags = op->target.flags;
   flags |= CEPH_OSD_FLAG_KNOWN_REDIR;
+#ifdef _WIN32
   if (op->oncommit)
     flags |= CEPH_OSD_FLAG_ONDISK;
+#else
+  if (op->oncommit || op->oncommit_sync)
+    flags |= CEPH_OSD_FLAG_ONDISK;
+#endif
   if (op->onack)
     flags |= CEPH_OSD_FLAG_ACK;
 
   op->target.paused = false;
   op->stamp = ceph_clock_now(cct);
-
+#ifdef _WIN32
   MOSDOp *m = new MOSDOp(client_inc.read(), op->tid, 
 			 op->target.target_oid, op->target.target_oloc,
 			 op->target.pgid,
 			 osdmap->get_epoch(),
 			 flags);
-
+#else
+  MOSDOp *m = new MOSDOp(client_inc.read(), op->tid, 
+			 op->target.target_oid, op->target.target_oloc,
+			 op->target.pgid,
+			 osdmap->get_epoch(),
+			 flags, op->features);
+#endif
   m->set_snapid(op->snapid);
   m->set_snap_seq(op->snapc.seq);
   m->set_snaps(op->snapc.snaps);
@@ -2934,7 +3094,11 @@ void Objecter::handle_osd_op_reply(MOSDOpReply *m)
     ldout(cct, 5) << " got redirect reply; redirecting" << dendl;
     if (op->onack)
       num_unacked.dec();
+#ifdef _WIN32
     if (op->oncommit)
+#else
+    if (op->oncommit || op->oncommit_sync)
+#endif
       num_uncommitted.dec();
     _session_op_remove(s, op);
     s->lock.unlock();
@@ -3025,19 +3189,42 @@ void Objecter::handle_osd_op_reply(MOSDOpReply *m)
     num_unacked.dec();
     logger->inc(l_osdc_op_ack);
   }
+#ifdef _WIN32
   if (op->oncommit && (m->is_ondisk() || rc)) {
     ldout(cct, 15) << "handle_osd_op_reply safe" << dendl;
     oncommit = op->oncommit;
     op->oncommit = 0;
     num_uncommitted.dec();
     logger->inc(l_osdc_op_commit);
+#else
+  if (m->is_ondisk() || rc) {
+    if (op->oncommit) {
+      ldout(cct, 15) << "handle_osd_op_reply safe" << dendl;
+      oncommit = op->oncommit;
+      op->oncommit = NULL;
+      num_uncommitted.dec();
+      logger->inc(l_osdc_op_commit);
+    }
+    if (op->oncommit_sync) {
+      ldout(cct, 15) << "handle_osd_op_reply safe (sync)" << dendl;
+      op->oncommit_sync->complete(rc);
+      op->oncommit_sync = NULL;
+      num_uncommitted.dec();
+      logger->inc(l_osdc_op_commit);
+    }
+#endif
   }
 
   /* get it before we call _finish_op() */
   Mutex *completion_lock = (op->target.base_oid.name.size() ? s->get_lock(op->target.base_oid) : NULL);
 
   // done with this tid?
-  if (!op->onack && !op->oncommit) {
+#ifdef _WIN32
+  if (!op->onack && !op->oncommit) 
+#else
+  if (!op->onack && !op->oncommit && !op->oncommit_sync) 
+#endif
+  {
     ldout(cct, 15) << "handle_osd_op_reply completed tid " << tid << dendl;
     _finish_op(op);
   }
@@ -4223,9 +4410,13 @@ Objecter::RequestStateHook::RequestStateHook(Objecter *objecter) :
 bool Objecter::RequestStateHook::call(std::string command, cmdmap_t& cmdmap,
 				      std::string format, bufferlist& out)
 {
+#ifdef _WIN32
   Formatter *f = new_formatter(format);
   if (!f)
     f = new_formatter("json-pretty");
+#else
+  Formatter *f = Formatter::create(format, "json-pretty", "json-pretty");
+#endif
   RWLock::RLocker rl(m_objecter->rwlock);
   m_objecter->dump_requests(f);
   f->flush(out);
