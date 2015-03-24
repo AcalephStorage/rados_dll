@@ -13,64 +13,64 @@ INCLUDE_BASE=C:/MinGW
 BOOST_INCLUDE_PATH=$(INCLUDE_BASE)/boost
 PTHREADS_PATH=$(INCLUDE_BASE)/pthread
 
-CEPH_INCLUDE = -I$(SRC) -l$(PTHREAD)
+CEPH_INCLUDE = -I$(CEPH_SRC) -l$(PTHREAD)
 CFLAGS   = $(CEPH_INCLUDE) -lws2_32 -D__USE_FILE_OFFSET64 -DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -fno-strict-aliasing -fsigned-char -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -g -DPIC
 CPPFLAGS = $(CFLAGS) -Wno-invalid-offsetof
 CLIBS    = 
 
 all: $(BIN)/rados_client.exe
 
-$(BUILD)/rados_client.o:$(SRC)/rados_client.c
+$(BUILD)/rados_client.o:$(CEPH_SRC)/rados_client.c
 	$(CC) -c $(CFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/%.c
+$(BUILD)/%.o:$(CEPH_SRC)/%.c
 	$(CC) -c $(CFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/auth/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/auth/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/auth/cephx/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/auth/cephx/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@	
-$(BUILD)/%.o:$(SRC)/mon/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/mon/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/cls/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/cls/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/include/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/include/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/common/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/common/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/common/%.c
+$(BUILD)/%.o:$(CEPH_SRC)/common/%.c
 	$(CC) -c $(CFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/librados/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/librados/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/log/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/log/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/osdc/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/osdc/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/osd/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/osd/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/msg/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/msg/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/cls/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/cls/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/mds/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/mds/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/mon/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/mon/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/global/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/global/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/crush/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/crush/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/crush/%.c
+$(BUILD)/%.o:$(CEPH_SRC)/crush/%.c
 	$(CC) -c $(CFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/cls/lock/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/cls/lock/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/mds/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/mds/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/msg/simple/%.cc
+$(BUILD)/%.o:$(CEPH_SRC)/msg/simple/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
-$(BUILD)/%.o:$(SRC)/json_spirit/%.cpp
+$(BUILD)/%.o:$(CEPH_SRC)/json_spirit/%.cpp
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
 
 OBJECTS= $(BUILD)/hash.o $(BUILD)/snap_set_diff.o $(BUILD)/librados.o $(BUILD)/IoCtxImpl.o $(BUILD)/RadosClient.o $(BUILD)/RadosXattrIter.o \
