@@ -104,7 +104,7 @@
 #define HAVE_LIBBOOST_THREAD_MT 1
 
 /* Define if you have fuse */
-#define HAVE_LIBFUSE 1
+//#define HAVE_LIBFUSE 1
 
 /* Define to 1 if you have the `leveldb' library (-lleveldb). */
 #define HAVE_LIBLEVELDB 1
