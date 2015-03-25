@@ -22,9 +22,6 @@
 #include "Clock.h"
 
 #include "include/Context.h"
-#ifdef _WIN32
-#include <winsock2.h>
-#endif
 #include <pthread.h>
 
 class Cond {
