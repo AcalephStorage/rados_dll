@@ -13,17 +13,11 @@ class ObjecterWriteback : public WritebackHandler {
       m_finisher(fin),
       m_lock(lock) { }
   virtual ~ObjecterWriteback() {}
-#ifdef _WIN32
+
   virtual void read(const object_t& oid, const object_locator_t& oloc,
 		    uint64_t off, uint64_t len, snapid_t snapid,
 		    bufferlist *pbl, uint64_t trunc_size,  __u32 trunc_seq,
 		    Context *onfinish)
-#else
-  virtual void read(const object_t& oid, uint64_t object_no,
-		    const object_locator_t& oloc, uint64_t off, uint64_t len,
-		    snapid_t snapid, bufferlist *pbl, uint64_t trunc_size,
-		    __u32 trunc_seq, Context *onfinish)
-#endif
  {
     m_objecter->read_trunc(oid, oloc, off, len, snapid, pbl, 0,
 			   trunc_size, trunc_seq,
