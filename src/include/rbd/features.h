@@ -4,21 +4,11 @@
 #define RBD_FEATURE_LAYERING		(1<<0)
 #define RBD_FEATURE_STRIPINGV2		(1<<1)
 #define RBD_FEATURE_EXCLUSIVE_LOCK	(1<<2)
-#ifdef _WIN32
-#else
 #define RBD_FEATURE_OBJECT_MAP		(1<<3)
-#endif
 
 #define RBD_FEATURES_INCOMPATIBLE 	(RBD_FEATURE_LAYERING |       \
 					 RBD_FEATURE_STRIPINGV2)
-#ifdef _WIN32
-#define RBD_FEATURES_RW_INCOMPATIBLE	(RBD_FEATURES_INCOMPATIBLE | \
-					 RBD_FEATURE_EXCLUSIVE_LOCK)
 
-#define RBD_FEATURES_ALL          	(RBD_FEATURE_LAYERING |      \
-					 RBD_FEATURE_STRIPINGV2 |    \
-                                   	 RBD_FEATURE_EXCLUSIVE_LOCK)
-#else
 #define RBD_FEATURES_RW_INCOMPATIBLE	(RBD_FEATURES_INCOMPATIBLE |  \
 					 RBD_FEATURE_EXCLUSIVE_LOCK | \
 					 RBD_FEATURE_OBJECT_MAP)
@@ -28,4 +18,4 @@
                                    	 RBD_FEATURE_EXCLUSIVE_LOCK | \
                                          RBD_FEATURE_OBJECT_MAP)
 #endif
-#endif
+

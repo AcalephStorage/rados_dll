@@ -142,10 +142,8 @@ extern const char *ceph_osd_state_name(int s);
 #define CEPH_OSDMAP_NOSCRUB  (1<<11) /* block periodic scrub */
 #define CEPH_OSDMAP_NODEEP_SCRUB (1<<12) /* block periodic deep-scrub */
 #define CEPH_OSDMAP_NOTIERAGENT (1<<13) /* disable tiering agent */
-#ifdef _WIN32
-#else
 #define CEPH_OSDMAP_NOREBALANCE (1<<14) /* block osd backfill unless pg is degraded */
-#endif
+
 /*
  * The error code to return when an OSD can't handle a write
  * because it is too large.
@@ -414,16 +412,6 @@ enum {
 	CEPH_OSD_FLAG_KNOWN_REDIR = 0x400000,  /* redirect bit is authoritative */
 };
 
-#ifdef _WIN32
-enum {
-	CEPH_OSD_OP_FLAG_EXCL = 0x1,      /* EXCL object create */
-	CEPH_OSD_OP_FLAG_FAILOK = 0x2,    /* continue despite failure */
-	CEPH_OSD_OP_FLAG_FADVISE_RANDOM     = 0x4, /* the op is random */
-	CEPH_OSD_OP_FLAG_FADVISE_SEQUENTIAL = 0x8, /* the op is sequential */
-	CEPH_OSD_OP_FLAG_FADVISE_WILLNEED   = 0x10,/* data will be accessed in the near future */
-	CEPH_OSD_OP_FLAG_FADVISE_DONTNEED   = 0x20,/* data will not be accessed in the near future */
-};
-#else
 enum {
 	CEPH_OSD_OP_FLAG_EXCL = 0x1,      /* EXCL object create */
 	CEPH_OSD_OP_FLAG_FAILOK = 0x2,    /* continue despite failure */
@@ -433,7 +421,7 @@ enum {
 	CEPH_OSD_OP_FLAG_FADVISE_DONTNEED   = 0x20,/* data will not be accessed in the near future */
 	CEPH_OSD_OP_FLAG_FADVISE_NOCACHE   = 0x40, /* data will be accessed only once by this client */
 };
-#endif
+
 #define EOLDSNAPC    85  /* ORDERSNAP flag set; writer has old snapc*/
 #define EBLACKLISTED 108 /* blacklisted */
 
@@ -480,10 +468,10 @@ const char *ceph_osd_watch_op_name(int o);
  * an individual object operation.  each may be accompanied by some data
  * payload
  */
-#ifdef _WIN32
+/*#ifdef _WIN32
 struct ceph_osd_op {
-	__le16 op;           /* CEPH_OSD_OP_* */
-	__le32 flags;        /* CEPH_OSD_FLAG_* */
+	__le16 op;           /* CEPH_OSD_OP_* *
+	__le32 flags;        /* CEPH_OSD_FLAG_* *
 	union {
 		struct {
 			__le64 offset, length;
@@ -493,8 +481,8 @@ struct ceph_osd_op {
 		struct {
 			__le32 name_len;
 			__le32 value_len;
-			__u8 cmp_op;       /* CEPH_OSD_CMPXATTR_OP_* */
-			__u8 cmp_mode;     /* CEPH_OSD_CMPXATTR_MODE_* */
+			__u8 cmp_op;       /* CEPH_OSD_CMPXATTR_OP_* *
+			__u8 cmp_mode;     /* CEPH_OSD_CMPXATTR_MODE_* *
 		} __attribute__ ((packed)) xattr;
 		struct {
 			__u8 class_len;
@@ -504,16 +492,16 @@ struct ceph_osd_op {
 		} __attribute__ ((packed)) cls;
 		struct {
 			__le64 count;
-			__le32 start_epoch; /* for the pgls sequence */
+			__le32 start_epoch; /* for the pgls sequence *
 		} __attribute__ ((packed)) pgls;
 	        struct {
 		        __le64 snapid;
 	        } __attribute__ ((packed)) snap;
 		struct {
 			__le64 cookie;
-			__le64 ver;     /* no longer used */
-			__u8 op;	/* CEPH_OSD_WATCH_OP_* */
-			__u32 gen;      /* registration generation */
+			__le64 ver;     /* no longer used *
+			__u8 op;	/* CEPH_OSD_WATCH_OP_* *
+			__u32 gen;      /* registration generation *
 		} __attribute__ ((packed)) watch;
 		struct {
 			__le64 cookie;
@@ -527,7 +515,7 @@ struct ceph_osd_op {
 			__le64 src_offset;
 		} __attribute__ ((packed)) clonerange;
 		struct {
-			__le64 max;     /* max data in reply */
+			__le64 max;     /* max data in reply *
 		} __attribute__ ((packed)) copy_get;
 		struct {
 			__le64 snapid;
@@ -547,7 +535,7 @@ struct ceph_osd_op {
 	};
 	__le32 payload_len;
 } __attribute__ ((packed));
-#else
+#else*/
 struct ceph_osd_op {
 	__le16 op;           /* CEPH_OSD_OP_* */
 	__le32 flags;        /* CEPH_OSD_OP_FLAG_* */
@@ -614,7 +602,7 @@ struct ceph_osd_op {
 	};
 	__le32 payload_len;
 } __attribute__ ((packed));
-#endif
+//#endif
 
 struct ceph_osd_reply_head {
 	__le32 client_inc;                /* client incarnation */

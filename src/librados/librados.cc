@@ -1048,18 +1048,14 @@ std::string librados::IoCtx::get_pool_name()
 
 const std::string& librados::IoCtx::get_pool_name() const
 {
-#ifdef _WIN32
   return io_ctx_impl->get_cached_pool_name();
-#else
-  return io_ctx_impl->pool_name;
-#endif
 }
-#ifdef _WIN32
+
 uint64_t librados::IoCtx::get_instance_id() const
 {
   return io_ctx_impl->client->get_instance_id();
 }
-#endif
+
 int librados::IoCtx::create(const std::string& oid, bool exclusive)
 {
   object_t obj(oid);
@@ -2144,13 +2140,13 @@ int librados::Rados::wait_for_latest_osdmap()
 {
   return client->wait_for_latest_osdmap();
 }
-#ifdef _WIN32
+
 int librados::Rados::blacklist_add(const std::string& client_address,
 				   uint32_t expire_seconds)
 {
   return client->blacklist_add(client_address, expire_seconds);
 }
-#endif
+
 librados::PoolAsyncCompletion *librados::Rados::pool_async_create_completion()
 {
   PoolAsyncCompletionImpl *c = new PoolAsyncCompletionImpl;
@@ -2250,14 +2246,8 @@ extern "C" int rados_create_with_context(rados_t *pcluster, rados_config_t cct_)
   CephContext *cct = (CephContext *)cct_;
   librados::RadosClient *radosp = new librados::RadosClient(cct);
   *pcluster = (void *)radosp;
-#ifdef _WIN32
   tracepoint(librados, rados_create_with_context_exit, 0, *pcluster);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_create_with_context_exit, retval, *pcluster);
-  return retval;
-#endif
 }
 
 extern "C" rados_config_t rados_cct(rados_t cluster)
@@ -2325,14 +2315,8 @@ extern "C" int rados_conf_read_file(rados_t cluster, const char *path_list)
 
   conf->apply_changes(NULL);
   complain_about_parse_errors(client->cct, &parse_errors);
-#ifdef _WIN32
   tracepoint(librados, rados_conf_read_file_exit, 0);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_conf_read_file_exit, retval);
-  return retval;
-#endif
 }
 
 extern "C" int rados_conf_parse_argv(rados_t cluster, int argc, const char **argv)
@@ -2352,14 +2336,8 @@ extern "C" int rados_conf_parse_argv(rados_t cluster, int argc, const char **arg
     return ret;
   }
   conf->apply_changes(NULL);
-#ifdef _WIN32
   tracepoint(librados, rados_conf_parse_argv_exit, 0);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_conf_parse_argv_exit, retval);
-  return retval;
-#endif
 }
 
 // like above, but return the remainder of argv to contain remaining
@@ -2395,14 +2373,8 @@ extern "C" int rados_conf_parse_argv_remainder(rados_t cluster, int argc,
       remargv[i] = (const char *)NULL;
     tracepoint(librados, rados_conf_parse_argv_remainder_remarg, remargv[i]);
   }
-#ifdef _WIN32
   tracepoint(librados, rados_conf_parse_argv_remainder_exit, 0);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_conf_parse_argv_remainder_exit, retval);
-  return retval;
-#endif
 }
 
 extern "C" int rados_conf_parse_env(rados_t cluster, const char *env)
@@ -2418,14 +2390,8 @@ extern "C" int rados_conf_parse_env(rados_t cluster, const char *env)
     return ret;
   }
   conf->apply_changes(NULL);
-#ifdef _WIN32
   tracepoint(librados, rados_conf_parse_env_exit, 0);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_conf_parse_env_exit, retval);
-  return retval;
-#endif
 }
 
 extern "C" int rados_conf_set(rados_t cluster, const char *option, const char *value)
@@ -2439,14 +2405,8 @@ extern "C" int rados_conf_set(rados_t cluster, const char *option, const char *v
     return ret;
   }
   conf->apply_changes(NULL);
-#ifdef _WIN32
   tracepoint(librados, rados_conf_set_exit, 0);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_conf_set_exit, retval);
-  return retval;
-#endif
 }
 
 /* cluster info */
@@ -2531,14 +2491,14 @@ extern "C" int rados_wait_for_latest_osdmap(rados_t cluster)
   tracepoint(librados, rados_wait_for_latest_osdmap_exit, retval);
   return retval;
 }
-#ifdef _WIN32
+
 extern "C" int rados_blacklist_add(rados_t cluster, char *client_address,
 				   uint32_t expire_seconds)
 {
   librados::RadosClient *radosp = (librados::RadosClient *)cluster;
   return radosp->blacklist_add(client_address, expire_seconds);
 }
-#endif
+
 extern "C" int rados_pool_list(rados_t cluster, char *buf, size_t len)
 {
   tracepoint(librados, rados_pool_list_enter, cluster, len);
@@ -2791,14 +2751,8 @@ extern "C" int rados_ioctx_create(rados_t cluster, const char *name, rados_ioctx
 
   *io = ctx;
   ctx->get();
-#ifdef _WIN32
   tracepoint(librados, rados_ioctx_create_exit, 0, ctx);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_ioctx_create_exit, retval, ctx);
-  return retval;
-#endif
 }
 
 extern "C" int rados_ioctx_create2(rados_t cluster, int64_t pool_id,
@@ -2816,14 +2770,8 @@ extern "C" int rados_ioctx_create2(rados_t cluster, int64_t pool_id,
 
   *io = ctx;
   ctx->get();
-#ifdef _WIN32
   tracepoint(librados, rados_ioctx_create2_exit, 0, ctx);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_ioctx_create2_exit, retval, ctx);
-  return retval;
-#endif
 }
 
 extern "C" void rados_ioctx_destroy(rados_ioctx_t io)
@@ -2844,12 +2792,8 @@ extern "C" int rados_ioctx_pool_stat(rados_ioctx_t io, struct rados_pool_stat_t 
   map<string, ::pool_stat_t> rawresult;
 #endif
 
-#ifdef _WIN32
   int err = io_ctx_impl->client->pool_get_name(io_ctx_impl->get_id(), &pool_name);
-#else
-  int err = io_ctx_impl->client->get_pool_stats(ls, rawresult);
-#endif
-#ifdef _WIN32
+
   if (err) {
     tracepoint(librados, rados_ioctx_pool_stat_exit, err, stats);
     return err;
@@ -2858,16 +2802,12 @@ extern "C" int rados_ioctx_pool_stat(rados_ioctx_t io, struct rados_pool_stat_t 
 
   map<string, ::pool_stat_t> rawresult;
   err = io_ctx_impl->client->get_pool_stats(ls, rawresult);
-#endif
   if (err) {
     tracepoint(librados, rados_ioctx_pool_stat_exit, err, stats);
     return err;
   }
-#ifdef _WIN32
+  
   ::pool_stat_t& r = rawresult[pool_name];
-#else
-  ::pool_stat_t& r = rawresult[io_ctx_impl->pool_name];
-#endif
   stats->num_kb = SHIFT_ROUND_UP(r.stats.sum.num_bytes, 10);
   stats->num_bytes = r.stats.sum.num_bytes;
   stats->num_objects = r.stats.sum.num_objects;
@@ -2882,14 +2822,8 @@ extern "C" int rados_ioctx_pool_stat(rados_ioctx_t io, struct rados_pool_stat_t 
   stats->num_rd_kb = r.stats.sum.num_rd_kb;
   stats->num_wr = r.stats.sum.num_wr;
   stats->num_wr_kb = r.stats.sum.num_wr_kb;
-#ifdef _WIN32
   tracepoint(librados, rados_ioctx_pool_stat_exit, 0, stats);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_ioctx_pool_stat_exit, retval, stats);
-  return retval;
-#endif
 }
 
 extern "C" rados_config_t rados_ioctx_cct(rados_ioctx_t io)
@@ -3173,7 +3107,6 @@ extern "C" int rados_ioctx_get_pool_name(rados_ioctx_t io, char *s, unsigned max
 {
   tracepoint(librados, rados_ioctx_get_pool_name_enter, io, maxlen);
   librados::IoCtxImpl *ctx = (librados::IoCtxImpl *)io;
-#ifdef _WIN32
   std::string pool_name;
 
   int err = ctx->client->pool_get_name(ctx->get_id(), &pool_name);
@@ -3187,14 +3120,6 @@ extern "C" int rados_ioctx_get_pool_name(rados_ioctx_t io, char *s, unsigned max
   }
   strcpy(s, pool_name.c_str());
   int retval = pool_name.length();
-#else
-  if (ctx->pool_name.length() >= maxlen) {
-    tracepoint(librados, rados_ioctx_get_pool_name_exit, -ERANGE, "");
-    return -ERANGE;
-  }
-  strcpy(s, ctx->pool_name.c_str());
-  int retval = ctx->pool_name.length();
-#endif
   tracepoint(librados, rados_ioctx_get_pool_name_exit, retval, s);
   return retval;
 }
@@ -3318,14 +3243,8 @@ extern "C" int rados_ioctx_snap_get_name(rados_ioctx_t io, rados_snap_t id,
     return retval;
   }
   strncpy(name, sname.c_str(), maxlen);
-#ifdef _WIN32
   tracepoint(librados, rados_ioctx_snap_get_name_exit, 0, name);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_ioctx_snap_get_name_exit, retval, name);
-  return retval;
-#endif
 }
 
 extern "C" int rados_ioctx_snap_get_stamp(rados_ioctx_t io, rados_snap_t id, time_t *t)
@@ -3553,14 +3472,8 @@ extern "C" int rados_nobjects_list_open(rados_ioctx_t io, rados_list_ctx_t *list
   h->pool_snap_seq = ctx->snap_seq;
   h->nspace = ctx->oloc.nspace;	// After dropping compatibility need nspace
   *listh = (void *)new librados::ObjListCtx(ctx, h);
-#ifdef _WIN32
   tracepoint(librados, rados_nobjects_list_open_exit, 0, *listh);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_nobjects_list_open_exit, retval, *listh);
-  return retval;
-#endif
 }
 
 extern "C" void rados_nobjects_list_close(rados_list_ctx_t h)
@@ -3611,14 +3524,8 @@ extern "C" int rados_objects_list_open(rados_ioctx_t io, rados_list_ctx_t *listh
   h->pool_snap_seq = ctx->snap_seq;
   h->nspace = ctx->oloc.nspace;
   *listh = (void *)new librados::ObjListCtx(ctx, h);
-#ifdef _WIN32
   tracepoint(librados, rados_objects_list_open_exit, 0, *listh);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_objects_list_open_exit, retval, *listh);
-  return retval;
-#endif
 }
 
 // Deprecated, but using it for compatibility with older OSDs
@@ -3688,18 +3595,11 @@ extern "C" int rados_nobjects_list_next(rados_list_ctx_t listctx, const char **e
       *key = h->list.front().locator.c_str();
     else
       *key = NULL;
-  }
+  }  
   if (nspace)
     *nspace = h->list.front().nspace.c_str();
-#ifndef _WIN32
-  int retval = 0;
-#endif
   tracepoint(librados, rados_nobjects_list_next_exit, 0, *entry, key, nspace);
-#ifdef _WIN32
   return 0;
-#else
-  return retval;
-#endif
 }
 
 // DEPRECATED
@@ -3738,15 +3638,8 @@ extern "C" int rados_objects_list_next(rados_list_ctx_t listctx, const char **en
     else
       *key = NULL;
   }
-#ifndef _WIN32
-  int retval = 0;
-#endif
   tracepoint(librados, rados_objects_list_next_exit, 0, *entry, key);
-#ifdef _WIN32
   return 0;
-#else
-  return retval;
-#endif
 }
 
 
@@ -3766,14 +3659,8 @@ extern "C" int rados_aio_create_completion(void *cb_arg,
   if (cb_safe)
     c->set_safe_callback(cb_arg, cb_safe);
   *pc = c;
-#ifdef _WIN32
   tracepoint(librados, rados_aio_create_completion_exit, 0, *pc);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_aio_create_completion_exit, retval, *pc);
-  return retval;
-#endif
 }
 
 extern "C" int rados_aio_wait_for_complete(rados_completion_t c)
@@ -3943,14 +3830,8 @@ extern "C" int rados_aio_flush_async(rados_ioctx_t io,
   tracepoint(librados, rados_aio_flush_async_enter, io, completion);
   librados::IoCtxImpl *ctx = (librados::IoCtxImpl *)io;
   ctx->flush_aio_writes_async((librados::AioCompletionImpl*)completion);
-#ifdef _WIN32
   tracepoint(librados, rados_aio_flush_async_exit, 0);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_aio_flush_async_exit, retval);
-  return retval;
-#endif
 }
 
 extern "C" int rados_aio_flush(rados_ioctx_t io)
@@ -3958,14 +3839,8 @@ extern "C" int rados_aio_flush(rados_ioctx_t io)
   tracepoint(librados, rados_aio_flush_enter, io);
   librados::IoCtxImpl *ctx = (librados::IoCtxImpl *)io;
   ctx->flush_aio_writes();
-#ifdef _WIN32
   tracepoint(librados, rados_aio_flush_exit, 0);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_aio_flush_exit, retval);
-  return retval;
-#endif
 }
 
 extern "C" int rados_aio_stat(rados_ioctx_t io, const char *o, 
@@ -4130,14 +4005,8 @@ extern "C" int rados_notify_ack(rados_ioctx_t io, const char *o,
     bl.push_back(p);
   }
   ctx->notify_ack(oid, notify_id, handle, bl);
-#ifdef _WIN32
   tracepoint(librados, rados_notify_ack_exit, 0);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_notify_ack_exit, retval);
-  return retval;
-#endif
 }
 
 extern "C" int rados_watch_flush(rados_t cluster)
@@ -4301,14 +4170,14 @@ extern "C" void rados_write_op_set_flags(rados_write_op_t write_op, int flags)
   set_op_flags((::ObjectOperation *)write_op, flags);
   tracepoint(librados, rados_write_op_set_flags_exit);
 }
-#ifdef _WIN32
+
 extern "C" void rados_write_op_assert_version(rados_write_op_t write_op, uint64_t ver)
 {
   tracepoint(librados, rados_write_op_assert_version_enter, write_op, ver);
   ((::ObjectOperation *)write_op)->assert_version(ver);
   tracepoint(librados, rados_write_op_assert_version_exit);
 }
-#endif
+
 extern "C" void rados_write_op_assert_exists(rados_write_op_t write_op)
 {
   tracepoint(librados, rados_write_op_assert_exists_enter, write_op);
@@ -4563,14 +4432,14 @@ extern "C" void rados_read_op_set_flags(rados_read_op_t read_op, int flags)
   set_op_flags((::ObjectOperation *)read_op, flags);
   tracepoint(librados, rados_read_op_set_flags_exit);
 }
-#ifdef _WIN32
+
 extern "C" void rados_read_op_assert_version(rados_read_op_t read_op, uint64_t ver)
 {
   tracepoint(librados, rados_read_op_assert_version_enter, read_op, ver);
   ((::ObjectOperation *)read_op)->assert_version(ver);
   tracepoint(librados, rados_read_op_assert_version_exit);
 }
-#endif
+
 extern "C" void rados_read_op_assert_exists(rados_read_op_t read_op)
 {
   tracepoint(librados, rados_read_op_assert_exists_enter, read_op);
@@ -4824,14 +4693,8 @@ extern "C" int rados_omap_get_next(rados_omap_iter_t iter,
     *key = NULL;
     *val = NULL;
     *len = 0;
-#ifdef _WIN32
     tracepoint(librados, rados_omap_get_next_exit, 0, key, val, len);
     return 0;
-#else
-    int retval = 0;
-    tracepoint(librados, rados_omap_get_next_exit, retval, key, val, len);
-    return retval;
-#endif
   }
   if (key)
     *key = (char*)it->i->first.c_str();
@@ -4840,14 +4703,8 @@ extern "C" int rados_omap_get_next(rados_omap_iter_t iter,
   if (len)
     *len = it->i->second.length();
   ++it->i;
-#ifdef _WIN32
   tracepoint(librados, rados_omap_get_next_exit, 0, key, val, len);
   return 0;
-#else
-  int retval = 0;
-  tracepoint(librados, rados_omap_get_next_exit, retval, key, val, len);
-  return retval;
-#endif
 }
 
 extern "C" void rados_omap_get_end(rados_omap_iter_t iter)

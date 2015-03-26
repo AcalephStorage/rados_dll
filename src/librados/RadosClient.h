@@ -108,9 +108,9 @@ public:
   int pool_delete(const char *name);
 
   int pool_delete_async(const char *name, PoolAsyncCompletionImpl *c);
-#ifdef _WIN32
+
   int blacklist_add(const string& client_address, uint32_t expire_seconds);
-#endif
+
   int mon_command(const vector<string>& cmd, const bufferlist &inbl,
 	          bufferlist *outbl, string *outs);
   int mon_command(int rank,

@@ -25,6 +25,7 @@ extern "C" {
 #elif defined(__FreeBSD__)
 #include <sys/types.h>
 #endif
+
 #include <string.h>
 #include "../rados/librados.h"
 #include "features.h"
@@ -46,10 +47,9 @@ extern "C" {
 #else
   #define CEPH_RBD_API
 #endif
-#ifdef _WIN32
-#else
+
 #define RBD_FLAG_OBJECT_MAP_INVALID   (1<<0)
-#endif
+
 typedef void *rbd_snap_t;
 typedef void *rbd_image_t;
 
@@ -158,10 +158,9 @@ CEPH_RBD_API int rbd_get_parent_info(rbd_image_t image,
 			             char *parent_name, size_t pnamelen,
 			             char *parent_snapname,
                                      size_t psnapnamelen);
-#ifdef _WIN32
-#else
+
 CEPH_RBD_API int rbd_get_flags(rbd_image_t image, uint64_t *flags);
-#endif
+
 /* exclusive lock feature */
 CEPH_RBD_API int rbd_is_exclusive_lock_owner(rbd_image_t image, int *is_owner);
 

@@ -35,11 +35,9 @@ struct MRoute : public Message {
   MRoute(bufferlist bl, const entity_inst_t& i)
     : Message(MSG_ROUTE, HEAD_VERSION, COMPAT_VERSION), session_mon_tid(0), dest(i) {
     bufferlist::iterator p = bl.begin();
-#ifdef _WIN32
-	msg = decode_message(NULL,p);
-#else
+
     msg = decode_message(NULL, 0, p);
-#endif
+    
   }
 private:
   ~MRoute() {
@@ -55,17 +53,10 @@ public:
       bool m;
       ::decode(m, p);
       if (m)
-#ifdef _WIN32
-	msg = decode_message(NULL, p);
-    } else {
-      msg = decode_message(NULL, p);
-    }
-#else
 	msg = decode_message(NULL, 0, p);
     } else {
       msg = decode_message(NULL, 0, p);
     }
-#endif
   }
   void encode_payload(uint64_t features) {
     ::encode(session_mon_tid, payload);

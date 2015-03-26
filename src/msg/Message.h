@@ -485,16 +485,16 @@ public:
 #endif
 };
 typedef boost::intrusive_ptr<Message> MessageRef;
-#ifdef _WIN32
+/*#ifdef _WIN32
 extern Message *decode_message(CephContext *cct, ceph_msg_header &header,
 			       ceph_msg_footer& footer, bufferlist& front,
 			       bufferlist& middle, bufferlist& data);
-#else
+#else*/
 extern Message *decode_message(CephContext *cct, int crcflags,
 			       ceph_msg_header &header,
 			       ceph_msg_footer& footer, bufferlist& front,
 			       bufferlist& middle, bufferlist& data);
-#endif
+//#endif
 inline ostream& operator<<(ostream& out, Message& m) {
   m.print(out);
   if (m.get_header().version)
@@ -503,11 +503,11 @@ inline ostream& operator<<(ostream& out, Message& m) {
 }
 
 extern void encode_message(Message *m, uint64_t features, bufferlist& bl);
-#ifdef _WIN32
+/*#ifdef _WIN32
 extern Message *decode_message(CephContext *cct, bufferlist::iterator& bl);
-#else
+#else*/
 extern Message *decode_message(CephContext *cct, int crcflags,
                                bufferlist::iterator& bl);
-#endif
+//#endif
 
 #endif

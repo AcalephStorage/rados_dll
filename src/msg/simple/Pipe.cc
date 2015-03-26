@@ -1902,6 +1902,7 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
   int ret = -1;
   // envelope
   //ldout(msgr->cct,10) << "receiver.read_message from sd " << sd  << dendl;
+  int crcflags;
   
   ceph_msg_header header; 
   ceph_msg_footer footer;
@@ -2075,7 +2076,7 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
 
   ldout(msgr->cct,20) << "reader got " << front.length() << " + " << middle.length() << " + " << data.length()
 	   << " byte message" << dendl;
-  message = decode_message(msgr->cct, header, footer, front, middle, data);
+  message = decode_message(msgr->cct, crcflags, header, footer, front, middle, data);
   if (!message) {
     ret = -EINVAL;
     goto out_dethrottle;

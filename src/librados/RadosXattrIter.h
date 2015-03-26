@@ -14,10 +14,8 @@
 
 #ifndef CEPH_LIBRADOS_XATTRITER_H
 #define CEPH_LIBRADOS_XATTRITER_H
-#ifdef _WIN32
 #include <stdio.h>
 #include <stdlib.h>
-#endif
 #include <string>
 #include <map>
 

@@ -71,23 +71,21 @@ struct MonSession : public RefCountedObject {
     assert(sub_map.empty());
     delete auth_handler;
   }
+
+  bool is_capable(string service, int mask) {
+    map<string,string> args;
 #ifdef _WIN32
-  bool is_capable(string service, int mask) {
-    map<string,string> args;
     return caps.is_capable(g_ceph_context,
-			   inst.name,
-			   service, "", args,
-			   mask & MON_CAP_R, mask & MON_CAP_W, mask & MON_CAP_X);
-  }
+         inst.name,
+         service, "", args,
+         mask & MON_CAP_R, mask & MON_CAP_W, mask & MON_CAP_X);
 #else
-  bool is_capable(string service, int mask) {
-    map<string,string> args;
     return caps.is_capable(g_ceph_context,
 			   entity_name,
 			   service, "", args,
 			   mask & MON_CAP_R, mask & MON_CAP_W, mask & MON_CAP_X);
-  }
 #endif
+  }
 };
 
 

@@ -48,27 +48,21 @@ struct librados::IoCtxImpl {
   Cond aio_write_cond;
   xlist<AioCompletionImpl*> aio_write_list;
   map<ceph_tid_t, std::list<AioCompletionImpl*> > aio_write_waiters;
-#ifdef _WIN32
+
   Mutex cached_pool_names_lock;
   std::list<std::string> cached_pool_names;
-#endif
+
   Objecter *objecter;
 
   IoCtxImpl();
-#ifdef _WIN32
+
   IoCtxImpl(RadosClient *c, Objecter *objecter,
 	    int64_t poolid, snapid_t s);
-#else
-  IoCtxImpl(RadosClient *c, Objecter *objecter,
-	    int64_t poolid, const char *pool_name, snapid_t s);
-#endif
+
   void dup(const IoCtxImpl& rhs) {
     // Copy everything except the ref count
     client = rhs.client;
     poolid = rhs.poolid;
-#ifndef _WIN32
-    pool_name = rhs.pool_name;
-#endif
     snap_seq = rhs.snap_seq;
     snapc = rhs.snapc;
     assert_ver = rhs.assert_ver;
@@ -99,9 +93,9 @@ struct librados::IoCtxImpl {
   int64_t get_id() {
     return poolid;
   }
-#ifdef _WIN32
+
   const string& get_cached_pool_name();
-#endif
+  
   uint32_t get_object_hash_position(const std::string& oid);
   uint32_t get_object_pg_hash_position(const std::string& oid);
 
