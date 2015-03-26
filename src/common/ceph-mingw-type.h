@@ -90,6 +90,7 @@ struct timespec {
 #define    ESTALE      116    /* Stale NFS file handle */
 #define    ENOTCONN    107    /* Transport endpoint is not connected */
 #define    EISCONN     106    /* Transport endpoint is already connected */
+#define    EINPROGRESS  9928    /*Transporrt endpoint is connecting*/
 
 #define strerror_r(errno, a, b) errno
 

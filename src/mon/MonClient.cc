@@ -354,11 +354,11 @@ int MonClient::init()
   Mutex::Locker l(monc_lock);
 
   string method;
-#ifdef _WIN32
+/*#ifdef _WIN32
     if (cct->_conf->auth_supported.length() != 0)
-#else
+#else*/
     if (!cct->_conf->auth_supported.empty())
-#endif
+//#endif
       method = cct->_conf->auth_supported;
     else if (entity_name.get_type() == CEPH_ENTITY_TYPE_OSD ||
              entity_name.get_type() == CEPH_ENTITY_TYPE_MDS ||
@@ -376,21 +376,21 @@ int MonClient::init()
     r = keyring->from_ceph_context(cct);
     if (r == -ENOENT) {
       auth_supported->remove_supported_auth(CEPH_AUTH_CEPHX);
-#ifdef _WIN32
+/*#ifdef _WIN32
       if (auth_supported->get_supported_set().size() > 0) {
 	r = 0;
 	no_keyring_disabled_cephx = true;
       } else {
 	lderr(cct) << "ERROR: missing keyring, cannot use cephx for authentication" << dendl;
       }
-#else
+#else*/
       if (!auth_supported->get_supported_set().empty()) {
 	r = 0;
 	no_keyring_disabled_cephx = true;
       } else {
 	lderr(cct) << "ERROR: missing keyring, cannot use cephx for authentication" << dendl;
       }
-#endif
+//#endif
     }
   }
 
@@ -461,10 +461,6 @@ int MonClient::authenticate(double timeout)
   until += timeout;
   if (timeout > 0.0)
     ldout(cct, 10) << "authenticate will time out at " << until << dendl;
-  until += timeout;
-  if (timeout > 0.0) {
-    ldout(cct, 10) << "authenticate will time out at " << until << dendl;
-  }
   while (state != MC_STATE_HAVE_SESSION && !authenticate_err) {
     if (timeout > 0.0) {
       int r = auth_cond.WaitUntil(monc_lock, until);

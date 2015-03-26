@@ -251,8 +251,11 @@ void Message::dump(Formatter *f) const
   f->dump_string("summary", ss.str());
 }
 
-Message *decode_message(CephContext *cct, ceph_msg_header& header, ceph_msg_footer& footer,
-			bufferlist& front, bufferlist& middle, bufferlist& data)
+Message *decode_message(CephContext *cct, int crcflags,
+			ceph_msg_header& header,
+			ceph_msg_footer& footer,
+			bufferlist& front, bufferlist& middle,
+			bufferlist& data)
 {
   // verify crc
 #ifndef _WIN32
@@ -801,7 +804,7 @@ void encode_message(Message *msg, uint64_t features, bufferlist& payload)
 // We've slipped in a 0 signature at this point, so any signature checking after this will
 // fail.  PLR
 
-Message *decode_message(CephContext *cct, bufferlist::iterator& p)
+Message *decode_message(CephContext *cct, int crcflags, bufferlist::iterator& p)
 {
   ceph_msg_header h;
   ceph_msg_footer_old fo;
@@ -817,6 +820,6 @@ Message *decode_message(CephContext *cct, bufferlist::iterator& p)
   ::decode(fr, p);
   ::decode(mi, p);
   ::decode(da, p);
-  return decode_message(cct, h, f, fr, mi, da);
+  return decode_message(cct, crcflags, h, f, fr, mi, da);
 }
 

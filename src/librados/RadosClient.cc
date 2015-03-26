@@ -18,9 +18,7 @@
 
 #include <iostream>
 #include <string>
-#ifdef _WIN32
 #include <sstream>
-#endif
 #include <pthread.h>
 #include <errno.h>
 
@@ -190,24 +188,16 @@ int librados::RadosClient::ping_monitor(const string mon_id, string *result)
 
 int librados::RadosClient::connect()
 {
-  ldout(cct,5) << "librados::RadosClient::connect()\n" << dendl;
   common_init_finish(cct);
 
   int err;
   uint64_t nonce;
 
   // already connected?
-  if (state == CONNECTING) {
-    // No EINPROGRESS in mingw sockets, so for now return EISCON
-#ifndef _WIN32
+  if (state == CONNECTING)
     return -EINPROGRESS;
-#else
+  if (state == CONNECTED)
     return -EISCONN;
-#endif
-  }
-  if (state == CONNECTED) {
-    return -EISCONN;
-  }
   state = CONNECTING;
 
   // get monmap
@@ -232,17 +222,10 @@ int librados::RadosClient::connect()
   ldout(cct, 1) << "starting objecter" << dendl;
 
   err = -ENOMEM;
-#ifdef _WIN32
   objecter = new (std::nothrow) Objecter(cct, messenger, &monclient,
 			  &finisher,
 			  cct->_conf->rados_mon_op_timeout,
 			  cct->_conf->rados_osd_op_timeout);
-#else
-  objecter = new Objecter(cct, messenger, &monclient,
-			  &finisher,
-			  cct->_conf->rados_mon_op_timeout,
-			  cct->_conf->rados_osd_op_timeout);
-#endif
   if (!objecter)
     goto out;
   objecter->set_balanced_budget();
@@ -264,14 +247,13 @@ int librados::RadosClient::connect()
     shutdown();
     goto out;
   }
-  ldout(cct, 10) << "RadosClient::connect monclient.authenticate(" << conf->client_mount_timeout << ")... \n" << dendl;
+
   err = monclient.authenticate(conf->client_mount_timeout);
   if (err) {
     ldout(cct, 0) << conf->name << " authentication error " << cpp_strerror(-err) << dendl;
     shutdown();
     goto out;
   }
-  ldout(cct,10) << "RadosClient::connect messenger->set_myname(" << entity_name_t::CLIENT(monclient.get_global_id()) << ")" << dendl;
   messenger->set_myname(entity_name_t::CLIENT(monclient.get_global_id()));
 
   objecter->set_client_incarnation(0);
@@ -286,16 +268,16 @@ int librados::RadosClient::connect()
 
   state = CONNECTED;
   instance_id = monclient.get_global_id();
-  ldout(cct,10) << "instance_id: " << instance_id << dendl;
+
   lock.Unlock();
 
   ldout(cct, 1) << "init done" << dendl;
   err = 0;
 
  out:
-  if (err){
+  if (err) {
     state = DISCONNECTED;
-#ifdef _WIN32
+
     if (objecter) {
       delete objecter;
       objecter = NULL;
@@ -305,7 +287,7 @@ int librados::RadosClient::connect()
       messenger = NULL;
     }
   }
-#endif
+
   return err;
 }
 
@@ -365,44 +347,26 @@ librados::RadosClient::~RadosClient()
 
 int librados::RadosClient::create_ioctx(const char *name, IoCtxImpl **io)
 {
-  ldout(cct,5) << "librados::RadosClient::create_ioctx(" << name << ", " << *io << ") \n" << dendl;
   int64_t poolid = lookup_pool(name);
-  ldout(cct,5) << "lookup_pool(" << name << ", " << poolid << ") \n" << dendl;
   if (poolid < 0) {
     // Make sure we have the latest map
     int r = wait_for_latest_osdmap();
     if (r < 0)
-      lderr(cct) << "Error in loading the osdmap \n" << dendl;
       return r;
 
     poolid = lookup_pool(name);
-    ldout(cct,5) << "poolid: " << poolid << "\n" << dendl;
     if (poolid < 0) {
       return (int)poolid;
     }
   }
-#ifdef _WIN32
+
   *io = new librados::IoCtxImpl(this, objecter, poolid, CEPH_NOSNAP);
-#else
-  *io = new librados::IoCtxImpl(this, objecter, poolid, name, CEPH_NOSNAP);
-#endif
   return 0;
 }
 
 int librados::RadosClient::create_ioctx(int64_t pool_id, IoCtxImpl **io)
 {
-#ifdef _WIN32
   *io = new librados::IoCtxImpl(this, objecter, pool_id, CEPH_NOSNAP);
-#else
-  std::string pool_name;
-  int r = pool_get_name(pool_id, &pool_name);
-  if (r < 0) {
-    return r;
-  }
-
-  *io = new librados::IoCtxImpl(this, objecter, pool_id, pool_name.c_str(),
-                                CEPH_NOSNAP);
-#endif
   return 0;
 }
 
@@ -462,20 +426,13 @@ bool librados::RadosClient::_dispatch(Message *m)
 
 int librados::RadosClient::wait_for_osdmap()
 {
-  ldout(cct,10) << "librados::RadosClient::wait_for_osdmap\n" << dendl;
   assert(!lock.is_locked_by_me());
-#ifdef _WIN32
+
   if (state != CONNECTED) {
     return -ENOTCONN;
   }
-#else
-  if (objecter == NULL) {
-    return -ENOTCONN;
-  }
-#endif
+
   bool need_map = false;
-  ldout(cct,10) << "librados::RadosClient::wait_for_osdmap: about to call objecter->get_osdmap_read()\n" << dendl;
-  ldout(cct,5) << "objecter: " << objecter << "\n" << dendl;
   const OSDMap *osdmap = objecter->get_osdmap_read();
   if (osdmap->get_epoch() == 0) {
     need_map = true;
@@ -484,7 +441,7 @@ int librados::RadosClient::wait_for_osdmap()
 
   if (need_map) {
     Mutex::Locker l(lock);
-    ldout(cct,10) << "cct->_conf->rados_mon_op_timeout: " << cct->_conf->rados_mon_op_timeout << "\n" << dendl;
+
     utime_t timeout;
     if (cct->_conf->rados_mon_op_timeout > 0)
       timeout.set_from_double(cct->_conf->rados_mon_op_timeout);
@@ -495,7 +452,6 @@ int librados::RadosClient::wait_for_osdmap()
       utime_t start = ceph_clock_now(cct);
       while (osdmap->get_epoch() == 0) {
         objecter->put_osdmap_read();
-        ldout(cct,10) << osdmap->get_epoch() << dendl;
         cond.WaitInterval(cct, lock, timeout);
         utime_t elapsed = ceph_clock_now(cct) - start;
         if (!timeout.is_zero() && elapsed > timeout) {
@@ -704,7 +660,7 @@ void librados::RadosClient::blacklist_self(bool set) {
   Mutex::Locker l(lock);
   objecter->blacklist_self(set);
 }
-#ifdef _WIN32
+
 int librados::RadosClient::blacklist_add(const string& client_address,
 					 uint32_t expire_seconds)
 {
@@ -730,7 +686,7 @@ int librados::RadosClient::blacklist_add(const string& client_address,
   int r = mon_command(cmds, inbl, NULL, NULL);
   return r;
 }
-#endif
+
 int librados::RadosClient::mon_command(const vector<string>& cmd,
 				       const bufferlist &inbl,
 				       bufferlist *outbl, string *outs)
@@ -839,6 +795,8 @@ int librados::RadosClient::pg_command(pg_t pgid, vector<string>& cmd,
 
 int librados::RadosClient::monitor_log(const string& level, rados_log_callback_t cb, void *arg)
 {
+  Mutex::Locker l(lock);
+
   if (cb == NULL) {
     // stop watch
     ldout(cct, 10) << __func__ << " removing cb " << (void*)log_cb << dendl;
@@ -888,29 +846,23 @@ void librados::RadosClient::handle_log(MLog *m)
 
     if (log_cb) {
       for (std::deque<LogEntry>::iterator it = m->entries.begin(); it != m->entries.end(); ++it) {
-	LogEntry e = *it;
-	ostringstream ss;
-	ss << e.stamp << " " << e.who.name << " " << e.prio << " " << e.msg;
-	string line = ss.str();
-	string who = stringify(e.who);
-	string level = stringify(e.prio);
-	struct timespec stamp;
-	e.stamp.to_timespec(&stamp);
+        LogEntry e = *it;
+        ostringstream ss;
+        ss << e.stamp << " " << e.who.name << " " << e.prio << " " << e.msg;
+        string line = ss.str();
+        string who = stringify(e.who);
+        string level = stringify(e.prio);
+        struct timespec stamp;
+        e.stamp.to_timespec(&stamp);
 
-	ldout(cct, 20) << __func__ << " delivering " << ss.str() << dendl;
-	log_cb(log_cb_arg, line.c_str(), who.c_str(),
-	       stamp.tv_sec, stamp.tv_nsec,
-	       e.seq, level.c_str(), e.msg.c_str());
+        ldout(cct, 20) << __func__ << " delivering " << ss.str() << dendl;
+        log_cb(log_cb_arg, line.c_str(), who.c_str(),
+               stamp.tv_sec, stamp.tv_nsec,
+               e.seq, level.c_str(), e.msg.c_str());
       }
-
-      /*
-	this was present in the old cephtool code, but does not appear to be necessary. :/
-
-	version_t v = log_last_version + 1;
-	ldout(cct, 10) << __func__ << " wanting " << log_watch << " ver " << v << dendl;
-	monclient.sub_want(log_watch, v, 0);
-      */
     }
+
+    monclient.sub_got(log_watch, log_last_version);
   }
 
   m->put();

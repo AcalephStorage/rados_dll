@@ -18,9 +18,7 @@
 #include "include/assert.h"
 #include "lockdep.h"
 #include "common/ceph_context.h"
-#ifdef _WIN32
-#include <winsock2.h>
-#endif
+
 #include <pthread.h>
 
 using namespace ceph;

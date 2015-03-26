@@ -12,12 +12,10 @@
 
 #ifndef CEPH_RBD_TYPES_H
 #define CEPH_RBD_TYPES_H
-#ifdef _WIN32
 #if defined(__linux__)
 #include <linux/types.h>
 #elif defined(__FreeBSD__)
 #include <sys/types.h>
-#endif
 #endif
 #include "rbd/features.h"
 
@@ -31,10 +29,7 @@
  */
 
 #define RBD_HEADER_PREFIX      "rbd_header."
-#ifdef _WIN32
-#else
 #define RBD_OBJECT_MAP_PREFIX  "rbd_object_map."
-#endif
 #define RBD_DATA_PREFIX        "rbd_data."
 #define RBD_ID_PREFIX          "rbd_id."
 

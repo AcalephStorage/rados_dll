@@ -6,9 +6,6 @@
 
 #include "include/utime.h"
 #include "common/PrebufferedStreambuf.h"
-#ifdef _WIN32
-#include <winsock2.h>
-#endif
 #include <pthread.h>
 #include <string>
 
@@ -42,6 +39,11 @@ struct Entry {
   {
   	m_thread.p = t.p;
   	m_thread.x = t.x;
+    if (msg) {
+      ostream os(&m_streambuf);
+      os << msg;
+    }
+  }
 #else
   Entry()
     : m_thread(0), m_prio(0), m_subsys(0),
@@ -53,14 +55,15 @@ struct Entry {
     : m_stamp(s), m_thread(t), m_prio(pr), m_subsys(sub),
       m_next(NULL),
       m_streambuf(m_static_buf, sizeof(m_static_buf))
+
   {
-#endif
+
     if (msg) {
       ostream os(&m_streambuf);
       os << msg;
     }
   }
-
+#endif
   void set_str(const std::string &s) {
     ostream os(&m_streambuf);
     os << s;
