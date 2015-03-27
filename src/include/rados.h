@@ -464,78 +464,6 @@ enum {
 
 const char *ceph_osd_watch_op_name(int o);
 
-/*
- * an individual object operation.  each may be accompanied by some data
- * payload
- */
-/*#ifdef _WIN32
-struct ceph_osd_op {
-	__le16 op;           /* CEPH_OSD_OP_* *
-	__le32 flags;        /* CEPH_OSD_FLAG_* *
-	union {
-		struct {
-			__le64 offset, length;
-			__le64 truncate_size;
-			__le32 truncate_seq;
-		} __attribute__ ((packed)) extent;
-		struct {
-			__le32 name_len;
-			__le32 value_len;
-			__u8 cmp_op;       /* CEPH_OSD_CMPXATTR_OP_* *
-			__u8 cmp_mode;     /* CEPH_OSD_CMPXATTR_MODE_* *
-		} __attribute__ ((packed)) xattr;
-		struct {
-			__u8 class_len;
-			__u8 method_len;
-			__u8 argc;
-			__le32 indata_len;
-		} __attribute__ ((packed)) cls;
-		struct {
-			__le64 count;
-			__le32 start_epoch; /* for the pgls sequence *
-		} __attribute__ ((packed)) pgls;
-	        struct {
-		        __le64 snapid;
-	        } __attribute__ ((packed)) snap;
-		struct {
-			__le64 cookie;
-			__le64 ver;     /* no longer used *
-			__u8 op;	/* CEPH_OSD_WATCH_OP_* *
-			__u32 gen;      /* registration generation *
-		} __attribute__ ((packed)) watch;
-		struct {
-			__le64 cookie;
-		} __attribute__ ((packed)) notify;
-		struct {
-			__le64 unused;
-			__le64 ver;
-		} __attribute__ ((packed)) assert_ver;
-		struct {
-			__le64 offset, length;
-			__le64 src_offset;
-		} __attribute__ ((packed)) clonerange;
-		struct {
-			__le64 max;     /* max data in reply *
-		} __attribute__ ((packed)) copy_get;
-		struct {
-			__le64 snapid;
-			__le64 src_version;
-			__u8 flags;
-		} __attribute__ ((packed)) copy_from;
-		struct {
-			struct ceph_timespec stamp;
-		} __attribute__ ((packed)) hit_set_get;
-		struct {
-			__u8 flags;
-		} __attribute__ ((packed)) tmap2omap;
-		struct {
-			__le64 expected_object_size;
-			__le64 expected_write_size;
-		} __attribute__ ((packed)) alloc_hint;
-	};
-	__le32 payload_len;
-} __attribute__ ((packed));
-#else*/
 struct ceph_osd_op {
 	__le16 op;           /* CEPH_OSD_OP_* */
 	__le32 flags;        /* CEPH_OSD_OP_FLAG_* */
@@ -602,7 +530,6 @@ struct ceph_osd_op {
 	};
 	__le32 payload_len;
 } __attribute__ ((packed));
-//#endif
 
 struct ceph_osd_reply_head {
 	__le32 client_inc;                /* client incarnation */

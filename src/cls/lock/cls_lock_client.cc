@@ -178,7 +178,7 @@ namespace rados {
 	bufferlist::iterator it = out.begin();
 	return get_lock_info_finish(&it, lockers, type, tag);
       }
-#ifdef _WIN32
+
       void assert_locked(librados::ObjectOperation *rados_op,
                          const std::string& name, ClsLockType type,
                          const std::string& cookie, const std::string& tag)
@@ -202,7 +202,7 @@ namespace rados {
       {
         assert_locked(op, name, LOCK_SHARED, cookie, tag);
       }
-#endif
+
       void Lock::lock_shared(ObjectWriteOperation *op)
       {
         lock(op, name, LOCK_SHARED,
