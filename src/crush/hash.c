@@ -1,13 +1,9 @@
-#ifdef _WIN32
-#include "common/ceph-mingw-type.h"
-#else
 #include "include/int_types.h"
 
 #if defined(__linux__)
 #include <linux/types.h>
 #elif defined(__FreeBSD__)
 #include <sys/types.h>
-#endif
 #endif
 #include "hash.h"
 
