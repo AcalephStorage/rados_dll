@@ -168,7 +168,6 @@
 // *** generic ***
 #define MSG_TIMECHECK             0x600
 #define MSG_MON_HEALTH            0x601
-#ifndef _WIN32
 // *** Message::encode() crcflags bits ***
 #define MSG_CRC_DATA           (1 << 0)
 #define MSG_CRC_HEADER         (1 << 1)
@@ -181,7 +180,6 @@
 
 // Special
 #define MSG_NOP                   0x607
-#endif
 
 // ======================================================
 
@@ -306,11 +304,8 @@ protected:
       completion_hook->complete(0);
   }
 public:
-#ifdef _WIN32
-  inline const ConnectionRef& get_connection() { return connection; }
-#else
   inline const ConnectionRef& get_connection() const { return connection; }
-#endif
+
   void set_connection(const ConnectionRef& c) {
     connection = c;
   }
@@ -322,13 +317,11 @@ public:
   Throttle *get_message_throttler() { return msg_throttler; }
 
   void set_dispatch_throttle_size(uint64_t s) { dispatch_throttle_size = s; }
-#ifdef _WIN32
-  uint64_t get_dispatch_throttle_size() { return dispatch_throttle_size; }
-#else
+
   uint64_t get_dispatch_throttle_size() const { return dispatch_throttle_size; }
 
   const ceph_msg_header &get_header() const { return header; }
-#endif
+
   ceph_msg_header &get_header() { return header; }
   void set_header(const ceph_msg_header &e) { header = e; }
   void set_footer(const ceph_msg_footer &e) { footer = e; }
@@ -339,11 +332,9 @@ public:
 #ifndef _WIN32
   void set_src(const entity_name_t& src) { header.src = src; }
 #endif
-#ifdef _WIN32
-  uint32_t get_magic() { return magic; }
-#else
+
   uint32_t get_magic() const { return magic; }
-#endif
+
   void set_magic(int _magic) { magic = _magic; }
 
   /*
@@ -367,11 +358,8 @@ public:
     data.clear();
     clear_buffers(); // let subclass drop buffers as well
   }
-#ifdef _WIN32
-  bool empty_payload() { return payload.length() == 0; }
-#else
+
   bool empty_payload() const { return payload.length() == 0; }
-#endif
   bufferlist& get_payload() { return payload; }
   void set_payload(bufferlist& bl) {
     if (byte_throttler)
@@ -478,23 +466,15 @@ public:
   }
 
   virtual void dump(Formatter *f) const;
-#ifdef _WIN32
   void encode(uint64_t features, bool datacrc);
-#else
-  void encode(uint64_t features, int crcflags);
-#endif
+  //void encode(uint64_t features, int crcflags);
 };
 typedef boost::intrusive_ptr<Message> MessageRef;
-/*#ifdef _WIN32
-extern Message *decode_message(CephContext *cct, ceph_msg_header &header,
-			       ceph_msg_footer& footer, bufferlist& front,
-			       bufferlist& middle, bufferlist& data);
-#else*/
 extern Message *decode_message(CephContext *cct, int crcflags,
 			       ceph_msg_header &header,
 			       ceph_msg_footer& footer, bufferlist& front,
 			       bufferlist& middle, bufferlist& data);
-//#endif
+
 inline ostream& operator<<(ostream& out, Message& m) {
   m.print(out);
   if (m.get_header().version)
@@ -503,11 +483,8 @@ inline ostream& operator<<(ostream& out, Message& m) {
 }
 
 extern void encode_message(Message *m, uint64_t features, bufferlist& bl);
-/*#ifdef _WIN32
-extern Message *decode_message(CephContext *cct, bufferlist::iterator& bl);
-#else*/
 extern Message *decode_message(CephContext *cct, int crcflags,
                                bufferlist::iterator& bl);
-//#endif
+
 
 #endif
