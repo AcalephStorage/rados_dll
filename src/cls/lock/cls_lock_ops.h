@@ -169,7 +169,7 @@ struct cls_lock_list_locks_reply
   static void generate_test_instances(list<cls_lock_list_locks_reply*>& o);
 };
 WRITE_CLASS_ENCODER(cls_lock_list_locks_reply)
-#ifdef _WIN32
+
 struct cls_lock_assert_op
 {
   string name;
@@ -202,5 +202,5 @@ struct cls_lock_assert_op
   static void generate_test_instances(list<cls_lock_assert_op*>& o);
 };
 WRITE_CLASS_ENCODER(cls_lock_assert_op)
-#endif //WIN32
+
 #endif
