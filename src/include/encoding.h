@@ -309,13 +309,12 @@ inline void encode(const boost::optional<T> &p, bufferlist &bl)
   if (p)
     encode(p.get(), bl);
 }
-#ifdef _WIN32
-#else
+
 #pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
+
 
 template<typename T>
 inline void decode(boost::optional<T> &p, bufferlist::iterator &bp)
@@ -328,11 +327,10 @@ inline void decode(boost::optional<T> &p, bufferlist::iterator &bp)
     decode(p.get(), bp);
   }
 }
-#ifdef _WIN32
-#else
+
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic warning "-Wpragmas"
-#endif
+
 //triple tuple
 template<class A, class B, class C>
 inline void encode(const boost::tuple<A, B, C> &t, bufferlist& bl)
