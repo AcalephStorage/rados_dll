@@ -354,11 +354,7 @@ int MonClient::init()
   Mutex::Locker l(monc_lock);
 
   string method;
-/*#ifdef _WIN32
-    if (cct->_conf->auth_supported.length() != 0)
-#else*/
     if (!cct->_conf->auth_supported.empty())
-//#endif
       method = cct->_conf->auth_supported;
     else if (entity_name.get_type() == CEPH_ENTITY_TYPE_OSD ||
              entity_name.get_type() == CEPH_ENTITY_TYPE_MDS ||
@@ -376,21 +372,13 @@ int MonClient::init()
     r = keyring->from_ceph_context(cct);
     if (r == -ENOENT) {
       auth_supported->remove_supported_auth(CEPH_AUTH_CEPHX);
-/*#ifdef _WIN32
-      if (auth_supported->get_supported_set().size() > 0) {
+
+    if (!auth_supported->get_supported_set().empty()) {
 	r = 0;
 	no_keyring_disabled_cephx = true;
       } else {
 	lderr(cct) << "ERROR: missing keyring, cannot use cephx for authentication" << dendl;
       }
-#else*/
-      if (!auth_supported->get_supported_set().empty()) {
-	r = 0;
-	no_keyring_disabled_cephx = true;
-      } else {
-	lderr(cct) << "ERROR: missing keyring, cannot use cephx for authentication" << dendl;
-      }
-//#endif
     }
   }
 
