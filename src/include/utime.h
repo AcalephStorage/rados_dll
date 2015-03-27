@@ -146,9 +146,7 @@ public:
   }
 
   void sleep() {
-    //struct timespec ts = { (__time_t)tv.tv_sec, (long)tv.tv_nsec };
     struct timespec ts = { tv.tv_sec, (long)tv.tv_nsec };
-    //nanosleep(&ts, &ts);
     Sleep(ts.tv_sec*1000+ts.tv_nsec);
   }
 #else
@@ -214,8 +212,6 @@ public:
 #ifdef _WIN32
 #else
       gmtime_r(&tt, &bdt);
-
-
       asctime_r(&bdt, buf);
 #endif
       int len = strlen(buf);
