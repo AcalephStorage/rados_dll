@@ -35,12 +35,11 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <string.h>
-#ifdef _WIN32
-# else
-#  ifndef __CYGWIN__
-#  include <sys/mman.h>
-#  endif
+
+#if !defined _WIN32 
+#include <sys/mman.h>
 #endif
+
 
 #include <iostream>
 #include <istream>
@@ -64,13 +63,11 @@
   #define CEPH_BUFFER_API
 #endif
 
-#ifdef _WIN32
-#else
 #if defined(HAVE_XIO)
 struct xio_mempool_obj;
 class XioDispatchHook;
 #endif
-#endif
+
 namespace ceph {
 
 class CEPH_BUFFER_API buffer {
@@ -534,12 +531,11 @@ public:
     }
   };
 };
-#ifdef _WIN32
-#else
+
 #if defined(HAVE_XIO)
 xio_mempool_obj* get_xio_mp(const buffer::ptr& bp);
 #endif
-#endif
+
 typedef buffer::ptr bufferptr;
 typedef buffer::list bufferlist;
 typedef buffer::hash bufferhash;
