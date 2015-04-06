@@ -23,8 +23,6 @@ static uint32_t *foo = &bar;
  
 void simple_spin_lock(simple_spinlock_t *lock)
 {
-#ifdef _WIN32
-#else
   while(1) {
     __sync_synchronize();
     uint32_t oldval = *lock;
@@ -37,13 +35,9 @@ void simple_spin_lock(simple_spinlock_t *lock)
       *foo = (*foo * 33) + 17;
     }
   }
-#endif
 }
 
 void simple_spin_unlock(simple_spinlock_t *lock)
 {
-#ifdef _WIN32
-#else
   __sync_bool_compare_and_swap(lock, 1, 0);
-#endif
 }
