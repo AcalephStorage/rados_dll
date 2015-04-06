@@ -181,15 +181,9 @@ public:
   }
   // This function maybe needs some work; assumes last event is completion time
   double get_duration() const {
-#ifdef _WIN32
-    return events.size() ?
-      (events.rbegin()->first - get_initiated()) :
-      0.0;
-#else
     return events.empty() ?
       0.0 :
       (events.rbegin()->first - get_initiated());
-#endif
   }
 
   void mark_event(const string &event);
