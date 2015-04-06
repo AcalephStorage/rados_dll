@@ -65,21 +65,14 @@ struct OpRequest : public TrackedOp {
   bool need_write_cap();
   bool need_class_read_cap();
   bool need_class_write_cap();
-#ifdef _WIN32
   void set_read();
   void set_write();
   void set_cache();
   void set_class_read();
   void set_class_write();
   void set_pg_op();
-#else
+#ifndef _WIN32
   bool need_promote();
-  void set_read();
-  void set_write();
-  void set_cache();
-  void set_class_read();
-  void set_class_write();
-  void set_pg_op();
   void set_promote();
 #endif
   void _dump(utime_t now, Formatter *f) const;
@@ -146,17 +139,6 @@ public:
   void mark_reached_pg() {
     mark_flag_point(flag_reached_pg, "reached_pg");
   }
-#ifdef _WIN32
-  void mark_delayed(string s) {
-    mark_flag_point(flag_delayed, s);
-  }
-  void mark_started() {
-    mark_flag_point(flag_started, "started");
-  }
-  void mark_sub_op_sent(string s) {
-    mark_flag_point(flag_sub_op_sent, s);
-  }
-#else
   void mark_delayed(const string& s) {
     mark_flag_point(flag_delayed, s);
   }
@@ -166,7 +148,6 @@ public:
   void mark_sub_op_sent(const string& s) {
     mark_flag_point(flag_sub_op_sent, s);
   }
-#endif
   void mark_commit_sent() {
     mark_flag_point(flag_commit_sent, "commit_sent");
   }
@@ -186,11 +167,7 @@ public:
 
 private:
   void set_rmw_flags(int flags);
-#ifdef _WIN32
-  void mark_flag_point(uint8_t flag, string s);
-#else
   void mark_flag_point(uint8_t flag, const string& s);
-#endif
 };
 
 typedef OpRequest::Ref OpRequestRef;

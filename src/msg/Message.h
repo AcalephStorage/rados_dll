@@ -466,8 +466,11 @@ public:
   }
 
   virtual void dump(Formatter *f) const;
+#ifdef _WIN32
   void encode(uint64_t features, bool datacrc);
-  //void encode(uint64_t features, int crcflags);
+#else
+  void encode(uint64_t features, int crcflags);
+#endif
 };
 typedef boost::intrusive_ptr<Message> MessageRef;
 extern Message *decode_message(CephContext *cct, int crcflags,
