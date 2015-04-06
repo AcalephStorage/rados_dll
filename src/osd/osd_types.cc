@@ -95,12 +95,9 @@ const char * ceph_osd_op_flag_name(unsigned flag)
     case CEPH_OSD_OP_FLAG_FADVISE_DONTNEED:
       name = "fadvise_dontneed";
       break;
-#ifdef _WIN32
-#else
     case CEPH_OSD_OP_FLAG_FADVISE_NOCACHE:
       name = "fadvise_nocache";
       break;
-#endif
     default:
       name = "???";
   };
@@ -699,8 +696,7 @@ void coll_t::generate_test_instances(list<coll_t*>& o)
 }
 
 // ---
-#ifdef _WIN32
-#else
+
 std::string pg_vector_string(const vector<int32_t> &a)
 {
   ostringstream oss;
@@ -716,7 +712,7 @@ std::string pg_vector_string(const vector<int32_t> &a)
   oss << "]";
   return oss.str();
 }
-#endif
+
 std::string pg_state_string(int state)
 {
   ostringstream oss;
@@ -726,11 +722,8 @@ std::string pg_state_string(int state)
     oss << "creating+";
   if (state & PG_STATE_ACTIVE)
     oss << "active+";
-#ifdef _WIN32
-#else
   if (state & PG_STATE_ACTIVATING)
     oss << "activating+";
-#endif
   if (state & PG_STATE_CLEAN)
     oss << "clean+";
   if (state & PG_STATE_RECOVERY_WAIT)
@@ -770,11 +763,8 @@ std::string pg_state_string(int state)
     oss << "backfill_toofull+";
   if (state & PG_STATE_INCOMPLETE)
     oss << "incomplete+";
-#ifdef _WIN32
-#else
   if (state & PG_STATE_PEERED)
     oss << "peered+";
-#endif
   string ret(oss.str());
   if (ret.length() > 0)
     ret.resize(ret.length() - 1);
@@ -782,8 +772,7 @@ std::string pg_state_string(int state)
     ret = "inactive";
   return ret;
 }
-#ifdef _WIN32
-#else
+
 int pg_string_state(std::string state)
 {
   int type;
@@ -831,7 +820,7 @@ int pg_string_state(std::string state)
     type = -1;
   return type;
 }
-#endif
+
 // -- eversion_t --
 string eversion_t::get_key_name() const
 {
@@ -1715,8 +1704,8 @@ void object_stat_sum_t::sub(const object_stat_sum_t& o)
   num_bytes_hit_set_archive -= o.num_bytes_hit_set_archive;
 }
 
-#ifdef _WIN32
-#else
+//#ifdef _WIN32
+//#else
 bool operator==(const object_stat_sum_t& l, const object_stat_sum_t& r)
 {
   return
@@ -1744,7 +1733,7 @@ bool operator==(const object_stat_sum_t& l, const object_stat_sum_t& r)
     l.num_objects_hit_set_archive == r.num_objects_hit_set_archive &&
     l.num_bytes_hit_set_archive == r.num_bytes_hit_set_archive;
 }
-#endif
+//#endif
 // -- object_stat_collection_t --
 
 void object_stat_collection_t::dump(Formatter *f) const
@@ -1787,15 +1776,15 @@ void object_stat_collection_t::generate_test_instances(list<object_stat_collecti
 
 
 // -- pg_stat_t --
-#ifdef _WIN32
-#else
+//#ifdef _WIN32
+//#else
 bool pg_stat_t::is_acting_osd(int32_t osd, bool primary) const
 {
   if (primary && osd == acting_primary) {
     return true;
   } else if (!primary) {
     for(vector<int32_t>::const_iterator it = acting.begin();
-        it != acting.end(); it++)
+        it != acting.end(); ++it)
     {
       if (*it == osd)
         return true;
@@ -1803,7 +1792,7 @@ bool pg_stat_t::is_acting_osd(int32_t osd, bool primary) const
   }
   return false;
 }
-#endif
+//#endif
 void pg_stat_t::dump(Formatter *f) const
 {
   f->dump_stream("version") << version;
@@ -1813,16 +1802,16 @@ void pg_stat_t::dump(Formatter *f) const
   f->dump_stream("last_fresh") << last_fresh;
   f->dump_stream("last_change") << last_change;
   f->dump_stream("last_active") << last_active;
-#ifdef _WIN32
-#else
+//#ifdef _WIN32
+//#else
   f->dump_stream("last_peered") << last_peered;
-#endif
+//#endif
   f->dump_stream("last_clean") << last_clean;
   f->dump_stream("last_became_active") << last_became_active;
-#ifdef _WIN32
-#else
+//#ifdef _WIN32
+//#else
   f->dump_stream("last_became_peered") << last_became_peered;
-#endif 
+//#endif 
   f->dump_stream("last_unstale") << last_unstale;
   f->dump_stream("last_undegraded") << last_undegraded;
   f->dump_stream("last_fullsized") << last_fullsized;
@@ -1873,50 +1862,7 @@ void pg_stat_t::dump_brief(Formatter *f) const
   f->dump_int("up_primary", up_primary);
   f->dump_int("acting_primary", acting_primary);
 }
-#ifdef _WIN32
-void pg_stat_t::encode(bufferlist &bl) const
-{
-  ENCODE_START(20, 8, bl);
-  ::encode(version, bl);
-  ::encode(reported_seq, bl);
-  ::encode(reported_epoch, bl);
-  ::encode(state, bl);
-  ::encode(log_start, bl);
-  ::encode(ondisk_log_start, bl);
-  ::encode(created, bl);
-  ::encode(last_epoch_clean, bl);
-  ::encode(parent, bl);
-  ::encode(parent_split_bits, bl);
-  ::encode(last_scrub, bl);
-  ::encode(last_scrub_stamp, bl);
-  ::encode(stats, bl);
-  ::encode(log_size, bl);
-  ::encode(ondisk_log_size, bl);
-  ::encode(up, bl);
-  ::encode(acting, bl);
-  ::encode(last_fresh, bl);
-  ::encode(last_change, bl);
-  ::encode(last_active, bl);
-  ::encode(last_clean, bl);
-  ::encode(last_unstale, bl);
-  ::encode(mapping_epoch, bl);
-  ::encode(last_deep_scrub, bl);
-  ::encode(last_deep_scrub_stamp, bl);
-  ::encode(stats_invalid, bl);
-  ::encode(last_clean_scrub_stamp, bl);
-  ::encode(last_became_active, bl);
-  ::encode(dirty_stats_invalid, bl);
-  ::encode(up_primary, bl);
-  ::encode(acting_primary, bl);
-  ::encode(omap_stats_invalid, bl);
-  ::encode(hitset_stats_invalid, bl);
-  ::encode(blocked_by, bl);
-  ::encode(last_undegraded, bl);
-  ::encode(last_fullsized, bl);
-  ::encode(hitset_bytes_stats_invalid, bl);
-  ENCODE_FINISH(bl);
-}
-#else
+
 void pg_stat_t::encode(bufferlist &bl) const
 {
   ENCODE_START(21, 8, bl);
@@ -1961,7 +1907,7 @@ void pg_stat_t::encode(bufferlist &bl) const
   ::encode(last_became_peered, bl);
   ENCODE_FINISH(bl);
 }
-#endif
+
 void pg_stat_t::decode(bufferlist::iterator &bl)
 {
   DECODE_START_LEGACY_COMPAT_LEN(20, 8, 8, bl);
@@ -2091,8 +2037,6 @@ void pg_stat_t::decode(bufferlist::iterator &bl)
     // encoder may not have supported num_bytes_hit_set_archive accounting.
     hitset_bytes_stats_invalid = true;
   }
-#ifdef _WIN32
-#else
   if (struct_v >= 21) {
     ::decode(last_peered, bl);
     ::decode(last_became_peered, bl);
@@ -2100,7 +2044,6 @@ void pg_stat_t::decode(bufferlist::iterator &bl)
     last_peered = last_active;
     last_became_peered = last_became_active;
   }
-#endif
   DECODE_FINISH(bl);
 }
 
@@ -2151,8 +2094,7 @@ void pg_stat_t::generate_test_instances(list<pg_stat_t*>& o)
   a.blocked_by.push_back(156);
   o.push_back(new pg_stat_t(a));
 }
-#ifdef _WIN32
-#else
+
 bool operator==(const pg_stat_t& l, const pg_stat_t& r)
 {
   return
@@ -2194,7 +2136,7 @@ bool operator==(const pg_stat_t& l, const pg_stat_t& r)
     l.up_primary == r.up_primary &&
     l.acting_primary == r.acting_primary;
 }
-#endif
+
 // -- pool_stat_t --
 
 void pool_stat_t::dump(Formatter *f) const
@@ -3249,10 +3191,15 @@ void pg_log_entry_t::dump(Formatter *f) const
   f->dump_stream("prior_version") << prior_version;
   f->dump_stream("reqid") << reqid;
   f->open_array_section("extra_reqids");
-  for (vector<osd_reqid_t>::const_iterator p = extra_reqids.begin();
+  for (vector<pair<osd_reqid_t, version_t> >::const_iterator p =
+	 extra_reqids.begin();
        p != extra_reqids.end();
-       ++p)
-    f->dump_stream("reqid") << *p;
+       ++p) {
+    f->open_object_section("extra_reqid");
+    f->dump_stream("reqid") << p->first;
+    f->dump_stream("user_version") << p->second;
+    f->close_section();
+  }
   f->close_section();
   f->dump_stream("mtime") << mtime;
   if (snaps.length() > 0) {
@@ -3792,7 +3739,6 @@ void object_copy_data_t::encode(bufferlist& bl, uint64_t features) const
   ::encode(data_digest, bl);
   ::encode(omap_digest, bl);
   ::encode(reqids, bl);
-
   ENCODE_FINISH(bl);
 }
 #endif
@@ -3956,15 +3902,9 @@ void object_copy_data_t::decode(bufferlist::iterator& bl)
     ::decode(data, bl);
     ::decode(omap_data, bl);
     ::decode(cursor, bl);
-    if (struct_v >= 2)
-      ::decode(omap_header, bl);
-    if (struct_v >= 3) {
-      ::decode(snaps, bl);
-      ::decode(snap_seq, bl);
-    } else {
-      snaps.clear();
-      snap_seq = 0;
-    }
+    ::decode(omap_header, bl);
+    ::decode(snaps, bl);
+    ::decode(snap_seq, bl);
     if (struct_v >= 4) {
       ::decode(flags, bl);
       ::decode(data_digest, bl);
@@ -4006,7 +3946,7 @@ void object_copy_data_t::generate_test_instances(list<object_copy_data_t*>& o)
   o.back()->data.push_back(databp);
   o.back()->omap_header.append("this is an omap header");
   o.back()->snaps.push_back(123);
-  o.back()->reqids.push_back(osd_reqid_t());
+  o.back()->reqids.push_back(make_pair(osd_reqid_t(), version_t()));
 }
 
 void object_copy_data_t::dump(Formatter *f) const
@@ -4031,10 +3971,14 @@ void object_copy_data_t::dump(Formatter *f) const
     f->dump_unsigned("snap", *p);
   f->close_section();
   f->open_array_section("reqids");
-  for (vector<osd_reqid_t>::const_iterator p = reqids.begin();
+  for (vector<pair<osd_reqid_t, version_t> >::const_iterator p = reqids.begin();
        p != reqids.end();
-       ++p)
-    f->dump_stream("reqid") << *p;
+       ++p) {
+    f->open_object_section("extra_reqid");
+    f->dump_stream("reqid") << p->first;
+    f->dump_stream("user_version") << p->second;
+    f->close_section();
+  }
   f->close_section();
 }
 #endif

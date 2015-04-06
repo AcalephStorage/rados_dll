@@ -125,7 +125,7 @@ public:
 	  << std::endl;
     }
   }
-#ifdef _WIN32
+
   //clear all strong reference from the lru.
   void clear() {
     while (true) {
@@ -138,7 +138,7 @@ public:
       lru_remove(lru.back().first);
     }
   }
-#endif
+
   void clear(const K& key) {
     VPtr val; // release any ref we have after we drop the lock
     {
@@ -205,7 +205,7 @@ public:
     }
     return val;
   }
-#ifdef _WIN32
+
   bool get_next(const K &key, pair<K, VPtr> *next) {
     pair<K, VPtr> r;
     {
@@ -237,7 +237,7 @@ public:
     next->second = *(r.second);
     return found;
   }
-#endif
+
 
   VPtr lookup(const K& key) {
     VPtr val;
@@ -264,7 +264,7 @@ public:
     }
     return val;
   }
-#ifdef _WIN32
+
   VPtr lookup_or_create(const K &key) {
     VPtr val;
     list<VPtr> to_release;
@@ -305,7 +305,7 @@ public:
     Mutex::Locker l(lock);
     return weak_refs.empty();
   }
-#endif
+
   /***
    * Inserts a key if not present, or bumps it to the front of the LRU if
    * it is, and then gives you a reference to the value. If the key already
