@@ -128,9 +128,7 @@ ssize_t safe_pwrite(int fd, const void *buf, size_t count, off_t offset)
 	}
 	return 0;
 }
-#ifdef _WIN32
-#define PATH_MAX 4096
-#else
+
 #ifdef CEPH_HAVE_SPLICE
 ssize_t safe_splice(int fd_in, loff_t *off_in, int fd_out, loff_t *off_out,
 		    size_t len, unsigned int flags)
@@ -163,7 +161,7 @@ ssize_t safe_splice_exact(int fd_in, loff_t *off_in, int fd_out,
     return -EDOM;
   return 0;
 }
-#endif
+
 
 #endif
 int safe_write_file(const char *base, const char *file,

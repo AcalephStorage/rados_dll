@@ -513,9 +513,9 @@ int FileJournal::open(uint64_t fs_op_seq)
 
   // looks like a valid header.
   write_pos = 0;  // not writeable yet
-#ifdef _WIN32
+
   journaled_seq = header.committed_up_to;
-#endif
+
   // find next entry
   read_pos = header.start;
   uint64_t seq = header.start_seq;
@@ -643,11 +643,11 @@ void FileJournal::stop_writer()
     Mutex::Locker p(writeq_lock);
     write_stop = true;
     writeq_cond.Signal();
-#ifdef _WIN32
+
     // Doesn't hurt to signal commit_cond in case thread is waiting there
     // and caller didn't use committed_thru() first.
     commit_cond.Signal();
-#endif
+
   }
   write_thread.join();
 
