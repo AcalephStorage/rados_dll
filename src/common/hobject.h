@@ -20,10 +20,9 @@
 #include "include/object.h"
 #include "include/cmp.h"
 
-#ifdef _WIN32
-#else
+
 #include "json_spirit/json_spirit_value.h"
-#endif
+
 
 #include "include/assert.h"   // spirit clobbers it!
 
@@ -212,10 +211,9 @@ public:
 
   void encode(bufferlist& bl) const;
   void decode(bufferlist::iterator& bl);
-#ifdef _WIN32
-#else
+
   void decode(json_spirit::Value& v);
-#endif
+
   void dump(Formatter *f) const;
   static void generate_test_instances(list<hobject_t*>& o);
   friend bool operator<(const hobject_t&, const hobject_t&);
@@ -327,10 +325,7 @@ public:
 
   void encode(bufferlist& bl) const;
   void decode(bufferlist::iterator& bl);
-#ifdef _WIN32
-#else
   void decode(json_spirit::Value& v);
-#endif
   void dump(Formatter *f) const;
   static void generate_test_instances(list<ghobject_t*>& o);
   friend bool operator<(const ghobject_t&, const ghobject_t&);
