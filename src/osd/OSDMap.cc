@@ -1115,7 +1115,7 @@ uint64_t OSDMap::get_up_osd_features() const
   }
   return features;
 }
-#else
+#endif
 void OSDMap::_calc_up_osd_features()
 {
   bool first = true;
@@ -1132,7 +1132,7 @@ void OSDMap::_calc_up_osd_features()
     }
   }
 }
-
+#ifndef _WIN32
 uint64_t OSDMap::get_up_osd_features() const
 {
   return cached_up_osd_features;
@@ -1481,9 +1481,7 @@ int OSDMap::apply_incremental(const Incremental &inc)
   }
 
   calc_num_osds();
-#ifndef _WIN32
   _calc_up_osd_features();
-#endif
   return 0;
 }
 
@@ -1615,9 +1613,7 @@ void OSDMap::_apply_primary_affinity(ps_t seed,
     if (*p != CRUSH_ITEM_NONE &&
 	(*osd_primary_affinity)[*p] != CEPH_OSD_DEFAULT_PRIMARY_AFFINITY) {
       any = true;
-#ifndef _WIN32
       break;
-#endif
     }
   }
   if (!any)
@@ -2243,9 +2239,7 @@ void OSDMap::post_decode()
   }
 
   calc_num_osds();
-#ifndef _WIN32
   _calc_up_osd_features();
-#endif
 }
 
 void OSDMap::dump_erasure_code_profiles(const map<string,map<string,string> > &profiles,
@@ -2373,7 +2367,7 @@ void OSDMap::dump(Formatter *f) const
 
   dump_erasure_code_profiles(erasure_code_profiles, f);
 }
-#ifndef _WIN32
+
 void OSDMap::generate_test_instances(list<OSDMap*>& o)
 {
   o.push_back(new OSDMap);
@@ -2386,7 +2380,7 @@ void OSDMap::generate_test_instances(list<OSDMap*>& o)
   o.back()->blacklist[entity_addr_t()] = utime_t(5, 6);
   cct->put();
 }
-#endif
+
 
 string OSDMap::get_flag_string(unsigned f)
 {
@@ -2818,7 +2812,6 @@ bool OSDMap::crush_ruleset_in_use(int ruleset) const
   }
   return false;
 }
-#ifndef _WIN32
 
 int OSDMap::build_simple(CephContext *cct, epoch_t e, uuid_d &fsid,
 			  int nosd, int pg_bits, int pgp_bits)
@@ -2932,7 +2925,7 @@ int OSDMap::get_erasure_code_profile_default(CephContext *cct,
     cct->_conf->osd_pool_default_erasure_code_directory;
   return r;
 }
-#endif
+
 
 int OSDMap::_build_crush_types(CrushWrapper& crush)
 {
