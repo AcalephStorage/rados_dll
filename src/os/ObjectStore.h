@@ -346,6 +346,7 @@ public:
    * A and B.
    *
    */
+#ifdef _WIN32
 #define OP_NOP            0
 #define OP_TOUCH          9   // cid oid
 #define OP_WRITE         10  // cid oid offset len bl
@@ -382,56 +383,59 @@ public:
     
 #define OP_SETALLOCHINT   39  // cid, oid, object_size, write_size
 #define OP_COLL_HINT      40 // cid, type, bl
-
+#endif
   class Transaction {
   public:
-//    enum {
-//      OP_NOP =          0,
-//      OP_TOUCH =        9,   // cid, oid
-//      OP_WRITE =        10,  // cid, oid, offset, len, bl
-//      OP_ZERO =         11,  // cid, oid, offset, len
-//      OP_TRUNCATE =     12,  // cid, oid, len
-//      OP_REMOVE =       13,  // cid, oid
-//      OP_SETATTR =      14,  // cid, oid, attrname, bl
-//      OP_SETATTRS =     15,  // cid, oid, attrset
-//      OP_RMATTR =       16,  // cid, oid, attrname
-//      OP_CLONE =        17,  // cid, oid, newoid
-//      OP_CLONERANGE =   18,  // cid, oid, newoid, offset, len
-//      OP_CLONERANGE2 =  30,  // cid, oid, newoid, srcoff, len, dstoff
-//
-//      OP_TRIMCACHE =    19,  // cid, oid, offset, len  **DEPRECATED**
-//
-//      OP_MKCOLL =       20,  // cid
-//      OP_RMCOLL =       21,  // cid
-//      OP_COLL_ADD =     22,  // cid, oldcid, oid
-//      OP_COLL_REMOVE =  23,  // cid, oid
-//      OP_COLL_SETATTR = 24,  // cid, attrname, bl
-//      OP_COLL_RMATTR =  25,  // cid, attrname
-//      OP_COLL_SETATTRS = 26,  // cid, attrset
-//      OP_COLL_MOVE =    8,   // newcid, oldcid, oid
-//
-//      OP_STARTSYNC =    27,  // start a sync
-//
-//      OP_RMATTRS =      28,  // cid, oid
-//      OP_COLL_RENAME =       29,  // cid, newcid
-//
-//      OP_OMAP_CLEAR = 31,   // cid
-//      OP_OMAP_SETKEYS = 32, // cid, attrset
-//      OP_OMAP_RMKEYS = 33,  // cid, keyset
-//      OP_OMAP_SETHEADER = 34, // cid, header
-//      OP_SPLIT_COLLECTION = 35, // cid, bits, destination
-//      OP_SPLIT_COLLECTION2 = 36, /* cid, bits, destination
-//				    doesn't create the destination */
-//      OP_OMAP_RMKEYRANGE = 37,  // cid, oid, firstkey, lastkey
-//      OP_COLL_MOVE_RENAME = 38,   // oldcid, oldoid, newcid, newoid
-//
-//      OP_SETALLOCHINT = 39,  // cid, oid, object_size, write_size
-//    };
+#ifndef _WIN32
+    enum {
+      OP_NOP =          0,
+      OP_TOUCH =        9,   // cid, oid
+      OP_WRITE =        10,  // cid, oid, offset, len, bl
+      OP_ZERO =         11,  // cid, oid, offset, len
+      OP_TRUNCATE =     12,  // cid, oid, len
+      OP_REMOVE =       13,  // cid, oid
+      OP_SETATTR =      14,  // cid, oid, attrname, bl
+      OP_SETATTRS =     15,  // cid, oid, attrset
+      OP_RMATTR =       16,  // cid, oid, attrname
+      OP_CLONE =        17,  // cid, oid, newoid
+      OP_CLONERANGE =   18,  // cid, oid, newoid, offset, len
+      OP_CLONERANGE2 =  30,  // cid, oid, newoid, srcoff, len, dstoff
 
-    //enum {
-      #define COLL_HINT_EXPECTED_NUM_OBJECTS 1
-    //};
-	
+      OP_TRIMCACHE =    19,  // cid, oid, offset, len  **DEPRECATED**
+
+      OP_MKCOLL =       20,  // cid
+      OP_RMCOLL =       21,  // cid
+      OP_COLL_ADD =     22,  // cid, oldcid, oid
+      OP_COLL_REMOVE =  23,  // cid, oid
+      OP_COLL_SETATTR = 24,  // cid, attrname, bl
+      OP_COLL_RMATTR =  25,  // cid, attrname
+      OP_COLL_SETATTRS = 26,  // cid, attrset
+      OP_COLL_MOVE =    8,   // newcid, oldcid, oid
+
+      OP_STARTSYNC =    27,  // start a sync
+
+      OP_RMATTRS =      28,  // cid, oid
+      OP_COLL_RENAME =       29,  // cid, newcid
+
+      OP_OMAP_CLEAR = 31,   // cid
+      OP_OMAP_SETKEYS = 32, // cid, attrset
+      OP_OMAP_RMKEYS = 33,  // cid, keyset
+      OP_OMAP_SETHEADER = 34, // cid, header
+      OP_SPLIT_COLLECTION = 35, // cid, bits, destination
+      OP_SPLIT_COLLECTION2 = 36, /* cid, bits, destination
+				    doesn't create the destination */
+      OP_OMAP_RMKEYRANGE = 37,  // cid, oid, firstkey, lastkey
+      OP_COLL_MOVE_RENAME = 38,   // oldcid, oldoid, newcid, newoid
+
+      OP_SETALLOCHINT = 39,  // cid, oid, object_size, write_size
+    };
+
+    enum {
+      COLL_HINT_EXPECTED_NUM_OBJECTS 1
+    };
+#else
+#define COLL_HINT_EXPECTED_NUM_OBJECTS 1
+#endif
     struct Op {
       __le32 op;
       __le32 cid;
