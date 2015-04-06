@@ -1704,8 +1704,7 @@ void object_stat_sum_t::sub(const object_stat_sum_t& o)
   num_bytes_hit_set_archive -= o.num_bytes_hit_set_archive;
 }
 
-//#ifdef _WIN32
-//#else
+
 bool operator==(const object_stat_sum_t& l, const object_stat_sum_t& r)
 {
   return
@@ -1733,7 +1732,6 @@ bool operator==(const object_stat_sum_t& l, const object_stat_sum_t& r)
     l.num_objects_hit_set_archive == r.num_objects_hit_set_archive &&
     l.num_bytes_hit_set_archive == r.num_bytes_hit_set_archive;
 }
-//#endif
 // -- object_stat_collection_t --
 
 void object_stat_collection_t::dump(Formatter *f) const
@@ -1776,8 +1774,6 @@ void object_stat_collection_t::generate_test_instances(list<object_stat_collecti
 
 
 // -- pg_stat_t --
-//#ifdef _WIN32
-//#else
 bool pg_stat_t::is_acting_osd(int32_t osd, bool primary) const
 {
   if (primary && osd == acting_primary) {
@@ -1792,7 +1788,7 @@ bool pg_stat_t::is_acting_osd(int32_t osd, bool primary) const
   }
   return false;
 }
-//#endif
+
 void pg_stat_t::dump(Formatter *f) const
 {
   f->dump_stream("version") << version;
@@ -1802,16 +1798,10 @@ void pg_stat_t::dump(Formatter *f) const
   f->dump_stream("last_fresh") << last_fresh;
   f->dump_stream("last_change") << last_change;
   f->dump_stream("last_active") << last_active;
-//#ifdef _WIN32
-//#else
   f->dump_stream("last_peered") << last_peered;
-//#endif
   f->dump_stream("last_clean") << last_clean;
   f->dump_stream("last_became_active") << last_became_active;
-//#ifdef _WIN32
-//#else
   f->dump_stream("last_became_peered") << last_became_peered;
-//#endif 
   f->dump_stream("last_unstale") << last_unstale;
   f->dump_stream("last_undegraded") << last_undegraded;
   f->dump_stream("last_fullsized") << last_fullsized;
@@ -4285,8 +4275,7 @@ ostream& operator<<(ostream& out, const SnapSet& cs)
 	     << cs.clones
 	     << (cs.head_exists ? "+head":"");
 }
-#ifdef _WIN32
-#else
+#ifndef _WIN32
 void SnapSet::from_snap_set(const librados::snap_set_t& ss)
 {
   // NOTE: our reconstruction of snaps (and the snapc) is not strictly
