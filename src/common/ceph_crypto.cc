@@ -31,21 +31,31 @@ void ceph::crypto::shutdown()
 }
 
 // nothing
-/*
+#ifndef _WIN32
 ceph::crypto::HMACSHA1::~HMACSHA1()
 {
 }
 
 #elif USE_NSS
 
+// for SECMOD_RestartModules()
+#include <secmod.h>
+
 // Initialization of NSS requires a mutex due to a race condition in
 // NSS_NoDB_Init.
 static pthread_mutex_t crypto_init_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pid_t crypto_init_pid = 0;
 
 void ceph::crypto::init(CephContext *cct)
 {
+  pid_t pid = getpid();
   SECStatus s;
   pthread_mutex_lock(&crypto_init_mutex);
+  if (crypto_init_pid != pid) {
+    if (crypto_init_pid > 0)
+      SECMOD_RestartModules(PR_FALSE);
+    crypto_init_pid = pid;
+  }
   if (cct->_conf->nss_db_path.empty()) {
     s = NSS_NoDB_Init(NULL);
   } else {
@@ -58,8 +68,11 @@ void ceph::crypto::init(CephContext *cct)
 void ceph::crypto::shutdown()
 {
   SECStatus s;
+  pthread_mutex_lock(&crypto_init_mutex);
   s = NSS_Shutdown();
   assert(s == SECSuccess);
+  crypto_init_pid = 0;
+  pthread_mutex_unlock(&crypto_init_mutex);
 }
 
 ceph::crypto::HMACSHA1::~HMACSHA1()
@@ -68,7 +81,7 @@ ceph::crypto::HMACSHA1::~HMACSHA1()
   PK11_FreeSymKey(symkey);
   PK11_FreeSlot(slot);
 }
-
+#endif
 #else
 # error "No supported crypto implementation found."
-*/#endif
+#endif
