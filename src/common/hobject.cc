@@ -134,8 +134,7 @@ void hobject_t::decode(bufferlist::iterator& bl)
   DECODE_FINISH(bl);
   build_filestore_key_cache();
 }
-#ifdef _WIN32
-#else
+
 void hobject_t::decode(json_spirit::Value& v)
 {
   using namespace json_spirit;
@@ -159,7 +158,7 @@ void hobject_t::decode(json_spirit::Value& v)
   }
   build_filestore_key_cache();
 }
-#endif
+
 void hobject_t::dump(Formatter *f) const
 {
   f->dump_string("oid", oid.name);
@@ -238,8 +237,7 @@ void ghobject_t::decode(bufferlist::iterator& bl)
   DECODE_FINISH(bl);
   hobj.set_hash(hobj.get_hash()); //to call build_filestore_key_cache();
 }
-#ifdef _WIN32
-#else
+
 void ghobject_t::decode(json_spirit::Value& v)
 {
   hobj.decode(v);
@@ -253,7 +251,7 @@ void ghobject_t::decode(json_spirit::Value& v)
       shard_id.id = p.value_.get_int();
   }
 }
-#endif
+
 void ghobject_t::dump(Formatter *f) const
 {
   hobj.dump(f);
