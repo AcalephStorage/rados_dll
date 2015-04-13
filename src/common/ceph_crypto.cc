@@ -31,7 +31,6 @@ void ceph::crypto::shutdown()
 }
 
 // nothing
-#ifndef _WIN32
 ceph::crypto::HMACSHA1::~HMACSHA1()
 {
 }
@@ -81,7 +80,7 @@ ceph::crypto::HMACSHA1::~HMACSHA1()
   PK11_FreeSymKey(symkey);
   PK11_FreeSlot(slot);
 }
-#endif
+
 #else
 # error "No supported crypto implementation found."
 #endif

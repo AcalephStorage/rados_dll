@@ -37,8 +37,6 @@ bool cmdmap_from_json(std::vector<std::string> cmd, cmdmap_t *mapp,
 void handle_bad_get(CephContext *cct, std::string k, const char *name);
 
 std::string cmd_vartype_stringify(const cmd_vartype& v);
-#ifdef _WIN32
-#else
 template <typename T>
 bool
 cmd_getval(CephContext *cct, const cmdmap_t& cmdmap, std::string k, T& val)
@@ -53,7 +51,6 @@ cmd_getval(CephContext *cct, const cmdmap_t& cmdmap, std::string k, T& val)
   }
   return false;
 }
-#endif
 // with default
 
 template <typename T>
