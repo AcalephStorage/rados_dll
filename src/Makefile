@@ -66,15 +66,17 @@ CLIBS    =
 	$(CPP) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:msg/simple/%.cc
 	$(CPP) -c $(CFLAGS) $^ -o $@
+../$(BUILD)/%.o:perfglue/%.cc
+	$(CPP) -c $(CFLAGS) $^ -o $@
 ../$(BUILD)/%.o:json_spirit/%.cpp
 	$(CPP) -c $(CFLAGS) $^ -o $@
 
 OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/snap_set_diff.o ../$(BUILD)/librados.o ../$(BUILD)/IoCtxImpl.o ../$(BUILD)/RadosClient.o ../$(BUILD)/RadosXattrIter.o \
-../$(BUILD)/Objecter.o ../$(BUILD)/MonClient.o ../$(BUILD)/CrushWrapper.o  ../$(BUILD)/MonMap.o \
-  ../$(BUILD)/mdstypes.o ../$(BUILD)/assert.o ../$(BUILD)/Pipe.o ../$(BUILD)/admin_socket.o \
- ../$(BUILD)/MDSMap.o ../$(BUILD)/ceph_argparse.o ../$(BUILD)/OSDMap.o ../$(BUILD)/admin_socket_client.o \
-../$(BUILD)/entity_name.o  ../$(BUILD)/ceph_context.o ../$(BUILD)/CephxClientHandler.o \
-../$(BUILD)/Message.o ../$(BUILD)/common_init.o ../$(BUILD)/osd_types.o ../$(BUILD)/Messenger.o \
+../$(BUILD)/Objecter.o ../$(BUILD)/MonClient.o ../$(BUILD)/CrushWrapper.o  ../$(BUILD)/MonMap.o  ../$(BUILD)/CephxAuthorizeHandler.o ../$(BUILD)/CephxKeyServer.o ../$(BUILD)/CephxServiceHandler.o \
+  ../$(BUILD)/mdstypes.o ../$(BUILD)/assert.o ../$(BUILD)/Pipe.o ../$(BUILD)/admin_socket.o ../$(BUILD)/Elector.o ../$(BUILD)/Paxos.o \
+ ../$(BUILD)/MDSMap.o ../$(BUILD)/ceph_argparse.o ../$(BUILD)/OSDMap.o ../$(BUILD)/admin_socket_client.o  ../$(BUILD)/MonitorStore.o ../$(BUILD)/MonMapMonitor.o ../$(BUILD)/PaxosService.o \
+../$(BUILD)/entity_name.o  ../$(BUILD)/ceph_context.o ../$(BUILD)/CephxClientHandler.o ../$(BUILD)/TextTable.o \
+../$(BUILD)/Message.o ../$(BUILD)/common_init.o ../$(BUILD)/osd_types.o ../$(BUILD)/Messenger.o ../$(BUILD)/MDSMonitor.o ../$(BUILD)/OSDMonitor.o ../$(BUILD)/PGMonitor.o ../$(BUILD)/PGMap.o \
 ../$(BUILD)/RotatingKeyRing.o ../$(BUILD)/CephxProtocol.o ../$(BUILD)/CephxSessionHandler.o ../$(BUILD)/global_context.o \
 ../$(BUILD)/LogClient.o  ../$(BUILD)/AuthMethodList.o ../$(BUILD)/ceph_strings.o \
 ../$(BUILD)/Formatter.o  ../$(BUILD)/escape.o ../$(BUILD)/ceph_crypto.o ../$(BUILD)/builder.o \
@@ -102,7 +104,7 @@ OBJECTS= ../$(BUILD)/hash.o ../$(BUILD)/snap_set_diff.o ../$(BUILD)/librados.o .
 all: ../$(BIN)/rados_client.exe
 
 ../$(BIN)/rados.dll:$(OBJECTS)
-	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0 -lboost_system-mgw48-mt-1_57 -lboost_system-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_context-mgw48-mt-1_57 -lboost_context-mgw48-mt-d-1_57 -lboost_filesystem-mgw48-mt-1_57 -lboost_filesystem-mgw48-mt-d-1_57 -lboost_iostreams-mgw48-mt-1_57 -lboost_iostreams-mgw48-mt-d-1_57 -lboost_log-mgw48-mt-1_57 -lboost_log-mgw48-mt-d-1_57 -lboost_signals-mgw48-mt-1_57 -lboost_signals-mgw48-mt-d-1_57 -lboost_thread-mgw48-mt-1_57 -lboost_thread-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57 
+	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lnss3 -lnss -lnspr4 -lfreebl3 -lnssckbi -lnssutil3 -lplc4 -lssl3 -lglib-2.0 -lgobject-2.0 -lboost_system-mgw48-mt-1_57 -lboost_system-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_context-mgw48-mt-1_57 -lboost_context-mgw48-mt-d-1_57 -lboost_filesystem-mgw48-mt-1_57 -lboost_filesystem-mgw48-mt-d-1_57 -lboost_iostreams-mgw48-mt-1_57 -lboost_iostreams-mgw48-mt-d-1_57 -lboost_log-mgw48-mt-1_57 -lboost_log-mgw48-mt-d-1_57 -lboost_signals-mgw48-mt-1_57 -lboost_signals-mgw48-mt-d-1_57 -lboost_thread-mgw48-mt-1_57 -lboost_thread-mgw48-mt-d-1_57 -lboost_atomic-mgw48-mt-1_57
 	@echo "**************************************************************"
 	@echo "MAKE "$@" FINISH"
 	@echo "**************************************************************"
