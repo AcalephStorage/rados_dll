@@ -11,8 +11,6 @@
 #ifdef USE_CRYPTOPP
 # define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
 #include <string.h>
-
-#ifndef _WIN32
 # include <cryptopp/md5.h>
 # include <cryptopp/sha.h>
 # include <cryptopp/hmac.h>
@@ -58,12 +56,9 @@ typedef unsigned char byte;
 
 namespace ceph {
   namespace crypto {
-#ifndef _WIN32
     void assert_init();
-#endif
     void init(CephContext *cct);
     void shutdown();
-#ifndef _WIN32
     class Digest {
     private:
       PK11Context *ctx;
@@ -158,12 +153,12 @@ namespace ceph {
 	Restart();
       }
     };
-#endif
+
   }
 }
 
 #else
 # error "No supported crypto implementation found."
-#endif
+
 
 #endif
