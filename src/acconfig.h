@@ -372,10 +372,10 @@
 #define STRERROR_R_CHAR_P 1
 
 /* Define if using CryptoPP. */
-#define USE_CRYPTOPP 1
+//#define USE_CRYPTOPP 1
 
 /* Define if using NSS. */
-/* #undef USE_NSS */
+#define USE_NSS 1
 
 /* Version number of package */
 #define VERSION "0.92"
