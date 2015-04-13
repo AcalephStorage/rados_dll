@@ -17,12 +17,14 @@
 
 #include <unistd.h>
 
-#ifndef __CYGWIN__
+#ifndef _WIN32
 # ifndef DARWIN
 #  include <sys/ioctl.h>
 #  include <syscall.h>
 #  include "../os/btrfs_ioctl.h"
 # endif
+#else
+# include <windows.h>
 #endif
 
 inline int sync_filesystem(int fd)
@@ -47,8 +49,11 @@ inline int sync_filesystem(int fd)
   else
     return -errno;
 #endif
-
+#ifdef _WIN32
+  BOOL WINAPI FlushFileBuffers(HANDLE hFile);
+#else
   sync();
+#endif
   return 0;
 }
 
