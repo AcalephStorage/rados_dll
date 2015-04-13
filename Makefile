@@ -70,41 +70,45 @@ $(BUILD)/%.o:$(CEPH_SRC)/mds/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
 $(BUILD)/%.o:$(CEPH_SRC)/msg/simple/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
+$(BUILD)/%.o:$(CEPH_SRC)/perfglue/%.cc
+	$(CPP) -c $(CFLAGS) $^ -o $@
 $(BUILD)/%.o:$(CEPH_SRC)/json_spirit/%.cpp
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
+$(BUILD)/%.o:$(CEPH_SRC)/erasure-code/%.cc
+	$(CPP) -c $(CPPFLAGS) $^ -o $@
 
-OBJECTS= $(BUILD)/hash.o $(BUILD)/snap_set_diff.o $(BUILD)/librados.o $(BUILD)/IoCtxImpl.o $(BUILD)/RadosClient.o $(BUILD)/RadosXattrIter.o \
-$(BUILD)/Objecter.o $(BUILD)/MonClient.o $(BUILD)/CrushWrapper.o  $(BUILD)/MonMap.o \
-$(BUILD)/mdstypes.o $(BUILD)/assert.o $(BUILD)/Pipe.o $(BUILD)/admin_socket.o \
-$(BUILD)/MDSMap.o $(BUILD)/ceph_argparse.o $(BUILD)/OSDMap.o $(BUILD)/admin_socket_client.o \
-$(BUILD)/entity_name.o  $(BUILD)/ceph_context.o $(BUILD)/CephxClientHandler.o \
-$(BUILD)/Message.o $(BUILD)/common_init.o $(BUILD)/osd_types.o $(BUILD)/Messenger.o \
-$(BUILD)/RotatingKeyRing.o $(BUILD)/CephxProtocol.o $(BUILD)/CephxSessionHandler.o $(BUILD)/global_context.o \
-$(BUILD)/LogClient.o  $(BUILD)/AuthMethodList.o $(BUILD)/ceph_strings.o \
-$(BUILD)/Formatter.o  $(BUILD)/escape.o $(BUILD)/ceph_crypto.o $(BUILD)/builder.o \
-$(BUILD)/Timer.o  $(BUILD)/BackTrace.o $(BUILD)/hex.o $(BUILD)/crush.o \
-$(BUILD)/Finisher.o $(BUILD)/Throttle.o $(BUILD)/ceph_fs.o $(BUILD)/mapper.o \
-$(BUILD)/ceph_frag.o $(BUILD)/config.o $(BUILD)/MonCap.o  $(BUILD)/Filer.o \
-$(BUILD)/types.o  $(BUILD)/Crypto.o $(BUILD)/str_map.o $(BUILD)/json_spirit_reader.o $(BUILD)/json_spirit_writer.o \
-$(BUILD)/errno.o  $(BUILD)/snap_types.o $(BUILD)/Striper.o  \
-$(BUILD)/buffer.o $(BUILD)/Mutex.o $(BUILD)/hash.o $(BUILD)/ObjectCacher.o \
-$(BUILD)/lockdep.o $(BUILD)/perf_counters.o $(BUILD)/Clock.o \
-$(BUILD)/armor.o $(BUILD)/AuthClientHandler.o $(BUILD)/LogEntry.o \
-$(BUILD)/environment.o $(BUILD)/safe_io.o $(BUILD)/strtol.o \
-$(BUILD)/simple_spin.o  $(BUILD)/Clock.o $(BUILD)/Journaler.o \
-$(BUILD)/page.o $(BUILD)/sctp_crc32.o $(BUILD)/crc32c.o $(BUILD)/cmdparse.o \
-$(BUILD)/KeyRing.o $(BUILD)/RefCountedObj.o $(BUILD)/str_list.o \
-$(BUILD)/Thread.o $(BUILD)/code_environment.o $(BUILD)/SimpleMessenger.o \
-$(BUILD)/io_priority.o $(BUILD)/signal.o $(BUILD)/cls_lock_client.o \
-$(BUILD)/ConfUtils.o $(BUILD)/utf8.o $(BUILD)/hobject.o \
-$(BUILD)/bloom_filter.o $(BUILD)/DecayCounter.o $(BUILD)/inode_backtrace.o \
-$(BUILD)/msg_types.o $(BUILD)/SubsystemMap.o $(BUILD)/uuid.o \
-$(BUILD)/HitSet.o  $(BUILD)/Log.o $(BUILD)/PrebufferedStreambuf.o $(BUILD)/version.o \
-$(BUILD)/Accepter.o $(BUILD)/DispatchQueue.o  $(BUILD)/PipeConnection.o $(BUILD)/dout.o \
-$(BUILD)/AuthSessionHandler.o $(BUILD)/histogram.o $(BUILD)/ceph_hash.o $(BUILD)/addr_parsing.o $(BUILD)/cmdparse.o
+OBJECTS=  ./$(BUILD)/hash.o  ./$(BUILD)/snap_set_diff.o  ./$(BUILD)/librados.o  ./$(BUILD)/IoCtxImpl.o  ./$(BUILD)/RadosClient.o  ./$(BUILD)/RadosXattrIter.o \
+ ./$(BUILD)/Objecter.o  ./$(BUILD)/MonClient.o  ./$(BUILD)/CrushWrapper.o   ./$(BUILD)/MonMap.o   ./$(BUILD)/CephxAuthorizeHandler.o  ./$(BUILD)/CephxKeyServer.o  ./$(BUILD)/CephxServiceHandler.o \
+   ./$(BUILD)/mdstypes.o  ./$(BUILD)/assert.o  ./$(BUILD)/Pipe.o  ./$(BUILD)/admin_socket.o  ./$(BUILD)/Elector.o  ./$(BUILD)/Paxos.o \
+  ./$(BUILD)/MDSMap.o  ./$(BUILD)/ceph_argparse.o  ./$(BUILD)/OSDMap.o  ./$(BUILD)/admin_socket_client.o   ./$(BUILD)/MonitorStore.o  ./$(BUILD)/MonMapMonitor.o  ./$(BUILD)/PaxosService.o \
+ ./$(BUILD)/entity_name.o   ./$(BUILD)/ceph_context.o  ./$(BUILD)/CephxClientHandler.o  ./$(BUILD)/TextTable.o ./$(BUILD)/util.o \
+ ./$(BUILD)/Message.o  ./$(BUILD)/common_init.o  ./$(BUILD)/osd_types.o  ./$(BUILD)/Messenger.o  ./$(BUILD)/MDSMonitor.o  ./$(BUILD)/OSDMonitor.o  ./$(BUILD)/PGMonitor.o  ./$(BUILD)/PGMap.o \
+ ./$(BUILD)/RotatingKeyRing.o  ./$(BUILD)/CephxProtocol.o  ./$(BUILD)/CephxSessionHandler.o  ./$(BUILD)/global_context.o \
+ ./$(BUILD)/LogClient.o   ./$(BUILD)/AuthMethodList.o  ./$(BUILD)/ceph_strings.o ./$(BUILD)/AuthMonitor.o ./$(BUILD)/ErasureCode.o ./$(BUILD)/ErasureCodePlugin.o \
+ ./$(BUILD)/Formatter.o   ./$(BUILD)/escape.o  ./$(BUILD)/ceph_crypto.o  ./$(BUILD)/builder.o ./$(BUILD)/ConfigKeyService.o \
+ ./$(BUILD)/Timer.o   ./$(BUILD)/BackTrace.o  ./$(BUILD)/hex.o  ./$(BUILD)/crush.o ./$(BUILD)/AuthServiceHandler.o \
+ ./$(BUILD)/Finisher.o  ./$(BUILD)/Throttle.o  ./$(BUILD)/ceph_fs.o  ./$(BUILD)/mapper.o ./$(BUILD)/LogMonitor.o ./$(BUILD)/HealthMonitor.o \
+ ./$(BUILD)/ceph_frag.o  ./$(BUILD)/config.o  ./$(BUILD)/MonCap.o   ./$(BUILD)/Filer.o ./$(BUILD)/DataHealthService.o  \
+ ./$(BUILD)/types.o   ./$(BUILD)/Crypto.o  ./$(BUILD)/str_map.o  ./$(BUILD)/json_spirit_reader.o  ./$(BUILD)/json_spirit_writer.o \
+ ./$(BUILD)/errno.o   ./$(BUILD)/snap_types.o  ./$(BUILD)/Striper.o ./$(BUILD)/Monitor.o \
+ ./$(BUILD)/buffer.o  ./$(BUILD)/Mutex.o  ./$(BUILD)/hash.o  ./$(BUILD)/ObjectCacher.o ./$(BUILD)/CrushTester.o \
+ ./$(BUILD)/lockdep.o  ./$(BUILD)/perf_counters.o  ./$(BUILD)/Clock.o  ./$(BUILD)/signal_handler.o \
+ ./$(BUILD)/armor.o  ./$(BUILD)/AuthClientHandler.o  ./$(BUILD)/LogEntry.o \
+ ./$(BUILD)/environment.o  ./$(BUILD)/safe_io.o  ./$(BUILD)/strtol.o \
+ ./$(BUILD)/simple_spin.o   ./$(BUILD)/Clock.o  ./$(BUILD)/Journaler.o \
+ ./$(BUILD)/page.o  ./$(BUILD)/sctp_crc32.o  ./$(BUILD)/crc32c.o  ./$(BUILD)/cmdparse.o \
+  ./$(BUILD)/KeyRing.o  ./$(BUILD)/RefCountedObj.o  ./$(BUILD)/str_list.o \
+ ./$(BUILD)/Thread.o  ./$(BUILD)/code_environment.o  ./$(BUILD)/SimpleMessenger.o \
+ ./$(BUILD)/io_priority.o  ./$(BUILD)/signal.o  ./$(BUILD)/cls_lock_client.o \
+ ./$(BUILD)/ConfUtils.o  ./$(BUILD)/utf8.o  ./$(BUILD)/hobject.o \
+ ./$(BUILD)/bloom_filter.o  ./$(BUILD)/DecayCounter.o  ./$(BUILD)/inode_backtrace.o \
+ ./$(BUILD)/msg_types.o  ./$(BUILD)/SubsystemMap.o  ./$(BUILD)/uuid.o \
+ ./$(BUILD)/HitSet.o   ./$(BUILD)/Log.o  ./$(BUILD)/PrebufferedStreambuf.o  ./$(BUILD)/version.o \
+ ./$(BUILD)/Accepter.o  ./$(BUILD)/DispatchQueue.o   ./$(BUILD)/PipeConnection.o  ./$(BUILD)/dout.o \
+ ./$(BUILD)/AuthSessionHandler.o  ./$(BUILD)/histogram.o  ./$(BUILD)/ceph_hash.o  ./$(BUILD)/addr_parsing.o  ./$(BUILD)/cmdparse.o
 
 $(BIN)/rados.dll:$(OBJECTS)
-	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0 \
+	$(CPP) $(CFLAGS) $(CLIBS) -shared -o $@ $^ -lws2_32 -lpthreadGCE2 -lgio-2.0 -lglib-2.0 -lgobject-2.0 -lnss3 -lnss -lnspr4 -lfreebl3 -lnssckbi -lnssutil3 -lplc4 -lssl3 \
 	-lboost_thread-mgw48-mt-1_57 -lboost_atomic-mgw48-mt-1_57 -lboost_log-mgw48-mt-1_57 -lboost_system-mgw48-mt-1_57
 	@echo "**************************************************************"
 	@echo "MAKE "$@" FINISH"
