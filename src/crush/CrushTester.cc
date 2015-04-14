@@ -116,7 +116,11 @@ void CrushTester::adjust_weights(vector<__u32>& weight)
 
     // permute bucket list
     for (unsigned i = 0; i < buckets_above_devices.size(); i++) {
+#ifdef _WIN32
+      unsigned j = rand() % (buckets_above_devices.size() - 1);
+#else
       unsigned j = lrand48() % (buckets_above_devices.size() - 1);
+#endif
       std::swap(buckets_above_devices[i], buckets_above_devices[j]);
     }
 
@@ -132,7 +136,11 @@ void CrushTester::adjust_weights(vector<__u32>& weight)
 
       // permute items
       for (int o = 0; o < size; o++) {
+#ifdef _WIN32
+        int j = rand() % (crush.get_bucket_size(id) - 1);
+#else
         int j = lrand48() % (crush.get_bucket_size(id) - 1);
+#endif
         std::swap(items[o], items[j]);
       }
 
@@ -264,7 +272,11 @@ int CrushTester::random_placement(int ruleno, vector<int>& out, int maxout, vect
     // create a vector to hold our trial mappings
     int temp_array[devices_requested];
     for (int i = 0; i < devices_requested; i++){
+#ifdef _WIN32
+      temp_array[i] = rand() % (crush.get_max_devices());
+#else
       temp_array[i] = lrand48() % (crush.get_max_devices());
+#endif
     }
 
     trial_placement.assign(temp_array, temp_array + devices_requested);
