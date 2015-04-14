@@ -280,9 +280,9 @@ OPTION(paxos_service_trim_min, OPT_INT, 250) // minimum amount of versions to tr
 OPTION(paxos_service_trim_max, OPT_INT, 500) // maximum amount of versions to trim during a single proposal (0 disables it)
 OPTION(paxos_kill_at, OPT_INT, 0)
 OPTION(clock_offset, OPT_DOUBLE, 0) // how much to offset the system clock in Clock.cc
-OPTION(auth_cluster_required, OPT_STR, "none")   // required of mon, mds, osd daemons
-OPTION(auth_service_required, OPT_STR, "none")   // required by daemons of clients
-OPTION(auth_client_required, OPT_STR, "none")     // what clients require of daemons
+OPTION(auth_cluster_required, OPT_STR, "cephx,none")   // required of mon, mds, osd daemons
+OPTION(auth_service_required, OPT_STR, "cephx,none")   // required by daemons of clients
+OPTION(auth_client_required, OPT_STR, "cephx,none")     // what clients require of daemons
 OPTION(auth_supported, OPT_STR, "")               // deprecated; default value for above if they are not defined.
 OPTION(cephx_require_signatures, OPT_BOOL, false) //  If true, don't talk to Cephx partners if they don't support message signing; off by default
 OPTION(cephx_cluster_require_signatures, OPT_BOOL, false)
