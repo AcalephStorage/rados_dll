@@ -3,20 +3,21 @@ CEPH_SRC = ceph/src
 BUILD = build
 BIN = bin
 
-CC        = gcc 
+CC        = gcc
 CPP       = g++
 
 PTHREAD=pthreadgce2
 
 # Change the following directories according to your environment
-INCLUDE_BASE=C:/MinGW
-BOOST_INCLUDE_PATH=$(INCLUDE_BASE)/boost
-PTHREADS_PATH=$(INCLUDE_BASE)/pthread
+INCLUDE_BASE=E:/
+BOOST_INCLUDE_PATH=$(INCLUDE_BASE)/boost_1_57_0/boost
+PTHREADS_BASE_PATH=$(INCLUDE_BASE)/pthreads-win32/prebuilt-dll-2-9-1-release
+NSS_BASE_PATH=$(INCLUDE_BASE)/nss/dist
 
-CEPH_INCLUDE = -I$(CEPH_SRC) -l$(PTHREAD)
+CEPH_INCLUDE = -I$(SRC) -I$(CEPH_SRC) -I$(NSS_BASE_PATH)/public/nss -I$(NSS_BASE_PATH)/WIN954.0_DBG.OBJ/include -I$(BOOST_INCLUDE_PATH) -I$(PTHREADS_BASE_PATH)/include -l$(PTHREAD)
 CFLAGS   = $(CEPH_INCLUDE) -lws2_32 -D__USE_FILE_OFFSET64 -DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -fno-strict-aliasing -fsigned-char -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -g -DPIC
 CPPFLAGS = $(CFLAGS) -Wno-invalid-offsetof
-CLIBS    = 
+CLIBS    = -L$(PTHREADS_BASE_PATH)/dll/x86 -L$(NSS_BASE_PATH)/WIN954.0_DBG.OBJ/lib
 
 all: $(BIN)/rados_client.exe
 
@@ -29,7 +30,7 @@ $(BUILD)/%.o:$(CEPH_SRC)/%.cc
 $(BUILD)/%.o:$(CEPH_SRC)/auth/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
 $(BUILD)/%.o:$(CEPH_SRC)/auth/cephx/%.cc
-	$(CPP) -c $(CPPFLAGS) $^ -o $@	
+	$(CPP) -c $(CPPFLAGS) $^ -o $@
 $(BUILD)/%.o:$(CEPH_SRC)/mon/%.cc
 	$(CPP) -c $(CPPFLAGS) $^ -o $@
 $(BUILD)/%.o:$(CEPH_SRC)/cls/%.cc
