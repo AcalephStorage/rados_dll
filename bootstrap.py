@@ -28,7 +28,6 @@ def check_or_download(url, filename = None, base_dir = DOWNLOADS_DIR):
 		os.makedirs(base_dir)
 	target = filename if filename is not None else url.rsplit('/', 1)[1]
 	path = os.path.join(base_dir, target)
-	print "path: {}\n".format(path)
 	if os.path.isfile(path):
 		return path
 	else:
@@ -39,27 +38,40 @@ def check_or_download(url, filename = None, base_dir = DOWNLOADS_DIR):
 			os.rename(downloaded, path)
 			return path
 
-def main(args):
-	# Bail if we're not running under Windows
-	if not (os.name == "nt" and platform.system() == "Windows"):
-		print "This script was meant to run under Windows.\n"
-		sys.exit(1)
-
+def install_mingw():
 	if not os.path.isfile(PATH_TO_MINGW_GET):
 		print "\"{}\" not found. Will attempt to download and install\n".format(PATH_TO_MINGW_GET)
-
 		if not os.path.isfile(PATH_TO_MINGW_GET_SETUP):
 			print "\"{}\" not found. Will attempt to download and install\n".format(PATH_TO_MINGW_GET_SETUP)
 			check_or_download(MINGW_GET_SETUP_URL, filename="mingw-get-setup.exe")
 
 		subprocess.call(PATH_TO_MINGW_GET_SETUP, shell=True)
-
 	subprocess.call([PATH_TO_MINGW_GET, "install", "base", "gcc", "g++", "mingw32-make", "pthreads-w32"])
 
+def install_7za():
 	if not os.path.isfile(PATH_TO_7Z):
 		print "\"{}\" not found. Will attempt to download and install\n".format(PATH_TO_7Z)
 		seven_zip_filename = check_or_download(SEVEN_ZIP_URL)
 		subprocess.call(seven_zip_filename, shell=True)
+
+PATH_TO_BOOST_LIBS = os.path.join(DOWNLOADS_DIR, "boost_1_58_0")
+BOOST_URL = "http://sourceforge.net/projects/boost/files/boost/1.58.0/boost_1_58_0.zip/download"
+
+def install_and_compile_boost():
+	if not os.path.isfile(PATH_TO_BOOST_LIBS):
+		print "Will download and compile boost libraries."
+		boost_zip_filename = check_or_download(BOOST_URL, filename="boost_1_58_0")
+		os.chdir(DOWNLOADS_DIR)
+		subprocess.call([PATH_TO_7Z, "x", "-y", boost_zip_filename])
+
+def main(args):
+	# Bail if we're not running under Windows
+	if not (os.name == "nt" and platform.system() == "Windows"):
+		print "This script was meant to run under Windows.\n"
+		sys.exit(1)
+	install_mingw()
+	install_7za()
+	install_and_compile_boost()
 
 if __name__ == "__main__":
 	sys.exit(main(sys.argv))
