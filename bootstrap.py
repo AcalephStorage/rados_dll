@@ -22,10 +22,11 @@ from _winreg import *
 DOWNLOADS_DIR = path.join(path.expanduser("~"), "Downloads")
 MINGW_DIR = path.join("C:\\", "MinGw")
 
-def check_or_download(url, filename = None, base_dir = DOWNLOADS_DIR):
-	if not path.isdir(base_dir):
-		os.makedirs(base_dir)
-	target = path.join(base_dir, filename if filename is not None else url.rsplit('/', 1)[1])
+def check_or_download(url, filename = None):
+	if not path.isdir(DOWNLOADS_DIR):
+		os.makedirs(DOWNLOADS_DIR)
+	os.chdir(DOWNLOADS_DIR)
+	target = path.join(DOWNLOADS_DIR, filename if filename is not None else url.rsplit('/', 1)[1])
 	return target if path.isfile(target) else wget.download(url, target)
 
 PATH_TO_MINGW_BIN = path.join(MINGW_DIR, "bin")
@@ -72,9 +73,10 @@ def set_user_path(aReg, new_user_path):
 		CloseKey(aKey)
 
 def ensure_in_user_path(path):
-	if not path in os.environ["PATH"].split(';'):
+	if path in os.environ["PATH"].split(';'):
+		return True
+	else:
 		print "\"{}\" not in path! Will attempt to set registry.".format(path)
-
 		aReg = ConnectRegistry(None,HKEY_CURRENT_USER)
 		try:
 			current_user_path = get_user_path(aReg)
@@ -87,12 +89,13 @@ def ensure_in_user_path(path):
 			   print "\"{}\" already in registry. Please close this terminal and rerun \"python bootstrap.py\"".format(PATH_TO_MINGW_BIN)
 		finally:
 			CloseKey(aReg)
+		return False
 
 PATH_TO_MSYS_BIN = path.join(MINGW_DIR, "msys", "1.0", "bin")
 
 def check_mingw_bin_in_path():
-	ensure_in_user_path(PATH_TO_MINGW_BIN)
-	ensure_in_user_path(PATH_TO_MSYS_BIN)
+	if not ensure_in_user_path(PATH_TO_MINGW_BIN) or not ensure_in_user_path(PATH_TO_MSYS_BIN):
+		sys.exit(1)
 
 PATH_TO_7Z = path.join("C:\\", "Program Files", "7-Zip", "7z.exe")
 SEVEN_ZIP_URL = "http://www.7-zip.org/a/7z1505-x64.exe"
@@ -130,13 +133,19 @@ def install_and_compile_glib():
 		os.chdir(PATH_TO_GLIB)
 		subprocess.call([PATH_TO_7Z, "x", "-y", glib_zip_filename])
 
-NSS_FTP_URL = "ftp://ftp.mozilla.org/pub/mozilla.org/security/nss/releases/NSS_3_18_RTM/src/nss-3.18.tar.gz"
-PATH_TO_NSS = path.join(DOWNLOADS_DIR, "nss-3.18")
+MOZILLA_BUILD_URL = "http://ftp.mozilla.org/pub/mozilla.org/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe"
+PATH_TO_MOZILLA_BUILD = path.join(DOWNLOADS_DIR, "")
 
-def install_and_compile_nss():
+def install_mozilla_build():
+	mozilla_build_filename = check_or_download(MOZILLA_BUILD_URL)
+	subprocess.call(mozilla_build_filename, shell=True)
+
+NSS_FTP_URL = "ftp://ftp.mozilla.org/pub/mozilla.org/security/nss/releases/NSS_3_19_1_RTM/src/nss-3.19.1-with-nspr-4.10.8.tar.gz"
+PATH_TO_NSS = path.join(DOWNLOADS_DIR, "nss-3.19.1")
+
+def download_nss():
 	if not path.isdir(PATH_TO_NSS):
 		nss_filename = check_or_download(NSS_FTP_URL)
-		os.chdir(DOWNLOADS_DIR)
 		subprocess.call([PATH_TO_7Z, "x", "-y", nss_filename, "-so", "|", PATH_TO_7Z, "x", "-aoa", "-si","-ttar"], shell=True)
 
 def main(args):
@@ -154,7 +163,9 @@ def main(args):
 
 	install_and_compile_glib()
 
-	install_and_compile_nss()
+	install_mozilla_build()
+
+	download_nss()
 
 if __name__ == "__main__":
 	sys.exit(main(sys.argv))
