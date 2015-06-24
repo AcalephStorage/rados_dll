@@ -8,22 +8,31 @@ Windows port of Ceph librados.
 * glib-2.0              - [http://win32builder.gnome.org/packages/3.6/glib-dev_2.34.3-1_win32.zip](http://win32builder.gnome.org/packages/3.6/glib-dev_2.34.3-1_win32.zip)
 
 #### Preparation
-1) Install `mingw`
-
-2) Copy `pthreads-win32\prebuilt-dll-2-9-1-release\lib\x64\libpthreadGC2.a` to `mingw\lib`
-
-3) Compile `boost`
 
 ```
-bootstrap.bat mingw
-b2 toolset=gcc
+C:\rados_dll>python bootstrap.py
 ```
 
-4) Copy boost libraries to `mingw\lib`
+Run it again after checking/modifying your PATH
 
-5) Copy glib header files to `mingw\include`
+```
+C:\rados_dll>python bootstrap.py
+```
 
-6) Copy glib libraries to `mingw\lib`
+Install Microsoft Visual Studio 2013
+
+#### Build NSS
+
+```
+C:\mozilla-build\start-shell-msvc2013.bat
+
+$ cd Downloads/nss-3.18/nss
+
+~/Downloads/nss-3.18/nss
+$ make nss_build_all
+```
+
+
 
 
 #### Building
