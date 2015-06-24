@@ -12,14 +12,15 @@ BOOST_VER=1_57
 # Change the following directories according to your environment
 HOME=$(USERPROFILE)
 INCLUDE_BASE=$(HOME)/Downloads
-BOOST_INCLUDE_PATH=$(INCLUDE_BASE)/boost_$(BOOST_VER)_0
+BOOST_BASE_PATH=$(INCLUDE_BASE)/boost_$(BOOST_VER)_0
 PTHREADS_BASE_PATH=$(INCLUDE_BASE)/pthreads-win32/prebuilt-dll-2-9-1-release
-NSS_BASE_PATH=$(INCLUDE_BASE)/nss/dist
+NSS_BASE_PATH=$(INCLUDE_BASE)/nss-3.18/dist
+GLIB_BASE_PATH=$(INCLUDE_BASE)/glib-dev_2.34.3-1_win32
 
-CEPH_INCLUDE = -I$(SRC) -I$(CEPH_SRC) -I$(NSS_BASE_PATH)/public/nss -I$(NSS_BASE_PATH)/WIN954.0_DBG.OBJ/include -I$(BOOST_INCLUDE_PATH) -I$(PTHREADS_BASE_PATH)/include -l$(PTHREAD)
+CEPH_INCLUDE = -I$(SRC) -I$(CEPH_SRC) -I$(NSS_BASE_PATH)/public/nss -I$(NSS_BASE_PATH)/WIN954.0_DBG.OBJ/include -I$(BOOST_BASE_PATH) -I$(PTHREADS_BASE_PATH)/include -l$(PTHREAD)
 CFLAGS   = $(CEPH_INCLUDE) -lws2_32 -D__USE_FILE_OFFSET64 -DHAVE_CONFIG_H -D__CEPH__ -D_FILE_OFFSET_BITS=64 -D_REENTRANT -D_THREAD_SAFE -D__STDC_FORMAT_MACROS -D_GNU_SOURCE -fno-strict-aliasing -fsigned-char -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -g -DPIC
 CPPFLAGS = $(CFLAGS) -Wno-invalid-offsetof
-CLIBS    = -L$(PTHREADS_BASE_PATH)/dll/x86 -L$(NSS_BASE_PATH)/WIN954.0_DBG.OBJ/lib
+CLIBS    = -L$(PTHREADS_BASE_PATH)/dll/x86 -L$(BOOST_BASE_PATH)/stage/lib -L$(NSS_BASE_PATH)/WIN954.0_DBG.OBJ/lib -L$(GLIB_BASE_PATH)/lib
 
 all: $(BIN)/rados_client.exe
 
@@ -100,7 +101,7 @@ OBJECTS=  ./$(BUILD)/hash.o  ./$(BUILD)/snap_set_diff.o  ./$(BUILD)/librados.o  
  ./$(BUILD)/environment.o  ./$(BUILD)/safe_io.o  ./$(BUILD)/strtol.o \
  ./$(BUILD)/simple_spin.o   ./$(BUILD)/Clock.o  ./$(BUILD)/Journaler.o \
  ./$(BUILD)/page.o  ./$(BUILD)/sctp_crc32.o  ./$(BUILD)/crc32c.o  ./$(BUILD)/cmdparse.o \
-  ./$(BUILD)/KeyRing.o  ./$(BUILD)/RefCountedObj.o  ./$(BUILD)/str_list.o \
+ ./$(BUILD)/KeyRing.o  ./$(BUILD)/RefCountedObj.o  ./$(BUILD)/str_list.o \
  ./$(BUILD)/Thread.o  ./$(BUILD)/code_environment.o  ./$(BUILD)/SimpleMessenger.o \
  ./$(BUILD)/io_priority.o  ./$(BUILD)/signal.o  ./$(BUILD)/cls_lock_client.o \
  ./$(BUILD)/ConfUtils.o  ./$(BUILD)/utf8.o  ./$(BUILD)/hobject.o \
@@ -125,4 +126,7 @@ $(BIN)/rados_client.exe:$(BUILD)/rados_client.o $(BIN)/rados.dll
 	@echo "**************************************************************"
 
 clean:
-	rm -f $(OBJECTS) $(BUILD)/*.o $(BIN)/rados.dll $(BIN)/rados_client.exe
+	del $(OBJECTS)
+	rm -f $(BUILD)\*.o
+	del $(BIN)\rados.dll
+	del $(BIN)\rados_client.exe
