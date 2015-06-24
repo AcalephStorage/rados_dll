@@ -32,6 +32,9 @@ Vagrant.configure(2) do |config|
     ansible.playbook = 'vagrant-provision.yml'
   end
 
+  # No custom/secure keys to avoid the vagrant username/password prompt
+  config.ssh.insert_key = false
+
   # If true, then any SSH connections made will enable agent forwarding.
   # Default value: false
   config.ssh.forward_agent = true
