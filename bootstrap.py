@@ -158,7 +158,7 @@ def install_mozilla_build():
 		mozilla_build_filename = check_or_download(MOZILLA_BUILD_URL)
 		subprocess.call(mozilla_build_filename, shell=True)
 
-NSS_FTP_URL = "ftp://ftp.mozilla.org/pub/mozilla.org/security/nss/releases/NSS_" + NSS_VER_UNDERSCORE + "_RTM/src/nss-" + NSS_VER + "-with-nspr-4.10.8.tar.gz"
+NSS_FTP_URL = "https://ftp.mozilla.org/pub/mozilla.org/security/nss/releases/NSS_" + NSS_VER_UNDERSCORE + "_RTM/src/nss-" + NSS_VER + "-with-nspr-4.10.8.tar.gz"
 
 def download_nss():
 	if not path.isdir(PATH_TO_NSS):
