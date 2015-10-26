@@ -2,12 +2,21 @@
 Windows port of Ceph librados.
 
 #### Pre-requisites
+* python 2.7.10         - [https://www.python.org/downloads/windows/](https://www.python.org/downloads/windows/)
 * mingw                 - [http://sourceforge.net/projects/mingw/files/Installer/mingw-get-setup.exe/download](http://sourceforge.net/projects/mingw/files/Installer/mingw-get-setup.exe/download)
 * pthreads 2.9.1        - [http://sourceforge.net/projects/pthreads4w/files/latest/download](http://sourceforge.net/projects/pthreads4w/files/latest/download)
 * boost 1.57.0          - [http://sourceforge.net/projects/boost/files/boost/1.57.0/boost_1_57_0.zip/download](http://sourceforge.net/projects/boost/files/boost/1.57.0/boost_1_57_0.zip/download)
 * glib-2.0              - [http://win32builder.gnome.org/packages/3.6/glib-dev_2.34.3-1_win32.zip](http://win32builder.gnome.org/packages/3.6/glib-dev_2.34.3-1_win32.zip)
 
 #### Preparation
+
+Install required packages
+
+```
+C:\rados_dll>C:\Python27\Scripts\pip.exe install -r requirements.txt
+```
+
+Run the `bootstrap.py` script
 
 ```
 C:\rados_dll>python bootstrap.py
@@ -38,7 +47,7 @@ $ make nss_build_all
 #### Building
 
 ```
-$ cd src
+$ 
 $ make
 ```
 

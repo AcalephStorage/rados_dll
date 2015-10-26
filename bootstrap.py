@@ -44,7 +44,7 @@ MINGW_GET_SETUP_URL = "http://sourceforge.net/projects/mingw/files/Installer/min
 
 MINGW_GET_URL = "http://downloads.sourceforge.net/project/mingw/Installer/mingw-get/mingw-get-0.6.2-beta-20131004-1/mingw-get-0.6.2-mingw32-beta-20131004-1-bin.zip"
 
-NSS_VER = "3.18"
+NSS_VER = "3.19.1"
 NSS_VER_UNDERSCORE = NSS_VER.replace('.', '_')
 PATH_TO_NSS = path.join(DOWNLOADS_DIR, "nss-" + NSS_VER)
 
@@ -122,15 +122,15 @@ def install_7za():
 		seven_zip_filename = check_or_download(SEVEN_ZIP_URL)
 		subprocess.call(seven_zip_filename, shell=True)
 
-BOOST_VER = " "
+BOOST_VER = "1.58.0"
 BOOST_VER_UNDERSCORE = BOOST_VER.replace('.', '_')
-BOOST_DIR = path.join(DOWNLOADS_DIR, "boost_" + BOOST_VER_UNDERSCORE + "_0")
-BOOST_URL = "http://sourceforge.net/projects/boost/files/boost/" + BOOST_VER + ".0/boost_" + BOOST_VER_UNDERSCORE + "_0.zip/download"
+BOOST_DIR = path.join(DOWNLOADS_DIR, "boost_" + BOOST_VER_UNDERSCORE)
+BOOST_URL = "http://sourceforge.net/projects/boost/files/boost/" + BOOST_VER + "/boost_" + BOOST_VER_UNDERSCORE + ".zip/download"
 
 def install_and_compile_boost():
 	if not path.isfile(path.join(BOOST_DIR, "bootstrap.bat")):
 		print "\n Will download and compile boost libraries."
-		boost_zip_filename = check_or_download(BOOST_URL, filename="boost_" + BOOST_VER_UNDERSCORE + "_0.zip")
+		boost_zip_filename = check_or_download(BOOST_URL, filename="boost_" + BOOST_VER_UNDERSCORE + ".zip")
 		subprocess.call([PATH_TO_7Z, "x", "-y", boost_zip_filename])
 	os.chdir(BOOST_DIR)
 	if not path.isdir(path.join(BOOST_DIR, "bin.v2")):
